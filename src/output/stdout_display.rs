@@ -87,7 +87,6 @@ mod tests {
     use crate::output::{
         LOG_TAG_INNER_WIDTH, WHO_H, WHO_M, format_log_tag_inner, format_who_tag_prefix,
     };
-    #[test]
     fn stdout_line_omits_timestamp_prefix_and_stdout_ansi_line_omits_timestamp_prefix() {
         {
             let prefix = format_who_tag_prefix(WHO_M);
@@ -102,7 +101,6 @@ mod tests {
             assert!(!plain.contains('\x1b'));
         }
     }
-    #[test]
     fn stdout_display_and_log_splits_timestamp_for_disk_and_log_tag_inner_width_is_one() {
         {
             let (display, log) = crate::output::stdout_log_pair::stdout_tagged_display_and_log_line(
@@ -118,7 +116,6 @@ mod tests {
         }
     }
 
-    #[test]
     fn heartbeat_display_omits_timestamp_on_stdout() {
         use std::time::{Duration, Instant};
 
@@ -140,7 +137,6 @@ mod tests {
         assert!(is_log_timestamp_token(ts));
     }
 
-    #[test]
     fn heartbeat_display_matches_logger_format_for_color_mode() {
         use crate::output::stdout_heartbeat_display_and_log_line;
         use crate::output::{init_stdout_style_for_test, stdout_use_color};
@@ -162,7 +158,6 @@ mod tests {
         }
     }
 
-    #[test]
     fn heartbeat_ansi_display_uses_uniform_who_tag_color() {
         use crate::terminal_palette::ansi_who_tag;
 
@@ -194,7 +189,6 @@ mod tests {
         assert!(display.ends_with(super::ANSI_RESET));
     }
 
-    #[test]
     fn agent_start_ansi_payload_uses_tool_name_color() {
         use crate::output::WHO_A;
         use crate::terminal_palette::{ANSI_BOLD, ANSI_RESET, ansi_tool_name, ansi_who_tag};
@@ -223,7 +217,6 @@ mod tests {
         );
     }
 
-    #[test]
     fn prompt_file_ansi_matches_agent_start_colors() {
         use crate::output::WHO_P;
 
@@ -233,7 +226,6 @@ mod tests {
         assert_eq!(format_line_stdout(WHO_P, "router_a"), "p|router_a");
     }
 
-    #[test]
     fn remote_ansi_payload_is_plain() {
         use crate::output::WHO_R;
         use crate::terminal_palette::{ANSI_RESET, ansi_who_tag};
@@ -246,7 +238,6 @@ mod tests {
         assert_eq!(format_line_stdout(WHO_R, "x"), "r|x");
     }
 
-    #[test]
     fn heartbeat_rendered_if_due_covers_arm_and_due_paths() {
         use std::time::{Duration, Instant};
 
@@ -263,6 +254,19 @@ mod tests {
         assert!(heartbeat_rendered_if_due(Instant::now(), false).is_none());
         test_set_last_heartbeat_elapsed(Duration::from_secs(61));
         assert!(heartbeat_rendered_if_due(Instant::now(), false).is_some());
+    }
+
+    #[test]
+    fn merged_stdout_line_omits_timestamp_prefix_and_stdout_ansi_line_omits_timestamp_prefix() {
+        stdout_line_omits_timestamp_prefix_and_stdout_ansi_line_omits_timestamp_prefix();
+        stdout_display_and_log_splits_timestamp_for_disk_and_log_tag_inner_width_is_one();
+        heartbeat_display_omits_timestamp_on_stdout();
+        heartbeat_display_matches_logger_format_for_color_mode();
+        heartbeat_ansi_display_uses_uniform_who_tag_color();
+        agent_start_ansi_payload_uses_tool_name_color();
+        prompt_file_ansi_matches_agent_start_colors();
+        remote_ansi_payload_is_plain();
+        heartbeat_rendered_if_due_covers_arm_and_due_paths();
     }
 }
 

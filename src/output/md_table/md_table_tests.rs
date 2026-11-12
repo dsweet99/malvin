@@ -15,7 +15,6 @@ fn rendered(markdown: &str, width: usize) -> Vec<String> {
     render_table(&lines, width).unwrap_or_default()
 }
 
-#[test]
 fn aligned_table_matches_mdless_borders_and_rules() {
     let lines = rendered(
         "| Just | a | header | row |\n| :--- | --- | ---: | :---: |\n| a something long | short | medium | |\n| a | little | more | data |\n",
@@ -34,7 +33,6 @@ fn aligned_table_matches_mdless_borders_and_rules() {
     );
 }
 
-#[test]
 fn wide_cell_wraps_inside_the_terminal_budget() {
     let lines = rendered(
         "| Just | a | header | row |\n| :--- | --- | ---: | :---: |\n| a something long | short | medium | |\n| a | little | more | data |\n",
@@ -55,7 +53,6 @@ fn wide_cell_wraps_inside_the_terminal_budget() {
     );
 }
 
-#[test]
 fn right_aligned_amount_is_padded_on_the_left() {
     let lines = rendered("| Item | Amount |\n| :--- | -----: |\n| rent | 12 |\n", 80);
     let amount = lines
@@ -71,7 +68,6 @@ fn right_aligned_amount_is_padded_on_the_left() {
     assert!(cell.trim() == "12");
 }
 
-#[test]
 fn fenced_pipe_rows_stay_literal() {
     let text = "```\n| A | B |\n| --- | --- |\n| c | d |\n```\n";
     let pieces = format_markdown_document(text, 80);
@@ -87,7 +83,6 @@ fn fenced_pipe_rows_stay_literal() {
     );
 }
 
-#[test]
 fn a_second_separator_starts_another_table() {
     let mut stream = MdTableStream::default();
     let mut out = Vec::new();
@@ -120,7 +115,6 @@ fn a_second_separator_starts_another_table() {
     assert!(rendered.iter().any(|line| line.contains('3')));
 }
 
-#[test]
 fn stdout_log_keeps_raw_table_and_display_draws_borders() {
     use crate::output::{
         DO_DM_TEST_LOCK, enable_stdout_capture, set_do_dm_stdout_mode, take_captured_stdout,
@@ -151,7 +145,6 @@ fn stdout_log_keeps_raw_table_and_display_draws_borders() {
     assert!(!text.contains("┌───┬───┐"), "{text}");
 }
 
-#[test]
 fn end_message_drops_an_unclosed_fence() {
     let mut stream = MdTableStream::default();
     stream.push("```", 80);
@@ -162,7 +155,6 @@ fn end_message_drops_an_unclosed_fence() {
     assert_eq!(stream.push("c", 80), vec![MdPiece::Source("c".into())]);
 }
 
-#[test]
 fn end_message_on_another_thread_clears_a_fence_opened_on_a_worker() {
     use super::{end_stdout_markdown_message, push_stdout_markdown};
     let _guard = STDOUT_LOG_TEST_LOCK
@@ -179,4 +171,16 @@ fn end_message_on_another_thread_clears_a_fence_opened_on_a_worker() {
         "prose rendered as code"
     );
     end_stdout_markdown_message();
+}
+
+#[test]
+fn merged_aligned_table_matches_mdless_borders_and_rules() {
+    aligned_table_matches_mdless_borders_and_rules();
+    wide_cell_wraps_inside_the_terminal_budget();
+    right_aligned_amount_is_padded_on_the_left();
+    fenced_pipe_rows_stay_literal();
+    a_second_separator_starts_another_table();
+    stdout_log_keeps_raw_table_and_display_draws_borders();
+    end_message_drops_an_unclosed_fence();
+    end_message_on_another_thread_clears_a_fence_opened_on_a_worker();
 }

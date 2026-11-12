@@ -95,11 +95,6 @@ impl RunArtifacts {
 }
 
 #[must_use]
-pub fn user_request_path(artifacts: &RunArtifacts) -> PathBuf {
-    artifacts.run_dir.join("user_request.md")
-}
-
-#[must_use]
 pub fn review_requirements_json(artifacts: &RunArtifacts) -> PathBuf {
     artifacts.run_dir.join("review_requirements.json")
 }

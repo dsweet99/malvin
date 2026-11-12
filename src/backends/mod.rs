@@ -81,6 +81,8 @@ pub(super) mod claude_sdk_auth;
 pub mod claude_sdk_bridge_install;
 #[path = "claude_sdk/bridge_path.rs"]
 pub mod claude_sdk_bridge_path;
+#[path = "claude_sdk/models_list.rs"]
+pub mod claude_sdk_models_list;
 #[path = "claude_sdk/session_spawn.rs"]
 pub(super) mod claude_sdk_session_spawn;
 #[path = "codex_sdk/auth.rs"]

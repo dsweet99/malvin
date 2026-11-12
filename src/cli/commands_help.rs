@@ -104,13 +104,11 @@ mod tests {
             .any(|line| line.starts_with(&format!("  {name}")))
     }
 
-    #[test]
     fn commands_only_help_omits_init() {
         let cmd = Cli::command();
         assert!(!help_lists_subcommand(&cmd, "init"));
     }
 
-    #[test]
     fn commands_only_help_lines_includes_command_usage_and_epilog() {
         let cmd = Cli::command();
         let lines = top_level_help_lines(&cmd);
@@ -121,7 +119,6 @@ mod tests {
         assert!(!text.contains("tidy"));
     }
 
-    #[test]
     fn render_commands_only_help_lists_subcommands_not_options() {
         let help = render_commands_only_help();
         let cmd = Cli::command();
@@ -134,7 +131,6 @@ mod tests {
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));
     }
-    #[test]
     fn write_commands_only_help_buffers_catalog_and_print_commands_only_help_invokes_stdout_path() {
         {
             let mut buf = Vec::new();
@@ -148,7 +144,6 @@ mod tests {
         }
     }
 
-    #[test]
     fn visible_subcommands_match_public_catalog() {
         let cmd = Cli::command();
         let names: Vec<_> = visible_subcommands(&cmd)
@@ -160,7 +155,6 @@ mod tests {
         assert_eq!(names, vec!["admin"]);
     }
 
-    #[test]
     fn format_command_lines_aligns_names() {
         let cmd = Cli::command();
         let lines = format_command_lines(&visible_subcommands(&cmd));
@@ -168,7 +162,6 @@ mod tests {
         assert!(!lines.iter().any(|line| line.starts_with("  init")));
     }
 
-    #[test]
     fn admin_commands_only_help_lists_subcommands_with_descriptions() {
         let help = render_admin_commands_only_help();
         assert!(
@@ -192,11 +185,22 @@ mod tests {
         assert!(!help.contains("Options:"), "{help}");
         assert!(!help.contains("error"), "{help}");
     }
-    #[test]
     fn print_admin_commands_only_help_invokes_stdout_path_and_kiss_cov_commands_help_symbols() {
         {
             print_admin_commands_only_help().expect("stdout");
         }
         {}
+    }
+
+    #[test]
+    fn merged_commands_only_help_omits_init() {
+        commands_only_help_omits_init();
+        commands_only_help_lines_includes_command_usage_and_epilog();
+        render_commands_only_help_lists_subcommands_not_options();
+        write_commands_only_help_buffers_catalog_and_print_commands_only_help_invokes_stdout_path();
+        visible_subcommands_match_public_catalog();
+        format_command_lines_aligns_names();
+        admin_commands_only_help_lists_subcommands_with_descriptions();
+        print_admin_commands_only_help_invokes_stdout_path_and_kiss_cov_commands_help_symbols();
     }
 }

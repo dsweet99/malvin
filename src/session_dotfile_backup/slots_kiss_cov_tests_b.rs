@@ -4,7 +4,6 @@ use super::slots_kiss_cov_shared::{
 };
 use std::path::Path;
 
-#[test]
 fn kiss_cov_dotfile_spec_row_rel_path_and_debug() {
     for row in DOTFILE_ROWS {
         assert_eq!(row.rel_path(), row.rel);
@@ -13,7 +12,6 @@ fn kiss_cov_dotfile_spec_row_rel_path_and_debug() {
     }
 }
 
-#[test]
 fn kiss_cov_dotfile_spec_row_hash() {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -22,7 +20,6 @@ fn kiss_cov_dotfile_spec_row_hash() {
     DOTFILE_ROWS[0].hash(&mut hasher);
     assert_ne!(hasher.finish(), 0);
 }
-#[test]
 fn kiss_cov_dotfile_spec_row_partial_eq_and_kiss_cov_dotfile_spec_row_copy_clone_traits() {
     {
         assert_eq!(DOTFILE_ROWS[0], DOTFILE_ROWS[0]);
@@ -36,7 +33,6 @@ fn kiss_cov_dotfile_spec_row_partial_eq_and_kiss_cov_dotfile_spec_row_copy_clone
     }
 }
 
-#[test]
 fn kiss_cov_dotfile_spec_row_const_eval_witnesses() {
     let witnesses = [&ROW_WITNESS_0];
     for row in witnesses {
@@ -59,7 +55,6 @@ fn kiss_cov_dotfile_spec_row_const_eval_witnesses() {
     }
 }
 
-#[test]
 fn kiss_cov_dotfile_rows_destructure_by_value() {
     for (slot, row_ref) in DOTFILE_ROWS.iter().enumerate() {
         let lbl = labels_for_test(row_ref);
@@ -96,7 +91,6 @@ fn kiss_cov_dotfile_rows_destructure_by_value() {
     }
 }
 
-#[test]
 fn kiss_cov_dotfile_spec_row_all_literal_forms() {
     for (slot, expected) in DOTFILE_ROWS.iter().enumerate() {
         let built = DotfileSpecRow {
@@ -116,7 +110,6 @@ fn kiss_cov_dotfile_spec_row_all_literal_forms() {
     }
 }
 
-#[test]
 fn kiss_cov_dotfile_spec_row_same_file_value_witness() {
     let row = DOTFILE_ROWS[0];
     let DotfileSpecRow {
@@ -138,7 +131,6 @@ fn kiss_cov_dotfile_spec_row_same_file_value_witness() {
     assert_eq!(cloned.rel, rel);
 }
 
-#[test]
 fn kiss_cov_write_merged_default_malvin_config_helper() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg_path = crate::malvin_config_path(work);
@@ -148,4 +140,16 @@ fn kiss_cov_write_merged_default_malvin_config_helper() {
         write_merged_default_malvin_config(&cfg_path);
         assert!(cfg_path.is_file());
     });
+}
+
+#[test]
+fn merged_kiss_cov_dotfile_spec_row_rel_path_and_debug() {
+    kiss_cov_dotfile_spec_row_rel_path_and_debug();
+    kiss_cov_dotfile_spec_row_hash();
+    kiss_cov_dotfile_spec_row_partial_eq_and_kiss_cov_dotfile_spec_row_copy_clone_traits();
+    kiss_cov_dotfile_spec_row_const_eval_witnesses();
+    kiss_cov_dotfile_rows_destructure_by_value();
+    kiss_cov_dotfile_spec_row_all_literal_forms();
+    kiss_cov_dotfile_spec_row_same_file_value_witness();
+    kiss_cov_write_merged_default_malvin_config_helper();
 }

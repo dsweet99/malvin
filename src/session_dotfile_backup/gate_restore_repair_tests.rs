@@ -9,7 +9,6 @@ fn write_checks(work: &std::path::Path, content: impl AsRef<[u8]>) {
     write_git_root_checks(work, content);
 }
 
-#[test]
 fn kiss_cov_gate_restore_repair_test_helpers() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
@@ -20,7 +19,6 @@ fn kiss_cov_gate_restore_repair_test_helpers() {
     let _ = stringify!(write_git_root_checks);
 }
 
-#[test]
 fn repair_leaves_empty_checks_file_unchanged() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
@@ -32,7 +30,6 @@ fn repair_leaves_empty_checks_file_unchanged() {
     assert!(checks.is_empty());
 }
 
-#[test]
 fn repair_leaves_missing_checks_unchanged() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
@@ -45,7 +42,6 @@ fn repair_leaves_missing_checks_unchanged() {
     assert!(!checks_path(work).exists());
 }
 
-#[test]
 fn repair_leaves_valid_checks_unchanged() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
@@ -57,7 +53,6 @@ fn repair_leaves_valid_checks_unchanged() {
     assert_eq!(checks, "make lint\n");
 }
 
-#[test]
 fn repair_recreates_empty_home_malvin_config_from_template() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);
@@ -82,7 +77,6 @@ fn invalid_config_backups(cfg: &std::path::Path) -> Vec<std::path::PathBuf> {
         .collect()
 }
 
-#[test]
 fn repair_recreates_invalid_home_malvin_config_from_template() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);
@@ -97,7 +91,6 @@ fn repair_recreates_invalid_home_malvin_config_from_template() {
     });
 }
 
-#[test]
 fn repair_preserves_invalid_config_bytes_in_a_backup_and_warns() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);
@@ -120,7 +113,6 @@ fn repair_preserves_invalid_config_bytes_in_a_backup_and_warns() {
     });
 }
 
-#[test]
 fn repeated_repairs_keep_every_invalid_config() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);
@@ -133,7 +125,6 @@ fn repeated_repairs_keep_every_invalid_config() {
     });
 }
 
-#[test]
 fn repair_of_empty_config_makes_no_backup() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);
@@ -144,7 +135,6 @@ fn repair_of_empty_config_makes_no_backup() {
     });
 }
 
-#[test]
 fn ensure_heals_empty_home_config_to_template_keys() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);
@@ -157,4 +147,18 @@ fn ensure_heals_empty_home_config_to_template_keys() {
         assert!(text.contains("mem_limit_gb"));
         assert!(text.contains("[agent]"));
     });
+}
+
+#[test]
+fn merged_kiss_cov_gate_restore_repair_test_helpers() {
+    kiss_cov_gate_restore_repair_test_helpers();
+    repair_leaves_empty_checks_file_unchanged();
+    repair_leaves_missing_checks_unchanged();
+    repair_leaves_valid_checks_unchanged();
+    repair_recreates_empty_home_malvin_config_from_template();
+    repair_recreates_invalid_home_malvin_config_from_template();
+    repair_preserves_invalid_config_bytes_in_a_backup_and_warns();
+    repeated_repairs_keep_every_invalid_config();
+    repair_of_empty_config_makes_no_backup();
+    ensure_heals_empty_home_config_to_template_keys();
 }

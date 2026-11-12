@@ -44,6 +44,7 @@ pub fn models_refresh_is_due(now_secs: u64) -> bool {
 pub fn perform_models_refresh() {
     let now = malvin::clock::unix_now_secs();
     let _ = malvin::backends::pi_backend::refresh_npm_pi_models();
+    let _ = malvin::backends::claude_sdk::models_list::refresh_claude_models();
     let _ = save_last_refresh_secs(now);
 }
 

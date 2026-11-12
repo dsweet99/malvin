@@ -17,13 +17,11 @@ fn fake_npm(dir: &Path, body: &str) -> PathBuf {
 const FAKE_NPM_OK: &str =
     "mkdir -p node_modules/@cursor/sdk && echo '{}' > node_modules/@cursor/sdk/package.json";
 
-#[test]
 fn fnv1a64_is_stable() {
     assert_eq!(fnv1a64(b""), 0xcbf2_9ce4_8422_2325);
     assert_ne!(fnv1a64(b"a"), fnv1a64(b"b"));
 }
 
-#[test]
 fn payload_lists_every_non_test_dist_file() {
     let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("bridges/cursor-sdk-bridge/dist");
     let mut on_disk: Vec<String> = fs::read_dir(&dist)
@@ -45,7 +43,6 @@ fn payload_lists_every_non_test_dist_file() {
     assert_eq!(embedded, on_disk);
 }
 
-#[test]
 fn install_into_runs_npm_once_then_reuses_install() {
     let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempdir().unwrap();
@@ -65,7 +62,6 @@ fn install_into_runs_npm_once_then_reuses_install() {
     });
 }
 
-#[test]
 fn install_into_rewrites_stale_payload_files() {
     let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempdir().unwrap();
@@ -79,7 +75,6 @@ fn install_into_rewrites_stale_payload_files() {
     assert_ne!(fs::read(dest.join("dist/bridge.js")).unwrap(), b"old");
 }
 
-#[test]
 fn install_into_reports_npm_failure() {
     let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempdir().unwrap();
@@ -93,7 +88,6 @@ fn install_into_reports_npm_failure() {
     assert!(!npm_deps_current(&dest));
 }
 
-#[test]
 fn install_failed_message_names_node_free_backends() {
     let msg = install_failed_message("npm not found");
     assert!(msg.contains("npm not found"));
@@ -102,7 +96,6 @@ fn install_failed_message_names_node_free_backends() {
     assert!(msg.contains("codex:") && !msg.contains("rpi:"));
 }
 
-#[test]
 fn resolve_npm_prefers_env_then_node_sibling() {
     let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempdir().unwrap();
@@ -117,9 +110,20 @@ fn resolve_npm_prefers_env_then_node_sibling() {
     });
 }
 
-#[test]
 fn path_with_node_first_prepends_node_dir() {
     let path = path_with_node_first(Path::new("/opt/node22/bin/node"));
     let first = std::env::split_paths(&path).next().unwrap();
     assert_eq!(first, PathBuf::from("/opt/node22/bin"));
+}
+
+#[test]
+fn merged_fnv1a64_is_stable() {
+    fnv1a64_is_stable();
+    payload_lists_every_non_test_dist_file();
+    install_into_runs_npm_once_then_reuses_install();
+    install_into_rewrites_stale_payload_files();
+    install_into_reports_npm_failure();
+    install_failed_message_names_node_free_backends();
+    resolve_npm_prefers_env_then_node_sibling();
+    path_with_node_first_prepends_node_dir();
 }

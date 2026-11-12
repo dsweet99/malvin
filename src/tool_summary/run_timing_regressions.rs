@@ -61,14 +61,12 @@ fn tracker_with_timing() -> (
     (tracker, timing)
 }
 
-#[test]
 fn completed_tool_call_evicts_tracker_when_run_timing_wired() {
     let (mut tracker, _timing) = tracker_with_timing();
     complete_timed_tool(&mut tracker, "tool_done", "read", 0);
     assert_eq!(tracker.call_count(), 0);
 }
 
-#[test]
 fn completed_tool_call_records_wall_time_when_run_timing_wired() {
     let (mut tracker, timing) = tracker_with_timing();
     complete_timed_tool(&mut tracker, "tool_timed", "read", 15);
@@ -84,7 +82,6 @@ fn completed_tool_call_records_wall_time_when_run_timing_wired() {
     );
 }
 
-#[test]
 fn distinct_tool_kinds_accumulate_in_independent_timing_buckets() {
     let (mut tracker, timing) = tracker_with_timing();
     complete_timed_tool(&mut tracker, "tool_read", "read", 12);
@@ -98,7 +95,6 @@ fn distinct_tool_kinds_accumulate_in_independent_timing_buckets() {
     assert!(tool_calls_ms_from_timing(&timing) >= read_ms + exec_ms);
 }
 
-#[test]
 fn incomplete_tool_call_does_not_record_wall_time() {
     let (mut tracker, timing) = tracker_with_timing();
     let start = tool_call_json("tool_pending", "tool_call", "pending", "read");
@@ -106,7 +102,6 @@ fn incomplete_tool_call_does_not_record_wall_time() {
     assert_eq!(tool_calls_ms_from_timing(&timing), 0);
 }
 
-#[test]
 fn completed_tool_call_without_run_timing_does_not_accumulate() {
     let timing = crate::run_timing::RunTiming::new_arc();
     let mut tracker_no_timing = ToolSummaryTracker::default();
@@ -115,7 +110,6 @@ fn completed_tool_call_without_run_timing_does_not_accumulate() {
     assert_eq!(tool_calls_ms_from_timing(&timing), 0);
 }
 
-#[test]
 fn parallel_tool_call_starts_count_as_one_agent_step() {
     let (mut tracker, timing) = tracker_with_timing();
     for id in ["a", "b", "c"] {
@@ -131,11 +125,21 @@ fn parallel_tool_call_starts_count_as_one_agent_step() {
     assert_eq!(v["tokens"]["tool_call_starts"], 3);
 }
 
-#[test]
 fn sequential_tool_batches_count_separate_agent_steps() {
     let (mut tracker, timing) = tracker_with_timing();
     complete_timed_tool(&mut tracker, "t1", "read", 0);
     complete_timed_tool(&mut tracker, "t2", "execute", 0);
     let v = timing_json_from(&timing);
     assert_eq!(v["tokens"]["steps"], 2);
+}
+
+#[test]
+fn merged_completed_tool_call_evicts_tracker_when_run_timing_wired() {
+    completed_tool_call_evicts_tracker_when_run_timing_wired();
+    completed_tool_call_records_wall_time_when_run_timing_wired();
+    distinct_tool_kinds_accumulate_in_independent_timing_buckets();
+    incomplete_tool_call_does_not_record_wall_time();
+    completed_tool_call_without_run_timing_does_not_accumulate();
+    parallel_tool_call_starts_count_as_one_agent_step();
+    sequential_tool_batches_count_separate_agent_steps();
 }

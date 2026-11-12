@@ -1,4 +1,3 @@
-#[test]
 fn kiss_cov_cursor_sdk_auth_and_bridge_path() {
     let _ = super::auth::ensure_sdk_authenticated;
     let _ = super::auth::effective_sdk_api_key;
@@ -38,7 +37,6 @@ fn kiss_cov_cursor_sdk_auth_and_bridge_path() {
     let _ = stringify!(NODE_COMPILE_CACHE);
 }
 
-#[test]
 fn kiss_cov_cursor_sdk_client_api() {
     let _ = stringify!(cursor_sdk_client_from_raw);
     let _ = crate::backends::agent_backend::SdkClient::with_max_retries;
@@ -74,7 +72,6 @@ fn kiss_cov_cursor_sdk_client_api() {
     let _ = stringify!(append_prompt_log_bytes);
 }
 
-#[test]
 fn kiss_cov_cursor_sdk_protocol() {
     let _ = super::protocol::encode_request;
     let _ = super::protocol::decode_event;
@@ -103,7 +100,6 @@ fn kiss_cov_cursor_sdk_protocol() {
     let _ = stringify!(Unknown);
 }
 
-#[test]
 fn kiss_cov_cursor_sdk_session_core() {
     let _ = stringify!(BridgeSession);
     let _ = stringify!(BridgeSpawnArgs);
@@ -139,7 +135,6 @@ fn kiss_cov_cursor_sdk_session_core() {
     let _ = stringify!(finish_run_done);
 }
 
-#[test]
 fn kiss_cov_cursor_sdk_session_fixes() {
     let _ = stringify!(discard_optional_trailing_run_done);
     let _ = stringify!(run_done_status_is_failure);
@@ -157,7 +152,6 @@ fn kiss_cov_cursor_sdk_session_fixes() {
     let _ = stringify!(kiss_cov_bug2_poison_case);
 }
 
-#[test]
 fn kiss_cov_cursor_sdk_log_and_timing() {
     let _ = stringify!(feed_do_dm_run_result);
     let _ = stringify!(handle_stream_event);
@@ -185,7 +179,6 @@ fn kiss_cov_cursor_sdk_log_and_timing() {
     let _ = crate::backends::bridge_sdk::record_sdk_usage;
 }
 
-#[test]
 fn kiss_cov_cursor_sdk_mock_helpers() {
     let _ = stringify!(install_mock_bridge_env);
     let _ = stringify!(clear_mock_bridge_env);
@@ -207,7 +200,6 @@ fn kiss_cov_cursor_sdk_mock_helpers() {
     let _ = stringify!(bridge_transport_errors_require_coder_session_teardown);
 }
 
-#[test]
 fn kiss_cov_cursor_sdk_test_helpers() {
     let _ = stringify!(cursor_sdk_client_mock_bridge_prompt_records_usage);
     let _ = stringify!(mock_bridge_js);
@@ -225,4 +217,16 @@ fn kiss_cov_cursor_sdk_test_helpers() {
     let _ = stringify!(kiss_cov_cursor_sdk_session_fixes);
     let _ = stringify!(kiss_cov_cursor_sdk_log_and_timing);
     let _ = stringify!(kiss_cov_cursor_sdk_mock_helpers);
+}
+
+#[test]
+fn merged_kiss_cov_cursor_sdk_auth_and_bridge_path() {
+    kiss_cov_cursor_sdk_auth_and_bridge_path();
+    kiss_cov_cursor_sdk_client_api();
+    kiss_cov_cursor_sdk_protocol();
+    kiss_cov_cursor_sdk_session_core();
+    kiss_cov_cursor_sdk_session_fixes();
+    kiss_cov_cursor_sdk_log_and_timing();
+    kiss_cov_cursor_sdk_mock_helpers();
+    kiss_cov_cursor_sdk_test_helpers();
 }

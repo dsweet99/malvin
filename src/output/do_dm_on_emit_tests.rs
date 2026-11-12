@@ -25,7 +25,6 @@ fn capture_template(path: &std::path::Path) -> String {
     format!("printf '%s\\n' {{body}} >> '{}'", path.display())
 }
 
-#[test]
 fn blank_on_emit_is_unset_and_a_command_is_kept() {
     with_config_lock(|| {
         store_command(Some("  ".to_string()));
@@ -38,7 +37,6 @@ fn blank_on_emit_is_unset_and_a_command_is_kept() {
     });
 }
 
-#[test]
 fn render_replaces_quoted_placeholder_and_escapes_apostrophes() {
     let template = "curl -H 'Title: malvin' -d '{body}' 'https://example.test/topic'";
     let rendered = render_on_emit(template, "it's\nline", "report.pdf");
@@ -74,7 +72,6 @@ fn render_replaces_quoted_placeholder_and_escapes_apostrophes() {
     );
 }
 
-#[test]
 fn completed_message_separates_only_a_final_attachment_marker() {
     let messages = completed_direct_messages(&fenced("hello\n__ATTACH__: report.pdf"));
     assert_eq!(messages.len(), 1);
@@ -90,7 +87,6 @@ fn completed_message_separates_only_a_final_attachment_marker() {
     assert_eq!(messages[0].attachment, None);
 }
 
-#[test]
 fn notify_writes_one_body_per_completed_message() {
     let _guard = lock_stdout_log();
     set_stdout_log_path(None);
@@ -108,7 +104,6 @@ fn notify_writes_one_body_per_completed_message() {
     );
 }
 
-#[test]
 fn notify_omits_attachment_marker_from_body_and_substitutes_attachment() {
     let _guard = lock_stdout_log();
     set_stdout_log_path(None);
@@ -127,7 +122,6 @@ fn notify_omits_attachment_marker_from_body_and_substitutes_attachment() {
     );
 }
 
-#[test]
 fn notify_substitutes_empty_attachment_when_marker_is_absent() {
     let _guard = lock_stdout_log();
     set_stdout_log_path(None);
@@ -143,7 +137,6 @@ fn notify_substitutes_empty_attachment_when_marker_is_absent() {
     assert_eq!(std::fs::read_to_string(path).expect("read"), "hello|\n");
 }
 
-#[test]
 fn notify_ignores_an_attachment_when_template_does_not_use_it() {
     let _guard = lock_stdout_log();
     set_stdout_log_path(None);
@@ -155,7 +148,6 @@ fn notify_ignores_an_attachment_when_template_does_not_use_it() {
     assert_eq!(std::fs::read_to_string(path).expect("read"), "hello\n");
 }
 
-#[test]
 fn notify_body_starts_with_the_run_log_directory() {
     let _guard = lock_stdout_log();
     let dir = tempfile::tempdir().expect("tempdir");
@@ -173,7 +165,6 @@ fn notify_body_starts_with_the_run_log_directory() {
     );
 }
 
-#[test]
 fn notify_runs_when_stdout_dm_mode_is_off() {
     let _guard = lock_stdout_log();
     set_stdout_log_path(None);
@@ -213,8 +204,21 @@ fn notify_warns_when_command_fails_or_times_out() {
     );
 }
 
-#[test]
 fn render_escapes_apostrophe_inside_larger_single_quoted_word() {
     let rendered = render_on_emit("echo 'x {body} y'", "it's ✓", "");
     assert_eq!(rendered, "echo 'x it'\\''s ✓ y'");
+}
+
+#[test]
+fn merged_blank_on_emit_is_unset_and_a_command_is_kept() {
+    blank_on_emit_is_unset_and_a_command_is_kept();
+    render_replaces_quoted_placeholder_and_escapes_apostrophes();
+    completed_message_separates_only_a_final_attachment_marker();
+    notify_writes_one_body_per_completed_message();
+    notify_omits_attachment_marker_from_body_and_substitutes_attachment();
+    notify_substitutes_empty_attachment_when_marker_is_absent();
+    notify_ignores_an_attachment_when_template_does_not_use_it();
+    notify_body_starts_with_the_run_log_directory();
+    notify_runs_when_stdout_dm_mode_is_off();
+    render_escapes_apostrophe_inside_larger_single_quoted_word();
 }

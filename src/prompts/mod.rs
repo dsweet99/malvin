@@ -67,6 +67,9 @@ mod prompts_tests_a;
 #[cfg(test)]
 #[path = "prompts_tests_b.rs"]
 mod prompts_tests_b;
+#[cfg(test)]
+#[path = "tests/user_home_dir_tests.rs"]
+mod user_home_dir_tests;
 
 #[cfg(test)]
 mod kiss_cov_auto {

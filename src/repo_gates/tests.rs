@@ -2,7 +2,6 @@ use super::checks_test_helpers::{git_init, write_git_root_checks as write_checks
 use super::*;
 use std::fs;
 
-#[test]
 fn load_malvin_checks_skips_comments_and_blank_lines() {
     let tmp = tempfile::tempdir().unwrap();
     let checks_path = tmp.path().join(".malvin/gates");
@@ -12,7 +11,6 @@ fn load_malvin_checks_skips_comments_and_blank_lines() {
     assert_eq!(lines, vec!["custom-a".to_string()]);
 }
 
-#[test]
 fn prompt_quality_gates_markdown_matches_checks_file_verbatim() {
     crate::test_support::test_utils::with_isolated_home(|w| {
         std::fs::create_dir_all(w.join(".malvin")).unwrap();
@@ -29,7 +27,6 @@ fn prompt_quality_gates_markdown_matches_checks_file_verbatim() {
     });
 }
 
-#[test]
 fn gate_command_lines_uses_only_malvin_checks_when_present() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
@@ -44,7 +41,6 @@ fn gate_command_lines_uses_only_malvin_checks_when_present() {
     assert_eq!(g, vec!["custom-a".to_string(), "custom-b".to_string()]);
 }
 
-#[test]
 fn ensure_default_malvin_config_file_writes_template_when_missing() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let config_path = crate::malvin_config_path(work);
@@ -58,7 +54,6 @@ fn ensure_default_malvin_config_file_writes_template_when_missing() {
         assert_eq!(fs::read_to_string(&config_path).unwrap(), text);
     });
 }
-#[test]
 fn should_run_workspace_gates_when_git_present_and_format_quality_gates_markdown_lists_commands() {
     {
         let tmp = tempfile::tempdir().unwrap();
@@ -73,7 +68,6 @@ fn should_run_workspace_gates_when_git_present_and_format_quality_gates_markdown
     }
 }
 
-#[test]
 fn prompt_quality_gates_markdown_ephemeral_errors_when_checks_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
@@ -85,7 +79,6 @@ fn prompt_quality_gates_markdown_ephemeral_errors_when_checks_missing() {
     assert!(!checks_path.exists());
 }
 
-#[test]
 fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
     crate::test_support::test_utils::with_isolated_home(|w| {
         let err = prompt_quality_gates_markdown(w).unwrap_err();
@@ -94,4 +87,15 @@ fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
             "unexpected error message: {err}"
         );
     });
+}
+
+#[test]
+fn merged_load_malvin_checks_skips_comments_and_blank_lines() {
+    load_malvin_checks_skips_comments_and_blank_lines();
+    prompt_quality_gates_markdown_matches_checks_file_verbatim();
+    gate_command_lines_uses_only_malvin_checks_when_present();
+    ensure_default_malvin_config_file_writes_template_when_missing();
+    should_run_workspace_gates_when_git_present_and_format_quality_gates_markdown_lists_commands();
+    prompt_quality_gates_markdown_ephemeral_errors_when_checks_missing();
+    prompt_quality_gates_markdown_errors_when_malvin_checks_missing();
 }

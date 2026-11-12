@@ -18,7 +18,6 @@ fn with_dm_capture(f: impl FnOnce()) -> String {
     reset_do_dm_filter();
     out
 }
-#[test]
 fn extracts_body_between_fences_and_ignores_text_outside_fences() {
     {
         let out = with_dm_capture(|| {
@@ -35,7 +34,6 @@ fn extracts_body_between_fences_and_ignores_text_outside_fences() {
     }
 }
 
-#[test]
 fn streaming_chunks_across_markers() {
     let out = with_dm_capture(|| {
         feed_do_dm_stdout_text("__MALVIN_DM_");
@@ -45,7 +43,6 @@ fn streaming_chunks_across_markers() {
     assert_eq!(out, "xi");
 }
 
-#[test]
 fn mode_off_is_noop() {
     let _dm = crate::output::DO_DM_TEST_LOCK
         .lock()
@@ -58,7 +55,6 @@ fn mode_off_is_noop() {
     assert!(!do_dm_stdout_mode());
 }
 
-#[test]
 fn streaming_multibyte_outside_fences_does_not_panic() {
     const OUTSIDE: &str = "Obtain the current local date and time (with timezone name or numeric offset) and report it clearly to the user—prefer a";
     let out = with_dm_capture(|| {
@@ -69,7 +65,6 @@ fn streaming_multibyte_outside_fences_does_not_panic() {
     assert_eq!(out, "body—ok");
 }
 
-#[test]
 fn streaming_multibyte_inside_incomplete_end_does_not_panic() {
     let out = with_dm_capture(|| {
         feed_do_dm_stdout_text(&format!("{DM_START}\nline—one\n"));
@@ -80,7 +75,6 @@ fn streaming_multibyte_inside_incomplete_end_does_not_panic() {
     assert!(out.contains("line—two"), "out={out:?}");
 }
 
-#[test]
 fn rejects_same_line_start_and_end() {
     let out = with_dm_capture(|| {
         feed_do_dm_stdout_text(&format!("{DM_START} hello {DM_END}\n"));
@@ -89,7 +83,6 @@ fn rejects_same_line_start_and_end() {
     assert_eq!(out, "real");
 }
 
-#[test]
 fn rejects_non_alone_marker_forms() {
     let out = with_dm_capture(|| {
         feed_do_dm_stdout_text(&format!("x{DM_START}\nnope\n{DM_END}\n"));
@@ -160,11 +153,22 @@ fn markdown_dm_renders_termimad_on_stdout() {
     assert!(!shown.contains("| --- |"), "{shown}");
 }
 
-#[test]
 fn rejects_start_and_body_on_one_line() {
     let out = with_dm_capture(|| {
         feed_do_dm_stdout_text(&format!("{DM_START} hello\n{DM_END}\n"));
         feed_do_dm_stdout_text(&format!("{DM_START}\nok\n{DM_END}\n"));
     });
     assert_eq!(out, "ok");
+}
+
+#[test]
+fn merged_extracts_body_between_fences_and_ignores_text_outside_fences() {
+    extracts_body_between_fences_and_ignores_text_outside_fences();
+    streaming_chunks_across_markers();
+    mode_off_is_noop();
+    streaming_multibyte_outside_fences_does_not_panic();
+    streaming_multibyte_inside_incomplete_end_does_not_panic();
+    rejects_same_line_start_and_end();
+    rejects_non_alone_marker_forms();
+    rejects_start_and_body_on_one_line();
 }

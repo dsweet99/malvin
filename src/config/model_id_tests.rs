@@ -1,6 +1,5 @@
 use super::*;
 
-#[test]
 fn parse_cursor_and_pi() {
     let c = parse_model_id("cursor:auto").expect("cursor");
     assert_eq!(c.backend, ModelBackend::Cursor);
@@ -41,7 +40,6 @@ fn parse_cursor_and_pi() {
     assert!(parse_model_id("claude:opus[effort=bogus]").is_err());
 }
 
-#[test]
 fn parse_bracket_overrides() {
     let c = parse_model_id("cursor:claude-opus-5[effort=high,fast=true]").expect("cursor params");
     assert_eq!(c.slug, "claude-opus-5");
@@ -109,7 +107,6 @@ fn parse_bracket_overrides() {
     );
 }
 
-#[test]
 fn format_and_split_bracket_params_helpers() {
     assert_eq!(format_bracket_params(&[]), "");
     let params = vec![
@@ -137,7 +134,6 @@ fn format_and_split_bracket_params_helpers() {
     assert!(empty_brackets.1.is_empty());
 }
 
-#[test]
 fn reject_bare_legacy_and_empty_slug() {
     assert!(parse_model_id("auto").is_err());
     assert!(parse_model_id("cursor:").is_err());
@@ -169,7 +165,6 @@ fn reject_bare_legacy_and_empty_slug() {
     );
 }
 
-#[test]
 fn require_config_and_helpers() {
     assert!(require_config_model("auto").is_err());
     assert_eq!(
@@ -184,7 +179,6 @@ fn require_config_and_helpers() {
     assert!(!parse_model_id("cursor:auto").expect("cursor").is_pi());
 }
 
-#[test]
 fn model_backend_and_parsed_model_debug() {
     let backend = ModelBackend::Cursor;
     let _ = format!("{backend:?}");
@@ -199,7 +193,6 @@ fn model_backend_and_parsed_model_debug() {
     let _ = format!("{parsed:?}");
 }
 
-#[test]
 fn parse_canonical_metamorphic_roundtrip() {
     let samples = [
         "cursor:auto",
@@ -216,7 +209,6 @@ fn parse_canonical_metamorphic_roundtrip() {
     }
 }
 
-#[test]
 fn backend_labels_drain_prefixes_and_provider_split() {
     assert_eq!(ModelBackend::Cursor.label(), "cursor");
     assert_eq!(ModelBackend::Pi.label(), "pi");
@@ -270,7 +262,6 @@ fn backend_labels_drain_prefixes_and_provider_split() {
     assert!(require_prefixed_model("auto").is_err());
 }
 
-#[test]
 fn bridge_wire_model_follows_backend_policy() {
     let cursor = parse_model_id("cursor:auto[thinking=high]").expect("cursor");
     assert_eq!(
@@ -283,7 +274,6 @@ fn bridge_wire_model_follows_backend_policy() {
     assert_eq!(codex.backend.bridge_wire_model(&codex), "gpt-5.6");
 }
 
-#[test]
 fn bracket_format_split_metamorphic_and_reject_fuzz() {
     let params = vec![
         ModelParam {
@@ -325,6 +315,20 @@ fn bracket_format_split_metamorphic_and_reject_fuzz() {
             .expect_err("unbalanced closer")
             .contains(']')
     );
+}
+
+#[test]
+fn merged_parse_cursor_and_pi() {
+    parse_cursor_and_pi();
+    parse_bracket_overrides();
+    format_and_split_bracket_params_helpers();
+    reject_bare_legacy_and_empty_slug();
+    require_config_and_helpers();
+    model_backend_and_parsed_model_debug();
+    parse_canonical_metamorphic_roundtrip();
+    backend_labels_drain_prefixes_and_provider_split();
+    bridge_wire_model_follows_backend_policy();
+    bracket_format_split_metamorphic_and_reject_fuzz();
 }
 
 #[test]

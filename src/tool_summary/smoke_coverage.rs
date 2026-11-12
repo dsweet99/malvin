@@ -1,6 +1,5 @@
 use super::{ToolSummaryDetail, ToolSummaryTracker, shorten_middle, tool_summary_lines};
 use serde_json::json;
-#[test]
 fn shorten_middle_preserves_ends_and_shorten_middle_short_unchanged() {
     {
         let s = "src/very/long/path/to/some/deep/module/file.rs";
@@ -15,7 +14,6 @@ fn shorten_middle_preserves_ends_and_shorten_middle_short_unchanged() {
     }
 }
 
-#[test]
 fn parse_tool_call_start() {
     let v = json!({
         "jsonrpc": "2.0",
@@ -40,7 +38,6 @@ fn parse_tool_call_start() {
     assert!(!lines.log.contains("rawOutput"));
 }
 
-#[test]
 fn parse_tool_update_running_and_done() {
     let start = json!({
         "method": "session/update",
@@ -98,7 +95,6 @@ fn parse_tool_update_running_and_done() {
     assert!(!d.log.contains("ok\n"));
 }
 
-#[test]
 fn done_summary_omits_title_field_per_plan() {
     let start = json!({
         "method": "session/update",
@@ -137,7 +133,6 @@ fn done_summary_omits_title_field_per_plan() {
     );
 }
 
-#[test]
 fn edit_done_content_only_omits_synthetic_added_removed_counts() {
     let v = json!({
         "method": "session/update",
@@ -158,7 +153,6 @@ fn edit_done_content_only_omits_synthetic_added_removed_counts() {
     );
 }
 
-#[test]
 fn edit_done_emits_added_when_only_lines_added_field_present() {
     let v = json!({
         "method": "session/update",
@@ -182,7 +176,6 @@ fn edit_done_emits_added_when_only_lines_added_field_present() {
     );
 }
 
-#[test]
 fn edit_done_raw_output_uri_includes_path_in_log() {
     let v = json!({
         "method": "session/update",
@@ -207,7 +200,6 @@ fn edit_done_raw_output_uri_includes_path_in_log() {
     );
 }
 
-#[test]
 fn tool_call_update_pending_labeled_pending_not_start() {
     let v = json!({
         "method": "session/update",
@@ -230,4 +222,16 @@ fn tool_call_update_pending_labeled_pending_not_start() {
         "pending update must be distinct from start; got {:?}",
         lines.log
     );
+}
+
+#[test]
+fn merged_shorten_middle_preserves_ends_and_shorten_middle_short_unchanged() {
+    shorten_middle_preserves_ends_and_shorten_middle_short_unchanged();
+    parse_tool_call_start();
+    parse_tool_update_running_and_done();
+    done_summary_omits_title_field_per_plan();
+    edit_done_content_only_omits_synthetic_added_removed_counts();
+    edit_done_emits_added_when_only_lines_added_field_present();
+    edit_done_raw_output_uri_includes_path_in_log();
+    tool_call_update_pending_labeled_pending_not_start();
 }

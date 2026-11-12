@@ -117,21 +117,6 @@ pub fn emit_run_timing_after_backend(req: RunTimingAfterBackend<'_>) -> Result<(
     merge_acp_and_timing_results(req.agent_result, timing_result)
 }
 
-pub fn emit_run_timing_json_only_after_backend(
-    backend: &mut crate::backends::agent_backend::SdkClient,
-    run_dir: &Path,
-    timing: &Arc<Mutex<RunTiming>>,
-    agent_result: Result<(), String>,
-) -> Result<(), String> {
-    emit_run_timing_after_backend(RunTimingAfterBackend {
-        backend,
-        run_dir,
-        timing,
-        agent_result,
-        session_end: RunTimingSessionEnd::Finalize,
-    })
-}
-
 pub fn merge_acp_restore_and_check_abort(
     primary: Result<(), String>,
     artifacts: &crate::artifacts::RunArtifacts,

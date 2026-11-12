@@ -1,6 +1,5 @@
 use super::{DotfileBackupPayload, DotfileBackupState, MalvinChecksBackup, SessionDotfileBackups};
 
-#[test]
 fn kiss_cov_dotfile_backup_payload_construct_destructure() {
     let payload = DotfileBackupPayload {
         backup_path: std::path::PathBuf::from("/tmp/backup/.malvin/gates"),
@@ -12,7 +11,6 @@ fn kiss_cov_dotfile_backup_payload_construct_destructure() {
     assert_eq!(bytes, b"make lint\n");
 }
 
-#[test]
 fn kiss_cov_session_dotfile_backups_construct_destructure() {
     let backups = SessionDotfileBackups {
         malvin_checks: MalvinChecksBackup::Missing,
@@ -33,7 +31,6 @@ fn kiss_cov_session_dotfile_backups_construct_destructure() {
     let _ = DotfileBackupState::Missing;
 }
 
-#[test]
 fn kiss_cov_gitignore_file_backup_construct_destructure() {
     let file = super::gitignore_tree::GitignoreFileBackup::new(
         std::path::PathBuf::from(".gitignore"),
@@ -44,7 +41,6 @@ fn kiss_cov_gitignore_file_backup_construct_destructure() {
     assert_eq!(bytes, b"target/\n");
 }
 
-#[test]
 fn kiss_cov_vision_file_backup_construct_destructure() {
     let file = super::vision_tree::VisionFileBackup::new(
         std::path::PathBuf::from("VISION.md"),
@@ -55,7 +51,6 @@ fn kiss_cov_vision_file_backup_construct_destructure() {
     assert_eq!(bytes, b"# Vision\n");
 }
 
-#[test]
 fn gitignore_and_vision_file_backups_are_distinct_types() {
     use super::gitignore_tree::GitignoreFileBackup;
     use super::named_file_tree::NamedFileEntry;
@@ -87,7 +82,6 @@ fn gitignore_and_vision_file_backups_are_distinct_types() {
     assert_eq!(roundtrip, entry);
 }
 
-#[test]
 fn kiss_cov_write_merged_default_malvin_config() {
     let _ = super::slots_kiss_cov_shared::write_merged_default_malvin_config;
 
@@ -107,8 +101,18 @@ fn kiss_cov_write_merged_default_malvin_config() {
     });
 }
 
-#[test]
 fn kiss_cov_slots_kiss_cov_shared_fn_refs() {
     let _ = super::slots_kiss_cov_shared::dotfile_spec_row_field_count;
     let _ = super::alloc::random_backup_id;
+}
+
+#[test]
+fn merged_kiss_cov_dotfile_backup_payload_construct_destructure() {
+    kiss_cov_dotfile_backup_payload_construct_destructure();
+    kiss_cov_session_dotfile_backups_construct_destructure();
+    kiss_cov_gitignore_file_backup_construct_destructure();
+    kiss_cov_vision_file_backup_construct_destructure();
+    gitignore_and_vision_file_backups_are_distinct_types();
+    kiss_cov_write_merged_default_malvin_config();
+    kiss_cov_slots_kiss_cov_shared_fn_refs();
 }

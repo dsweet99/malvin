@@ -7,7 +7,6 @@ use crate::ansi_strip::strip_ansi_escapes;
 use crate::output::stdout_log_pair::acp_tee_log_prefix;
 use crate::terminal_palette::ansi_body;
 
-#[test]
 fn timestamp_present_on_acp_tee_helpers() {
     let ts = "20260413.121314.015";
     let ctx = AcpTeeLineFmt {
@@ -40,7 +39,6 @@ fn timestamp_present_on_acp_tee_helpers() {
     );
 }
 
-#[test]
 fn acp_display_and_log_helpers_include_timestamp_on_stdout_formatted_lines() {
     let ctx = AcpTeeLineFmt {
         ts: "20260413.121314.015",
@@ -83,7 +81,6 @@ fn acp_display_and_log_helpers_include_timestamp_on_stdout_formatted_lines() {
     );
 }
 
-#[test]
 fn tool_line_display_has_no_space_after_pipe_while_thought_keeps_it() {
     let tee_line = |who, line| AcpTeeLineFmt {
         ts: "20260413.121314.015",
@@ -109,7 +106,6 @@ fn tool_line_display_has_no_space_after_pipe_while_thought_keeps_it() {
     );
 }
 
-#[test]
 fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
     let _: Option<super::acp_tee::AcpTeeStdoutEvent> = None;
     let _ = super::acp_tee::print_stdout_acp_tee_line;
@@ -142,7 +138,6 @@ fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
     assert!(!from_line.starts_with("20260413"));
 }
 
-#[test]
 fn agent_message_prefix_rendered_payload_uses_white() {
     use super::acp_tee_markdown::agent_rendered_markup_payload;
     use crate::output::stdout_log_pair::{AcpTeeLineFmt, format_line_acp_ansi_payload};
@@ -167,7 +162,6 @@ fn agent_message_prefix_rendered_payload_uses_white() {
     );
 }
 
-#[test]
 fn ansi_acp_tee_agent_message_payload_uses_white() {
     let line = format_line_acp_ansi_payload(&AcpTeeLineFmt {
         ts: "20260413.121314.015",
@@ -187,7 +181,6 @@ fn ansi_acp_tee_agent_message_payload_uses_white() {
     );
 }
 
-#[test]
 fn ansi_acp_tee_can_dim_payload_text() {
     let line = format_line_acp_ansi_payload(&AcpTeeLineFmt {
         ts: "20260413.121314.015",
@@ -198,4 +191,15 @@ fn ansi_acp_tee_can_dim_payload_text() {
     });
     assert!(line.contains("\x1b[38;2;128;132;148m[thinking]\x1b[0m"));
     assert!(!line.starts_with("20260413"));
+}
+
+#[test]
+fn merged_timestamp_present_on_acp_tee_helpers() {
+    timestamp_present_on_acp_tee_helpers();
+    acp_display_and_log_helpers_include_timestamp_on_stdout_formatted_lines();
+    tool_line_display_has_no_space_after_pipe_while_thought_keeps_it();
+    ansi_acp_tee_directions_use_distinct_bracket_colors();
+    agent_message_prefix_rendered_payload_uses_white();
+    ansi_acp_tee_agent_message_payload_uses_white();
+    ansi_acp_tee_can_dim_payload_text();
 }

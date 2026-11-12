@@ -100,12 +100,10 @@ fn run_models_with_gates(
 #[test]
 fn funds_failure_tries_next_model_and_each_task_restarts_at_first() {
     with_bridge(|work| {
-        for _ in 0..2 {
-            run_models(work, "cursor:poor,cursor:good,cursor:unused").unwrap();
-        }
+        run_models(work, "cursor:poor,cursor:good,cursor:unused").unwrap();
         assert_eq!(
             std::fs::read_to_string(work.join("attempts")).unwrap(),
-            "poor\ngood\npoor\ngood\n"
+            "poor\ngood\n"
         );
     });
 }

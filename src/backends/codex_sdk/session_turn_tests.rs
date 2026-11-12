@@ -5,7 +5,6 @@ use super::session_turn_done::{finish_codex_status, turn_duration_ms};
 use crate::agent_process::agent_string_is_insufficient_funds;
 use serde_json::json;
 
-#[test]
 fn failed_and_interrupted_turns_are_errors() {
     let failed = json!({"params":{"turn":{"status":"failed","error":{"message":"auth"}}}});
     let err = finish_codex_status(&failed, "failed").unwrap_err();
@@ -16,7 +15,6 @@ fn failed_and_interrupted_turns_are_errors() {
     assert!(rpc_error(&json!({"method":"error"})).is_none());
 }
 
-#[test]
 fn failed_turn_preserves_quota_code_for_fallback() {
     use crate::backends::cursor_sdk::protocol::BridgeEvent;
     for error in [
@@ -42,7 +40,6 @@ fn failed_turn_preserves_quota_code_for_fallback() {
     }
 }
 
-#[test]
 fn ordinary_turn_errors_do_not_trigger_quota_fallback() {
     for error in [
         json!({"message":"Invalid request","codexErrorInfo":"badRequest"}),
@@ -57,7 +54,6 @@ fn ordinary_turn_errors_do_not_trigger_quota_fallback() {
     }
 }
 
-#[test]
 fn agent_text_comes_from_items_not_last_agent_message() {
     let value = json!({
         "params": {
@@ -88,7 +84,6 @@ fn agent_text_comes_from_items_not_last_agent_message() {
     ));
 }
 
-#[test]
 fn idle_status_does_not_complete_a_turn() {
     let state = TurnState {
         turn_id: Some("turn-test".into()),
@@ -100,7 +95,6 @@ fn idle_status_does_not_complete_a_turn() {
     assert!(turn_is_complete("turn/completed", &state, &completed));
 }
 
-#[test]
 fn turn_duration_and_canonical_failure_status() {
     let with_ms = json!({"params":{"turn":{"durationMs":42}}});
     assert_eq!(turn_duration_ms(&with_ms), Some(42));
@@ -111,7 +105,6 @@ fn turn_duration_and_canonical_failure_status() {
     assert!(finish_codex_status(&json!({}), "cancelled").is_err());
 }
 
-#[test]
 fn run_done_uses_shared_finished_status_and_usage() {
     use super::session_turn::TurnState;
     use crate::backends::cursor_sdk::protocol::BridgeEvent;
@@ -170,8 +163,19 @@ fn run_done_uses_shared_finished_status_and_usage() {
     }
 }
 
-#[test]
 fn kiss_cov_run_done_status_serde() {
     let _ = stringify!(serialize);
     let _ = stringify!(deserialize);
+}
+
+#[test]
+fn merged_failed_and_interrupted_turns_are_errors() {
+    failed_and_interrupted_turns_are_errors();
+    failed_turn_preserves_quota_code_for_fallback();
+    ordinary_turn_errors_do_not_trigger_quota_fallback();
+    agent_text_comes_from_items_not_last_agent_message();
+    idle_status_does_not_complete_a_turn();
+    turn_duration_and_canonical_failure_status();
+    run_done_uses_shared_finished_status_and_usage();
+    kiss_cov_run_done_status_serde();
 }

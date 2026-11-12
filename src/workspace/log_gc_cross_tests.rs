@@ -12,7 +12,6 @@ const OTHER_HASH: &str = "deadbeefdeadbeef";
 const ORPHAN_HASH: &str = "aaaaaaaaaaaaaaaa";
 const AGE_ONLY_TOML: &str = "[logs]\nmax_count = 0\nmax_age_days = 30\nmax_bytes = \"\"\n";
 
-#[test]
 fn prune_logs_after_run_created_applies_retention_across_hash_buckets() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let config_path = crate::malvin_config_path(work);
@@ -37,7 +36,6 @@ fn prune_logs_after_run_created_applies_retention_across_hash_buckets() {
     });
 }
 
-#[test]
 fn prune_logs_after_run_created_removes_empty_orphan_hash_buckets() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let home_logs = malvin_home_logs_root();
@@ -75,7 +73,6 @@ fn seed_run_for_work_dir(
     run_dir
 }
 
-#[test]
 fn logs_of_a_missing_project_outside_temp_are_kept_without_a_retention_limit() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let home_logs = tmp.path().join("logs");
@@ -89,7 +86,6 @@ fn logs_of_a_missing_project_outside_temp_are_kept_without_a_retention_limit() {
     assert!(run.is_dir(), "an unmounted project must keep its logs");
 }
 
-#[test]
 fn logs_of_a_missing_project_outside_temp_still_age_out() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let home_logs = tmp.path().join("logs");
@@ -110,7 +106,6 @@ fn logs_of_a_missing_project_outside_temp_still_age_out() {
     assert!(recent.is_dir(), "the recent run must stay");
 }
 
-#[test]
 fn logs_are_kept_when_a_temp_work_dir_cannot_be_checked() {
     use std::os::unix::fs::PermissionsExt;
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -135,7 +130,6 @@ fn logs_are_kept_when_a_temp_work_dir_cannot_be_checked() {
     }
 }
 
-#[test]
 fn prune_logs_after_run_created_removes_ephemeral_workspace_hash_buckets() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let other = malvin_home_logs_root().join(OTHER_HASH);
@@ -155,7 +149,6 @@ fn prune_logs_after_run_created_removes_ephemeral_workspace_hash_buckets() {
     });
 }
 
-#[test]
 fn prune_run_dirs_never_deletes_protected_active_run() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let logs = tmp.path().join("logs");
@@ -178,7 +171,6 @@ fn prune_run_dirs_never_deletes_protected_active_run() {
     );
 }
 
-#[test]
 fn prune_leaves_nonempty_foreign_bucket_with_non_run_content() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let config_path = crate::malvin_config_path(work);
@@ -201,4 +193,16 @@ fn prune_leaves_nonempty_foreign_bucket_with_non_run_content() {
             "non-run content keeps the foreign bucket"
         );
     });
+}
+
+#[test]
+fn merged_prune_logs_after_run_created_applies_retention_across_hash_buckets() {
+    prune_logs_after_run_created_applies_retention_across_hash_buckets();
+    prune_logs_after_run_created_removes_empty_orphan_hash_buckets();
+    logs_of_a_missing_project_outside_temp_are_kept_without_a_retention_limit();
+    logs_of_a_missing_project_outside_temp_still_age_out();
+    logs_are_kept_when_a_temp_work_dir_cannot_be_checked();
+    prune_logs_after_run_created_removes_ephemeral_workspace_hash_buckets();
+    prune_run_dirs_never_deletes_protected_active_run();
+    prune_leaves_nonempty_foreign_bucket_with_non_run_content();
 }
