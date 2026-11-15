@@ -1,4 +1,6 @@
-use super::{FactAgentSpec, build_fact_agent_prompt, start_fact_agent_watch_with};
+use super::{
+    FactAgentSpec, build_fact_agent_prompt, pick_fact_prompt, start_fact_agent_watch_with,
+};
 use malvin::artifacts::RunArtifacts;
 use malvin::prompts::PromptStore;
 use malvin::slow_task_watch::WatchedPromptFlag;
@@ -18,12 +20,38 @@ fn artifacts(dir: &std::path::Path) -> RunArtifacts {
 fn prompt_is_header_then_new_fact() {
     let dir = tempfile::tempdir().unwrap();
     let store = PromptStore::default_store();
-    let prompt = build_fact_agent_prompt(&store, &artifacts(dir.path()), "m").unwrap();
+    let prompt =
+        build_fact_agent_prompt(&store, &artifacts(dir.path()), "m", "new_fact.md").unwrap();
     let fact = store
         .render_prompt_only("new_fact.md", &std::collections::HashMap::new())
         .unwrap();
     assert!(prompt.contains("# Know thyself"), "{prompt:.80}");
     assert!(prompt.ends_with(fact.trim()));
+}
+
+#[test]
+fn prompt_is_header_then_tidy_facts() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = PromptStore::default_store();
+    let prompt =
+        build_fact_agent_prompt(&store, &artifacts(dir.path()), "m", "tidy_facts.md").unwrap();
+    let tidy = store
+        .render_prompt_only("tidy_facts.md", &std::collections::HashMap::new())
+        .unwrap();
+    assert!(prompt.contains("# Know thyself"), "{prompt:.80}");
+    assert!(prompt.ends_with(tidy.trim()));
+}
+
+#[test]
+fn pick_fact_prompt_boundaries_and_ratio() {
+    assert_eq!(pick_fact_prompt(0), "new_fact.md");
+    assert_eq!(pick_fact_prompt(24), "new_fact.md");
+    assert_eq!(pick_fact_prompt(25), "tidy_facts.md");
+    assert_eq!(pick_fact_prompt(99), "tidy_facts.md");
+    let new = (0..100)
+        .filter(|r| pick_fact_prompt(*r) == "new_fact.md")
+        .count();
+    assert_eq!(new, 25);
 }
 
 #[tokio::test]

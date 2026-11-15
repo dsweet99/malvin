@@ -11,7 +11,7 @@ to one working directory, named by the file `work_dir` in any of its sessions.
 
 ## What counts as a fact worth remembering
 
-A **fact** is a true, specific statement about this machine, a project, the operator's
+A **fact** is a true, falsifiable, specific statement about this machine, a project, the operator's
 preferences, or malvin's behavior that a session has needed in order to work and could learn directly from the
 request. A **rediscovery** is a session that established the fact from its own direct evidence (a
 tool call, measurement, failed command, etc.) when an earlier session already also had. [A

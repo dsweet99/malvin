@@ -1,6 +1,6 @@
 use malvin::artifacts::RunArtifacts;
 use malvin::config::model_list::ModelList;
-use malvin::prompts::{NEW_FACT_MD, PromptStore};
+use malvin::prompts::{NEW_FACT_MD, PromptStore, TIDY_FACTS_MD};
 use malvin::slow_task_watch::{
     SLOW_TASK_POLL, SLOW_TASK_THRESHOLD, SlowTaskWatch, WatchedPromptFlag, start,
 };
@@ -14,10 +14,21 @@ pub(crate) struct FactAgentSpec<'a> {
     pub models: &'a ModelList,
 }
 
+const NEW_FACT_PERCENT: usize = 25;
+
+pub(crate) const fn pick_fact_prompt(roll: usize) -> &'static str {
+    if roll < NEW_FACT_PERCENT {
+        NEW_FACT_MD
+    } else {
+        TIDY_FACTS_MD
+    }
+}
+
 pub(crate) fn build_fact_agent_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     model: &str,
+    prompt_name: &str,
 ) -> Result<String, String> {
     let header = build_router_header_prompt(RouterHeaderPromptInput {
         store,
@@ -25,7 +36,7 @@ pub(crate) fn build_fact_agent_prompt(
         model,
     })?;
     let fact = store
-        .render_prompt_only(NEW_FACT_MD, &std::collections::HashMap::new())
+        .render_prompt_only(prompt_name, &std::collections::HashMap::new())
         .map_err(|e| e.0)?;
     Ok(format!("{header}\n\n{}", fact.trim()))
 }
@@ -48,14 +59,15 @@ pub(crate) fn start_fact_agent_watch_with(
     start(timing, flag.clone(), move || {
         tokio::spawn(async move {
             let model = models.first().canonical();
-            let result = match build_fact_agent_prompt(&store, &artifacts, &model) {
+            let name = pick_fact_prompt(fastrand::usize(..100));
+            let result = match build_fact_agent_prompt(&store, &artifacts, &model, name) {
                 Ok(prompt) => {
                     malvin::task_summary::run_background_prompt(&models, &artifacts, &prompt).await
                 }
                 Err(e) => Err(e),
             };
             if let Err(e) = result {
-                malvin::output::print_log_error(&format!("new_fact agent failed: {e}"));
+                malvin::output::print_log_error(&format!("fact agent failed: {e}"));
             }
         });
     })

@@ -1,4 +1,4 @@
-use super::{HEADER_MD, NEW_FACT_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD};
+use super::{HEADER_MD, NEW_FACT_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, TIDY_FACTS_MD};
 use std::sync::OnceLock;
 
 pub const ROUTER_A_MD: &str = "router_a.md";
@@ -71,6 +71,7 @@ fn default_router_prompt(name: &str) -> Option<&'static str> {
         ROUTER_CODE_EXTRA_MD => Some(include_str!("../../assets/prompts/router_code_extra.md")),
         ROUTER_SUMMARIZE_MD => Some(include_str!("../../assets/prompts/router_summarize.md")),
         NEW_FACT_MD => Some(include_str!("../../assets/prompts/new_fact.md")),
+        TIDY_FACTS_MD => Some(include_str!("../../assets/prompts/tidy_facts.md")),
         _ => default_router_a_prompt(name).or_else(|| default_router_b_fragment(name)),
     }
 }
