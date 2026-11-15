@@ -52,12 +52,30 @@ pub(crate) fn facts_list_line() -> String {
     facts_list_line_at(&facts_path())
 }
 
+fn one_line(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn render_fact_line(line: &str) -> String {
+    let parsed: Option<serde_json::Value> = serde_json::from_str(line).ok();
+    let field = |key: &str| {
+        parsed
+            .as_ref()
+            .and_then(|v| v.get(key))
+            .and_then(serde_json::Value::as_str)
+    };
+    match (field("fact_id"), field("fact")) {
+        (Some(id), Some(fact)) => format!("{id}: {}", one_line(fact)),
+        (None, Some(fact)) => one_line(fact),
+        _ => one_line(line),
+    }
+}
+
 fn write_facts_at(path: &Path, mut out: impl Write) -> Result<(), String> {
-    let file = File::open(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
-    let last = for_each_chunk(file, |chunk| out.write_all(chunk))
-        .map_err(|e| format!("cannot dump {}: {e}", path.display()))?;
-    if last != b'\n' {
-        out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        writeln!(out, "{}", render_fact_line(line)).map_err(|e| format!("stdout: {e}"))?;
     }
     Ok(())
 }
@@ -99,11 +117,16 @@ mod tests {
     }
 
     #[test]
-    fn write_facts_dumps_file_and_errors_when_missing() {
-        let (_dir, path) = temp_facts(b"{\"id\":1}\n{\"id\":2}");
+    fn write_facts_renders_one_line_per_fact_and_errors_when_missing() {
+        let (_dir, path) = temp_facts(
+            b"{\"fact_id\":\"a\",\"fact\":\"one\\ntwo  three\",\"symptoms\":[\"s\"]}\n\nnot json\n{\"fact_id\":\"b\",\"fact\":\"four\"}",
+        );
         let mut buf = Vec::new();
-        write_facts_at(&path, &mut buf).expect("dump");
-        assert_eq!(buf, b"{\"id\":1}\n{\"id\":2}\n");
+        write_facts_at(&path, &mut buf).expect("render");
+        assert_eq!(
+            String::from_utf8(buf).expect("utf8"),
+            "a: one two three\nnot json\nb: four\n"
+        );
         let missing = path.with_file_name("absent.jsonl");
         let err = write_facts_at(&missing, Vec::new()).expect_err("missing");
         assert!(err.contains("absent.jsonl"), "{err}");

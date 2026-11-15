@@ -34,6 +34,10 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
             let router = router.clone();
             async move {
                 for job in jobs {
+                    let mut shared = shared.clone();
+                    if let Some(model) = job.model {
+                        shared.model = model;
+                    }
                     run_router(
                         RouterArgs {
                             request: Some(job.text),

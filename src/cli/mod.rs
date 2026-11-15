@@ -16,6 +16,7 @@ pub(crate) mod exit;
 pub(crate) mod init_flow;
 pub(crate) mod malvin_workflow;
 pub(crate) mod ml_loop;
+pub(crate) mod model_segments;
 pub(crate) mod models_cmd;
 pub(crate) mod refresh_notice;
 pub(crate) mod remotes_cmd;
