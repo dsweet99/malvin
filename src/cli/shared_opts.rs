@@ -86,6 +86,9 @@ pub struct SharedOpts {
     /// Print full advice for TAG (`facts` prints ~/.malvinconf/facts.jsonl), or list tags if TAG is omitted (no run logs)
     #[arg(long, value_name = "TAG", num_args = 0..=1, default_missing_value = "")]
     pub advice: Option<String>,
+    /// Append a fact to ~/.malvinconf/facts.jsonl and exit; fields are `field_name=value` in any order (`fact_id`, fact, symptoms; symptoms may repeat)
+    #[arg(long = "add-fact", value_name = "FIELD=VALUE", num_args = 1.., action = ArgAction::Append)]
+    pub add_fact: Vec<String>,
     /// Print credits for ideas malvin builds on and exit (no run logs)
     #[arg(long, default_value_t = false)]
     pub credits: bool,
@@ -174,6 +177,7 @@ impl SharedOpts {
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             advice: None,
+            add_fact: Vec::new(),
             credits: false,
             ml: MetaLoopCount::Times(1),
             remote: None,

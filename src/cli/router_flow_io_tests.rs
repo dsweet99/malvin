@@ -72,6 +72,7 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
         max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         advice: None,
+        add_fact: Vec::new(),
         credits: false,
         ml: crate::cli::shared_opts::MetaLoopCount::Times(1),
         remote: None,

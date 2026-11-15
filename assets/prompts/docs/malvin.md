@@ -117,6 +117,15 @@ Print an embedded advice document for `TAG` to stdout and exit, or list availabl
 
 Other subcommand arguments are not required when `--advice` is set.
 
+### `--add-fact`
+
+`malvin --add-fact field_name=value [field_name=value ...]` appends one fact to `~/.malvinconf/facts.jsonl` and exits (no agent, no run logs). It is meant for LLM agents: fields may come in any order, and bad input is rejected with an error and exit status 1.
+
+- Fields: `fact_id` (required; lowercase letters, digits, `-`, `_`; starts with a letter; at most 64 characters; must not already exist in the file), `fact` (required; at most 4000 characters), and `symptoms` (optional; repeat the field once per symptom; at most 20, each at most 500 characters).
+- Values are trimmed, must be non-empty, and must be a single line without control or invisible formatting characters. Unknown or repeated `fact_id`/`fact` fields are errors. Quote values that contain spaces.
+- The file and its directory are created if missing. A lock file `facts.jsonl.lock` guards the uniqueness check; remove it if a crashed run left it behind.
+- Example: `malvin --add-fact fact_id=tectonic-path fact="Only Tectonic is installed." symptoms="pdflatex not found"`
+
 ### `--credits`
 
 Print credits for the published ideas malvin builds on (embedded from `assets/prompts/docs/credits.md`) to stdout and exit. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`. Other arguments (for example `<REQUEST>`) are ignored when `--credits` is set.

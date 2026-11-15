@@ -6,7 +6,7 @@ pub(crate) const FACTS_TAG: &str = "facts";
 const FACTS_DESCRIPTION: &str = "Time-saving facts you've discovered";
 const FACTS_FILE: &str = "facts.jsonl";
 
-fn facts_path() -> PathBuf {
+pub(crate) fn facts_path() -> PathBuf {
     crate::malvin_user_home_root().join(FACTS_FILE)
 }
 

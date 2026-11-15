@@ -1,3 +1,4 @@
+mod add_fact;
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
 mod advice_facts;

@@ -30,6 +30,7 @@ fn smoke_cov_cli_cli_units_1b() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         advice: None,
+        add_fact: Vec::new(),
         credits: false,
         ml: crate::cli::shared_opts::MetaLoopCount::Times(1),
         remote: None,
