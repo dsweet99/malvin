@@ -14,6 +14,7 @@ pub(crate) mod entrypoint;
 mod entrypoint_checks;
 pub(crate) mod error_run_log;
 pub(crate) mod exit;
+mod facts_cmd;
 pub(crate) mod init_flow;
 pub(crate) mod malvin_workflow;
 pub(crate) mod ml_loop;

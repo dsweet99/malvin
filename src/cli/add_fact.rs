@@ -94,7 +94,7 @@ impl LockGuard {
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
                     if start.elapsed() > LOCK_WAIT {
                         return Err(format!(
-                            "facts file is locked by {}; remove it if no other admin add-fact is running",
+                            "facts file is locked by {}; remove it if no other admin facts command is running",
                             path.display()
                         ));
                     }
@@ -170,6 +170,45 @@ pub(crate) fn add_fact(args: &[String]) -> Result<String, String> {
         new.fact_id,
         path.display()
     ))
+}
+
+fn without_fact(text: &str, id: &str) -> Option<String> {
+    let mut found = false;
+    let kept: String = text
+        .split_inclusive('\n')
+        .filter(|line| {
+            let matches = serde_json::from_str::<serde_json::Value>(line)
+                .ok()
+                .is_some_and(|v| v.get("fact_id").and_then(serde_json::Value::as_str) == Some(id));
+            found |= matches;
+            !matches
+        })
+        .collect();
+    found.then_some(kept)
+}
+
+fn remove_fact_at(path: &Path, id: &str) -> Result<(), String> {
+    let mut lock_name = path.as_os_str().to_owned();
+    lock_name.push(".lock");
+    if !path.exists() {
+        return Err(format!("no facts file at {}", path.display()));
+    }
+    let _lock = LockGuard::acquire(PathBuf::from(lock_name))?;
+    let existing = read_existing(path)?;
+    let kept = without_fact(&existing, id)
+        .ok_or_else(|| format!("fact_id `{id}` not found in {}", path.display()))?;
+    let mut tmp_name = path.as_os_str().to_owned();
+    tmp_name.push(".tmp");
+    let tmp = PathBuf::from(tmp_name);
+    std::fs::write(&tmp, kept).map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, path).map_err(|e| format!("cannot replace {}: {e}", path.display()))
+}
+
+pub(crate) fn remove_fact(fact_id: &str) -> Result<String, String> {
+    let id = clean_id(fact_id)?;
+    let path = super::advice_facts::facts_path();
+    remove_fact_at(&path, &id)?;
+    Ok(format!("removed fact `{id}` from {}", path.display()))
 }
 
 #[cfg(test)]

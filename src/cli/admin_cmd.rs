@@ -1,5 +1,6 @@
 use clap::{Args, Subcommand};
 
+use super::facts_cmd::{FactsArgs, FactsCommand};
 use super::models_cmd::ModelsArgs;
 use super::remotes_cmd::RemotesArgs;
 
@@ -20,16 +21,9 @@ pub enum AdminCommand {
     /// Reset herdr agent state by releasing the pane
     #[command(name = "reset-herdr", visible_alias = "rh")]
     ResetHerdr,
-    /// Append a fact to ~/.malvinconf/facts.jsonl; fields are `field_name=value` in any order
-    #[command(name = "add-fact", override_usage = "malvin admin add-fact FIELD=VALUE...")]
-    AddFact(AddFactArgs),
-}
-
-#[derive(Args, Debug, Clone)]
-pub struct AddFactArgs {
-    /// Fields as `field_name=value` (`fact_id`, `fact`, `symptoms`; symptoms may repeat)
-    #[arg(value_name = "FIELD=VALUE", required = true, num_args = 1..)]
-    pub fields: Vec<String>,
+    /// Add or remove facts in ~/.malvinconf/facts.jsonl
+    #[command(override_usage = "malvin admin facts <add|remove> ...")]
+    Facts(FactsArgs),
 }
 
 pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
@@ -42,8 +36,12 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
             super::remotes_cmd::run_remotes(&remotes);
             Ok(())
         }
-        AdminCommand::AddFact(add) => {
-            println!("{}", super::add_fact::add_fact(&add.fields)?);
+        AdminCommand::Facts(facts) => {
+            let msg = match facts.command {
+                FactsCommand::Add(add) => super::add_fact::add_fact(&add.fields)?,
+                FactsCommand::Remove(rm) => super::add_fact::remove_fact(&rm.fact_id)?,
+            };
+            println!("{msg}");
             Ok(())
         }
         AdminCommand::ResetHerdr => {
@@ -57,6 +55,7 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{AdminArgs, AdminCommand, RemotesArgs};
+    use crate::cli::facts_cmd::{FactsArgs, FactsCommand};
     use crate::cli::{Cli, Commands};
     use clap::Parser;
 
@@ -83,16 +82,30 @@ mod tests {
     }
 
     #[test]
-    fn parses_admin_add_fact() {
-        let cli = Cli::try_parse_from(["malvin", "admin", "add-fact", "fact_id=a", "fact=b"])
+    fn parses_admin_facts_add_and_remove() {
+        let cli = Cli::try_parse_from(["malvin", "admin", "facts", "add", "fact_id=a", "fact=b"])
             .expect("parse");
         match cli.command {
             Some(Commands::Admin(AdminArgs {
-                command: Some(AdminCommand::AddFact(args)),
+                command:
+                    Some(AdminCommand::Facts(FactsArgs {
+                        command: FactsCommand::Add(args),
+                    })),
             })) => assert_eq!(args.fields, vec!["fact_id=a", "fact=b"]),
-            other => panic!("expected Admin::AddFact, got {other:?}"),
+            other => panic!("expected Facts::Add, got {other:?}"),
         }
-        assert!(Cli::try_parse_from(["malvin", "--add-fact", "fact_id=a"]).is_err());
+        let cli = Cli::try_parse_from(["malvin", "admin", "facts", "remove", "a"]).expect("parse");
+        match cli.command {
+            Some(Commands::Admin(AdminArgs {
+                command:
+                    Some(AdminCommand::Facts(FactsArgs {
+                        command: FactsCommand::Remove(args),
+                    })),
+            })) => assert_eq!(args.fact_id, "a"),
+            other => panic!("expected Facts::Remove, got {other:?}"),
+        }
+        assert!(Cli::try_parse_from(["malvin", "admin", "add-fact", "fact_id=a"]).is_err());
+        assert!(Cli::try_parse_from(["malvin", "admin", "facts", "remove"]).is_err());
     }
 
     #[test]

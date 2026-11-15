@@ -81,3 +81,29 @@ fn stale_lock_times_out_with_clear_error() {
     let err = append_fact_at(&path, &new).expect_err("locked");
     assert!(err.contains("locked"), "{err}");
 }
+
+#[test]
+fn remove_deletes_only_matching_fact_and_reports_missing() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("facts.jsonl");
+    for id in ["one", "two"] {
+        let f = parse_args(&args(&[&format!("fact_id={id}"), "fact=x"])).expect("parse");
+        append_fact_at(&path, &f).expect("append");
+    }
+    remove_fact_at(&path, "one").expect("remove");
+    let text = std::fs::read_to_string(&path).expect("read");
+    assert!(
+        !id_exists(&text, "one") && id_exists(&text, "two"),
+        "{text}"
+    );
+    let err = remove_fact_at(&path, "one").expect_err("missing id");
+    assert!(err.contains("not found"), "{err}");
+    let err = remove_fact_at(&dir.path().join("none.jsonl"), "one").expect_err("no file");
+    assert!(err.contains("no facts file"), "{err}");
+    assert!(!dir.path().join("facts.jsonl.lock").exists());
+}
+
+#[test]
+fn remove_rejects_invalid_id() {
+    assert!(remove_fact("Bad Id").is_err());
+}

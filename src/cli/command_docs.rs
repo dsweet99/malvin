@@ -17,7 +17,7 @@ pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
             | Some(
                 super::AdminCommand::ResetHerdr
                 | super::AdminCommand::Remotes(_)
-                | super::AdminCommand::AddFact(_),
+                | super::AdminCommand::Facts(_),
             ) => {
                 include_str!("../../assets/prompts/docs/admin.md")
             }
