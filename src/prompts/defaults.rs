@@ -11,6 +11,7 @@ pub use default_files::{
 pub const HEADER_MD: &str = "header.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
+pub const NEW_FACT_MD: &str = "new_fact.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
@@ -27,6 +28,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     ROUTER_C_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_SUMMARIZE_MD,
+    NEW_FACT_MD,
 ];
 
 #[cfg(test)]

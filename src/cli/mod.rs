@@ -138,6 +138,8 @@ pub(crate) mod router_flow_acp;
 pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 pub(super) mod router_flow_coder_prompts;
+#[path = "router_flow_fact_agent.rs"]
+pub(crate) mod router_flow_fact_agent;
 #[path = "router_flow_loop.rs"]
 pub(crate) mod router_flow_loop;
 #[path = "router_flow_loop_decide.rs"]

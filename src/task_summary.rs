@@ -33,6 +33,14 @@ pub fn start(artifacts: &RunArtifacts) -> Option<SummaryTask> {
     })))
 }
 
+pub async fn run_background_prompt(
+    models: &ModelList,
+    artifacts: &RunArtifacts,
+    prompt: &str,
+) -> Result<String, String> {
+    model::ask(models, artifacts, prompt).await
+}
+
 pub(super) async fn generate_task(
     artifacts: &RunArtifacts,
     models: Option<&ModelList>,

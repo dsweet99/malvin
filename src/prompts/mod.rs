@@ -5,8 +5,8 @@ mod template;
 pub use template::*;
 
 pub use defaults::{
-    HEADER_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD,
-    ROUTER_B_SATISFY_MD, ROUTER_C_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
+    HEADER_MD, NEW_FACT_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD,
+    ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_C_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
     header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
     router_b_prompt_file, router_b_satisfy_prompt_file,
 };
