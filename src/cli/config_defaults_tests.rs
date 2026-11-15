@@ -69,7 +69,6 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         max_acp_retries: 1,
         doc: false,
         advice: None,
-        add_fact: Vec::new(),
         credits: false,
         ml: crate::cli::shared_opts::MetaLoopCount::Times(1),
         remote: None,

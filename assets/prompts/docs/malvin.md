@@ -26,7 +26,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, op
 | *(default)* | `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` and `router_c` on that agent; exit `router_summarize` on the iteration that ends the run. A `router_c` reply that omits `__MALVIN_DONE__` starts another iteration while the budget remains. There is no `--max-loops` flag (`DEFAULT_MAX_LOOPS` is 3) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
-| `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`) |
+| `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`, `add-fact`) |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `assets/prompts/docs/<command>.md`). The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
@@ -116,15 +116,6 @@ Print an embedded advice document for `TAG` to stdout and exit, or list availabl
 - The first line of each advice file must be `description: ...` (value at most 7 words). The build fails if that line is missing or malformed; the listed description is the value after `description:`.
 
 Other subcommand arguments are not required when `--advice` is set.
-
-### `--add-fact`
-
-`malvin --add-fact field_name=value [field_name=value ...]` appends one fact to `~/.malvinconf/facts.jsonl` and exits (no agent, no run logs). It is meant for LLM agents: fields may come in any order, and bad input is rejected with an error and exit status 1.
-
-- Fields: `fact_id` (required; lowercase letters, digits, `-`, `_`; starts with a letter; at most 64 characters; must not already exist in the file), `fact` (required; at most 4000 characters), and `symptoms` (optional; repeat the field once per symptom; at most 20, each at most 500 characters).
-- Values are trimmed, must be non-empty, and must be a single line without control or invisible formatting characters. Unknown or repeated `fact_id`/`fact` fields are errors. Quote values that contain spaces.
-- The file and its directory are created if missing. A lock file `facts.jsonl.lock` guards the uniqueness check; remove it if a crashed run left it behind.
-- Example: `malvin --add-fact fact_id=tectonic-path fact="Only Tectonic is installed." symptoms="pdflatex not found"`
 
 ### `--credits`
 

@@ -13,7 +13,12 @@ pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
             Some(super::AdminCommand::Models(_)) => {
                 include_str!("../../assets/prompts/docs/models.md")
             }
-            None | Some(super::AdminCommand::ResetHerdr | super::AdminCommand::Remotes(_)) => {
+            None
+            | Some(
+                super::AdminCommand::ResetHerdr
+                | super::AdminCommand::Remotes(_)
+                | super::AdminCommand::AddFact(_),
+            ) => {
                 include_str!("../../assets/prompts/docs/admin.md")
             }
         },

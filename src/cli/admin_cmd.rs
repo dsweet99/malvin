@@ -20,6 +20,16 @@ pub enum AdminCommand {
     /// Reset herdr agent state by releasing the pane
     #[command(name = "reset-herdr", visible_alias = "rh")]
     ResetHerdr,
+    /// Append a fact to ~/.malvinconf/facts.jsonl; fields are `field_name=value` in any order
+    #[command(name = "add-fact", override_usage = "malvin admin add-fact FIELD=VALUE...")]
+    AddFact(AddFactArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct AddFactArgs {
+    /// Fields as `field_name=value` (`fact_id`, `fact`, `symptoms`; symptoms may repeat)
+    #[arg(value_name = "FIELD=VALUE", required = true, num_args = 1..)]
+    pub fields: Vec<String>,
 }
 
 pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
@@ -30,6 +40,10 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
         AdminCommand::Models(models) => super::models_cmd::run_models(models, current_model),
         AdminCommand::Remotes(remotes) => {
             super::remotes_cmd::run_remotes(&remotes);
+            Ok(())
+        }
+        AdminCommand::AddFact(add) => {
+            println!("{}", super::add_fact::add_fact(&add.fields)?);
             Ok(())
         }
         AdminCommand::ResetHerdr => {
@@ -66,6 +80,19 @@ mod tests {
             })) => {}
             other => panic!("expected Admin::ResetHerdr via rh, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parses_admin_add_fact() {
+        let cli = Cli::try_parse_from(["malvin", "admin", "add-fact", "fact_id=a", "fact=b"])
+            .expect("parse");
+        match cli.command {
+            Some(Commands::Admin(AdminArgs {
+                command: Some(AdminCommand::AddFact(args)),
+            })) => assert_eq!(args.fields, vec!["fact_id=a", "fact=b"]),
+            other => panic!("expected Admin::AddFact, got {other:?}"),
+        }
+        assert!(Cli::try_parse_from(["malvin", "--add-fact", "fact_id=a"]).is_err());
     }
 
     #[test]

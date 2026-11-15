@@ -94,7 +94,7 @@ impl LockGuard {
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
                     if start.elapsed() > LOCK_WAIT {
                         return Err(format!(
-                            "facts file is locked by {}; remove it if no other --add-fact is running",
+                            "facts file is locked by {}; remove it if no other admin add-fact is running",
                             path.display()
                         ));
                     }
