@@ -114,7 +114,7 @@ async fn run_status_once(
     Ok(false)
 }
 
-fn worker_runtime() -> Result<tokio::runtime::Runtime, String> {
+pub(crate) fn worker_runtime() -> Result<tokio::runtime::Runtime, String> {
     tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()

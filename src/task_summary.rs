@@ -5,6 +5,7 @@ mod text;
 mod watch;
 mod worker;
 pub use worker::run_if_worker;
+pub(crate) use worker::worker_runtime;
 
 use std::path::Path;
 

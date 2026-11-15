@@ -41,6 +41,15 @@ pub(crate) fn build_fact_agent_prompt(
     Ok(format!("{header}\n\n{}", fact.trim()))
 }
 
+fn fact_agent_prompt(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+    model: &str,
+) -> Result<String, String> {
+    let name = pick_fact_prompt(fastrand::usize(..100));
+    build_fact_agent_prompt(store, artifacts, model, name)
+}
+
 pub(crate) fn start_fact_agent_watch(
     spec: &FactAgentSpec<'_>,
     flag: &WatchedPromptFlag,
@@ -59,11 +68,8 @@ pub(crate) fn start_fact_agent_watch_with(
     start(timing, flag.clone(), move || {
         tokio::spawn(async move {
             let model = models.first().canonical();
-            let name = pick_fact_prompt(fastrand::usize(..100));
-            let result = match build_fact_agent_prompt(&store, &artifacts, &model, name) {
-                Ok(prompt) => {
-                    malvin::task_summary::run_background_prompt(&models, &artifacts, &prompt).await
-                }
+            let result = match fact_agent_prompt(&store, &artifacts, &model) {
+                Ok(prompt) => malvin::fact_worker::run(&models, &artifacts, &prompt).await,
                 Err(e) => Err(e),
             };
             if let Err(e) = result {

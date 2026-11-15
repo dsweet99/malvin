@@ -1,5 +1,6 @@
 use super::{
-    FactAgentSpec, build_fact_agent_prompt, pick_fact_prompt, start_fact_agent_watch_with,
+    FactAgentSpec, build_fact_agent_prompt, fact_agent_prompt, pick_fact_prompt,
+    start_fact_agent_watch_with,
 };
 use malvin::artifacts::RunArtifacts;
 use malvin::prompts::PromptStore;
@@ -17,29 +18,19 @@ fn artifacts(dir: &std::path::Path) -> RunArtifacts {
 }
 
 #[test]
-fn prompt_is_header_then_new_fact() {
+fn prompt_is_header_then_fact_prompt() {
     let dir = tempfile::tempdir().unwrap();
     let store = PromptStore::default_store();
-    let prompt =
-        build_fact_agent_prompt(&store, &artifacts(dir.path()), "m", "new_fact.md").unwrap();
-    let fact = store
-        .render_prompt_only("new_fact.md", &std::collections::HashMap::new())
-        .unwrap();
-    assert!(prompt.contains("# Know thyself"), "{prompt:.80}");
-    assert!(prompt.ends_with(fact.trim()));
-}
-
-#[test]
-fn prompt_is_header_then_tidy_facts() {
-    let dir = tempfile::tempdir().unwrap();
-    let store = PromptStore::default_store();
-    let prompt =
-        build_fact_agent_prompt(&store, &artifacts(dir.path()), "m", "tidy_facts.md").unwrap();
-    let tidy = store
-        .render_prompt_only("tidy_facts.md", &std::collections::HashMap::new())
-        .unwrap();
-    assert!(prompt.contains("# Know thyself"), "{prompt:.80}");
-    assert!(prompt.ends_with(tidy.trim()));
+    for name in ["new_fact.md", "tidy_facts.md"] {
+        let prompt = build_fact_agent_prompt(&store, &artifacts(dir.path()), "m", name).unwrap();
+        let fact = store
+            .render_prompt_only(name, &std::collections::HashMap::new())
+            .unwrap();
+        assert!(prompt.contains("# Know thyself"), "{prompt:.80}");
+        assert!(prompt.ends_with(fact.trim()));
+    }
+    let chosen = fact_agent_prompt(&store, &artifacts(dir.path()), "m").unwrap();
+    assert!(chosen.contains("# Know thyself"), "{chosen:.80}");
 }
 
 #[test]
