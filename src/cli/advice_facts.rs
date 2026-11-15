@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 pub(crate) const FACTS_TAG: &str = "facts";
 const FACTS_DESCRIPTION: &str = "Time-saving facts you've discovered";
 const FACTS_FILE: &str = "facts.jsonl";
+const NO_FACTS_MESSAGE: &str = "No facts saved yet.";
 
 pub(crate) fn facts_path() -> PathBuf {
     crate::malvin_user_home_root().join(FACTS_FILE)
@@ -72,10 +73,18 @@ fn render_fact_line(line: &str) -> String {
 }
 
 fn write_facts_at(path: &Path, mut out: impl Write) -> Result<(), String> {
-    let text = std::fs::read_to_string(path)
-        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(format!("cannot read {}: {e}", path.display())),
+    };
+    let mut any = false;
     for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        any = true;
         writeln!(out, "{}", render_fact_line(line)).map_err(|e| format!("stdout: {e}"))?;
+    }
+    if !any {
+        writeln!(out, "{NO_FACTS_MESSAGE}").map_err(|e| format!("stdout: {e}"))?;
     }
     Ok(())
 }
@@ -117,7 +126,7 @@ mod tests {
     }
 
     #[test]
-    fn write_facts_renders_one_line_per_fact_and_errors_when_missing() {
+    fn write_facts_renders_one_line_per_fact_and_reports_none_when_missing_or_empty() {
         let (_dir, path) = temp_facts(
             b"{\"fact_id\":\"a\",\"fact\":\"one\\ntwo  three\",\"symptoms\":[\"s\"]}\n\nnot json\n{\"fact_id\":\"b\",\"fact\":\"four\"}",
         );
@@ -128,7 +137,17 @@ mod tests {
             "a: one two three\nnot json\nb: four\n"
         );
         let missing = path.with_file_name("absent.jsonl");
-        let err = write_facts_at(&missing, Vec::new()).expect_err("missing");
-        assert!(err.contains("absent.jsonl"), "{err}");
+        let mut buf = Vec::new();
+        write_facts_at(&missing, &mut buf).expect("missing is ok");
+        assert_eq!(buf, b"No facts saved yet.\n");
+        for content in [&b""[..], &b"\n  \n"[..]] {
+            let (_d, p) = temp_facts(content);
+            let mut buf = Vec::new();
+            write_facts_at(&p, &mut buf).expect("empty is ok");
+            assert_eq!(buf, b"No facts saved yet.\n");
+        }
+        let dir = tempfile::tempdir().expect("tempdir");
+        let err = write_facts_at(dir.path(), Vec::new()).expect_err("directory");
+        assert!(err.contains("cannot read"), "{err}");
     }
 }
