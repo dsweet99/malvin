@@ -1,4 +1,4 @@
-description: Learn to improve systems or algorithm code
+description: Learn from the best; solve hard problems
 
 Find and clone a popular a github repo that solves a problem like the one you need
 to solve. Read through it to find ideas, tips, and tricks discovered or invented
