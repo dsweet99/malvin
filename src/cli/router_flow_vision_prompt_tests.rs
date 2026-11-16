@@ -26,7 +26,6 @@ fn default_router_prompt_skeletons_keep_template_keys() {
     let router_b = malvin::prompts::default_file("router_b.md").expect("router_b");
     assert!(
         router_b.contains("{{ satisfy_line }}")
-            && router_b.contains("{{ creative_lead }}")
             && router_b.contains("{{ done_note }}"),
         "router_b must keep the keys the router fills"
     );

@@ -2,7 +2,7 @@ Now it's time to work.
 
 Review your MALVIN_HEADER for relevant instructions.
 
-{{ creative_lead }}{{ satisfy_line }}
+{{ satisfy_line }}
 
 {{ done_note }}
 

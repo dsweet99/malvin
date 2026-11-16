@@ -74,5 +74,5 @@ malvin admin models --refresh pi:
 malvin --model=codex:gpt-5.6 Hello
 malvin --model='codex:gpt-5.6[thinking=high,service=priority]' Hello
 malvin --model cursor:sonnet-4 admin models             # Current: footer shows cursor:sonnet-4
-malvin --model cursor:sonnet-4 --creative plan.md
+malvin --model cursor:sonnet-4 plan.md
 ```

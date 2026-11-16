@@ -81,7 +81,6 @@ fn prompt_fragment(store: &PromptStore, name: &str) -> Result<String, String> {
 
 pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<String, String> {
     let mut ctx = workflow_context_paths_only(input.artifacts, input.model);
-    ctx.insert("creative_lead".to_string(), String::new());
     ctx.insert(
         "satisfy_line".to_string(),
         prompt_fragment(input.store, router_b_satisfy_prompt_file())?,
