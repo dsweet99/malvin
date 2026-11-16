@@ -9,6 +9,9 @@ Check `malvin --advice` for a relevant advice.
 
 User-request-relevant Problems Worth Solving should be considered additional requirements inasmuch as they are relevant to the scope as already defined.
 
+If you find that you're stuck, either b/c the problem is hard or b/c your logs show that you've tried several times (to no avail or
+even to only mild improvement), be creative. Check `malvin --advice creativity`.
+
 Your task right now is to understand what needs to be done, not to do it.
 
 
