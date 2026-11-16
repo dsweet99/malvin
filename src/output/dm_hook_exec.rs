@@ -109,11 +109,10 @@ fn kill_child(child: &mut Child) -> String {
 }
 
 fn kill_group(pid: u32) {
-    let _ = Command::new("kill")
-        .args(["-KILL", &format!("-{pid}")])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+    #[cfg(unix)]
+    crate::agent_process::signal_process_group(pid, libc::SIGKILL);
+    #[cfg(not(unix))]
+    let _ = pid;
 }
 
 fn report(summary: &str, stdout: &str, stderr: &str) {

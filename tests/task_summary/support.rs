@@ -33,7 +33,7 @@ for await (const line of readline.createInterface({input: process.stdin})) {
                 fs.appendFileSync('status_at', Date.now() + '\n');
                 emit({event: 'run_done', status: 'finished', result: 'Editing the parser'});
             } else {
-                await new Promise(resolve => setTimeout(resolve, 400));
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 fs.writeFileSync('task_done_at', String(Date.now()));
                 emit({event: 'run_done', status: 'finished', result: 'Add cheap summaries'});
             }

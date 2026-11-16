@@ -6,8 +6,8 @@ use std::time::{Duration, Instant};
 type PipeReader = thread::JoinHandle<std::io::Result<Vec<u8>>>;
 
 #[must_use]
-pub fn timeout_ms_from_env(env_key: &str, default_ms: u64) -> Duration {
-    Duration::from_millis(std::env::var(env_key).ok().map_or(default_ms, |s| {
+pub fn positive_u64_from_env(env_key: &str, default: u64) -> u64 {
+    std::env::var(env_key).ok().map_or(default, |s| {
         s.parse::<u64>().map_or_else(
             |_| {
                 tracing::warn!(
@@ -16,11 +16,16 @@ pub fn timeout_ms_from_env(env_key: &str, default_ms: u64) -> Duration {
                     value = %s,
                     "not a positive integer; using default"
                 );
-                default_ms
+                default
             },
             |n| n.max(1),
         )
-    }))
+    })
+}
+
+#[must_use]
+pub fn timeout_ms_from_env(env_key: &str, default_ms: u64) -> Duration {
+    Duration::from_millis(positive_u64_from_env(env_key, default_ms))
 }
 
 pub fn command_output_with_timeout(

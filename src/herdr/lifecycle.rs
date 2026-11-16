@@ -33,7 +33,7 @@ pub(super) fn live_io_allowed() -> bool {
         if std::env::var_os("MALVIN_NO_HERDR").is_some() {
             return false;
         }
-        if std::env::var_os("MALVIN_TEST_NO_REAL_AGENT").is_some()
+        if crate::agent_process::test_no_real_agent_enabled()
             || std::env::var_os("NEXTEST").is_some()
         {
             return std::env::var_os("MALVIN_LIVE_HERDR").is_some()

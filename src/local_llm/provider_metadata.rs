@@ -103,8 +103,7 @@ pub(crate) fn pi_agent_dir() -> PathBuf {
     if let Some(dir) = std::env::var_os("PI_CODING_AGENT_DIR").filter(|v| !v.is_empty()) {
         return PathBuf::from(dir);
     }
-    std::env::var_os("HOME")
-        .map_or_else(|| PathBuf::from("."), PathBuf::from)
+    crate::workspace::user_home::user_home_dir()
         .join(".pi")
         .join("agent")
 }
@@ -154,7 +153,7 @@ mod tests {
     }
 
     #[test]
-    fn agent_dir_honors_env_override() {
+    fn agent_dir_honors_env_override_and_empty_home() {
         let _lock = crate::test_support::test_utils::test_env_lock();
         crate::agent_process::with_env("PI_CODING_AGENT_DIR", Some("/tmp/pi-agent-x"), || {
             assert_eq!(
@@ -165,6 +164,14 @@ mod tests {
                 pi_auth_json_path(),
                 PathBuf::from("/tmp/pi-agent-x/auth.json")
             );
+        });
+        // An empty HOME must still resolve to an absolute path, not `./.pi/agent`.
+        crate::agent_process::with_env("PI_CODING_AGENT_DIR", None, || {
+            crate::agent_process::with_env("HOME", Some(""), || {
+                crate::agent_process::with_env("USERPROFILE", Some(""), || {
+                    assert!(pi_agent_dir().is_absolute());
+                });
+            });
         });
     }
 }

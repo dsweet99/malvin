@@ -36,6 +36,10 @@ fn parse_byte_size_rejects_invalid() {
 fn run_dir_timestamp_parses_dirnames() {
     let ts = run_dir_timestamp("20260524_173353_kmdb83bt").expect("ts");
     assert_eq!(ts.format("%Y%m%d_%H%M%S").to_string(), "20260524_173353");
+    // A multibyte character straddling byte 15 must yield None, not a panic.
+    let straddling = format!("{}é{}", "a".repeat(14), "b".repeat(8));
+    assert!(run_dir_timestamp(&straddling).is_none());
+    assert!(!is_run_log_dir_name(&straddling));
 }
 
 fn is_run_log_dir_name_matches_malvin_run_dirs() {

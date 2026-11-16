@@ -5,15 +5,8 @@ const BRIDGE_JS: &str = "bridges/cursor-sdk-bridge/dist/bridge.js";
 const SDK_MARKER: &str = "bridges/cursor-sdk-bridge/node_modules/@cursor/sdk/package.json";
 
 pub fn resolve_bridge_js() -> Result<PathBuf, String> {
-    if let Some(p) = std::env::var_os(ENV_BRIDGE).filter(|v| !v.is_empty()) {
-        let path = PathBuf::from(p);
-        if path.is_file() {
-            return Ok(path);
-        }
-        return Err(format!(
-            "{ENV_BRIDGE} is set but not a file: {}",
-            path.display()
-        ));
+    if let Some(result) = crate::workspace::support_paths::file_from_env_override(ENV_BRIDGE) {
+        return result;
     }
     if let Some(path) = cursor_first_ready_bridge_js() {
         return Ok(path);

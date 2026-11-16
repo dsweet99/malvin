@@ -54,20 +54,7 @@ pub fn isolate_child_process_group(cmd: &mut std::process::Command) {
 #[cfg(not(unix))]
 pub fn isolate_child_process_group(_: &mut std::process::Command) {}
 
-#[cfg(unix)]
-pub fn isolate_tokio_child_process_group(cmd: &mut tokio::process::Command) {
-    use std::os::unix::process::CommandExt;
-    cmd.as_std_mut().process_group(0);
-}
-
-#[cfg(not(unix))]
-pub fn isolate_tokio_child_process_group(_: &mut tokio::process::Command) {}
-
 fn apply_sandbox_resource_limits(cmd: &mut std::process::Command) {
-    cmd.env("MALLOC_ARENA_MAX", "2");
-}
-
-fn apply_sandbox_resource_limits_tokio(cmd: &mut tokio::process::Command) {
     cmd.env("MALLOC_ARENA_MAX", "2");
 }
 
@@ -83,12 +70,7 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
 
 #[must_use]
 pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Command {
-    let mut cmd = tokio::process::Command::new(program);
-    isolate_tokio_child_process_group(&mut cmd);
-    install_tokio_parent_death_signal(&mut cmd);
-    apply_sandbox_resource_limits_tokio(&mut cmd);
-    crate::herdr::strip_herdr_env_tokio(&mut cmd);
-    cmd
+    tokio::process::Command::from(malvin_std_command(program))
 }
 
 #[must_use = "pass the ticket to note_active_sandbox_session after spawn"]
@@ -215,7 +197,6 @@ mod tests {
         let _ = super::init_malvin_spawn_baseline;
         let _ = super::malvin_spawn_baseline;
         let _ = super::isolate_child_process_group;
-        let _ = super::isolate_tokio_child_process_group;
         let _ = super::install_parent_death_signal;
         let _ = super::install_tokio_parent_death_signal;
         let _ = super::sandbox_still_alive;

@@ -23,10 +23,7 @@ pub struct PruneResult {
 }
 
 pub fn run_dir_timestamp(name: &str) -> Option<DateTime<Utc>> {
-    if name.len() < 15 {
-        return None;
-    }
-    let stamp = &name[..15];
+    let stamp = name.get(..15)?;
     let naive = NaiveDateTime::parse_from_str(stamp, "%Y%m%d_%H%M%S").ok()?;
     Some(DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc))
 }

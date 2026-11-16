@@ -37,10 +37,11 @@ pub(crate) fn resolve_acp_session_cwd(cwd: &Path) -> Result<PathBuf, AgentError>
     Ok(base.canonicalize().unwrap_or(base))
 }
 
+/// Runs `f` with `key` set (or removed), then restores the prior value even if `f` panics.
 #[cfg(test)]
 #[allow(unsafe_code)]
 pub(crate) fn with_env(key: &str, value: Option<&str>, f: impl FnOnce()) {
-    let prior = std::env::var_os(key);
+    let _restore = crate::test_support::test_utils::SavedEnvVars::capture(&[key]);
     unsafe {
         match value {
             Some(v) => std::env::set_var(key, v),
@@ -48,12 +49,6 @@ pub(crate) fn with_env(key: &str, value: Option<&str>, f: impl FnOnce()) {
         }
     }
     f();
-    unsafe {
-        match prior {
-            Some(v) => std::env::set_var(key, v),
-            None => std::env::remove_var(key),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -62,6 +57,18 @@ mod agent_helpers_tests {
     use std::path::Path;
     #[test]
     fn resolve_acp_session_cwd_expands_dot_and_smoke_agent_helper_symbols() {
+        {
+            let _lock = crate::test_support::test_utils::test_env_lock();
+            let key = "MALVIN_TEST_WITH_ENV_PANIC_PROBE";
+            with_env(key, Some("before"), || {
+                let panicked = std::panic::catch_unwind(|| {
+                    with_env(key, Some("during"), || panic!("boom"));
+                });
+                assert!(panicked.is_err());
+                assert_eq!(std::env::var(key).as_deref(), Ok("before"));
+            });
+            assert!(std::env::var_os(key).is_none());
+        }
         {
             let cwd = std::env::current_dir().expect("cwd");
             let resolved = resolve_acp_session_cwd(Path::new(".")).expect("resolve");

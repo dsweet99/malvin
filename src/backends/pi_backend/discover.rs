@@ -81,15 +81,13 @@ fn first_entry_candidate() -> Option<PathBuf> {
 fn candidate_package_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
     push_scoped(&mut roots, PathBuf::from("node_modules"));
-    if let Some(home) = std::env::var_os("HOME") {
-        let home = PathBuf::from(home);
-        push_scoped(
-            &mut roots,
-            home.join(crate::MALVIN_USER_HOME_DIR)
-                .join("sdk-bridges/node_modules"),
-        );
-        push_npx_cache(&mut roots, &home.join(".npm/_npx"));
-    }
+    let home = crate::workspace::user_home::user_home_dir();
+    push_scoped(
+        &mut roots,
+        home.join(crate::MALVIN_USER_HOME_DIR)
+            .join("sdk-bridges/node_modules"),
+    );
+    push_npx_cache(&mut roots, &home.join(".npm/_npx"));
     roots
 }
 

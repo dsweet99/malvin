@@ -11,7 +11,7 @@ pub fn assert_no_peer_acp_spawn_lock_for_slot(work_dir: &Path, slot: &str) -> Re
     let Ok(contents) = std::fs::read_to_string(&path) else {
         return Ok(());
     };
-    let Some(holder_pid) = contents.trim().parse::<u32>().ok() else {
+    let Some(holder_pid) = crate::session_name::parse_holder_pid(&contents) else {
         let _ = std::fs::remove_file(&path);
         return Ok(());
     };

@@ -89,6 +89,10 @@ fn agent_error_display_roundtrip() {
     assert_eq!(err.to_string(), "e");
     assert_eq!(format!("{err}"), "e");
     assert_eq!(err.fault, AgentFault::Ordinary);
+    let _: &dyn std::error::Error = &err;
+    let dead = AgentError::session_dead("bridge write: broken");
+    assert_eq!(dead.fault, AgentFault::SessionDead);
+    assert!(dead.requires_coder_session_teardown());
 }
 
 #[cfg(test)]
@@ -98,28 +102,7 @@ fn auth_error_display_roundtrip() {
     let err = AuthError("a".into());
     assert_eq!(err.to_string(), "a");
     assert_eq!(format!("{err}"), "a");
-}
-
-#[cfg(test)]
-#[test]
-fn agent_error_error_trait() {
-    let err = AgentError("e".into());
     let _: &dyn std::error::Error = &err;
-}
-
-#[cfg(test)]
-#[test]
-fn auth_error_error_trait() {
-    let err = AuthError("a".into());
-    let _: &dyn std::error::Error = &err;
-}
-
-#[cfg(test)]
-#[test]
-fn agent_error_session_dead_fault() {
-    let err = AgentError::session_dead("bridge write: broken");
-    assert_eq!(err.fault, AgentFault::SessionDead);
-    assert!(err.requires_coder_session_teardown());
 }
 
 #[cfg(test)]

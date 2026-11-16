@@ -21,7 +21,7 @@ pub fn codex_missing_binary_message() -> String {
 }
 
 pub fn resolve_codex_bin() -> Result<PathBuf, String> {
-    if let Some(path) = std::env::var_os("MALVIN_CODEX") {
+    if let Some(path) = std::env::var_os("MALVIN_CODEX").filter(|v| !v.is_empty()) {
         let path = PathBuf::from(path);
         if !path.is_file() {
             return Err(format!(
@@ -128,7 +128,29 @@ mod tests {
         }
     }
     #[test]
+    #[allow(unsafe_code)]
     fn test_codex_missing_binary_message_and_resolve_codex_model_slug_exact_and_family() {
+        {
+            let _lock = crate::test_support::test_utils::test_env_lock();
+            let empty_path = tempfile::tempdir().unwrap();
+            let prior = (std::env::var_os("MALVIN_CODEX"), std::env::var_os("PATH"));
+            unsafe {
+                std::env::set_var("MALVIN_CODEX", "");
+                std::env::set_var("PATH", empty_path.path());
+            }
+            let result = resolve_codex_bin();
+            unsafe {
+                match prior.0 {
+                    Some(v) => std::env::set_var("MALVIN_CODEX", v),
+                    None => std::env::remove_var("MALVIN_CODEX"),
+                }
+                match prior.1 {
+                    Some(v) => std::env::set_var("PATH", v),
+                    None => std::env::remove_var("PATH"),
+                }
+            }
+            assert_eq!(result, Err(CODEX_MISSING_HINT.to_string()));
+        }
         {
             assert!(codex_missing_binary_message().contains("MALVIN_CODEX"));
         }

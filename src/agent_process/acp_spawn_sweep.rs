@@ -19,7 +19,7 @@ fn is_acp_spawn_lock_file(path: &Path) -> bool {
 }
 
 fn holder_pid_is_stale(contents: &str) -> bool {
-    let Some(holder_pid) = contents.trim().parse::<u32>().ok() else {
+    let Some(holder_pid) = crate::session_name::parse_holder_pid(&contents) else {
         return true;
     };
     #[cfg(unix)]

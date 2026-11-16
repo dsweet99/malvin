@@ -5,26 +5,15 @@ use std::time::Duration;
 pub const DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS: u64 = 600_000;
 pub const SDK_BRIDGE_STARTUP_TIMEOUT_MIN_MS: u64 = 1_000;
 
+const IDLE_TIMEOUT_ENV: &str = "MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS";
+
 pub const SDK_DRAIN_IDLE_SLICE_MAX_MS: u64 = 60_000;
 
 #[must_use]
 pub fn sdk_drain_idle_timeout_from_env() -> Duration {
-    Duration::from_millis(
-        std::env::var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS")
-            .ok()
-            .map_or(DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS, |s| {
-                s.parse::<u64>().map_or_else(
-                    |_| {
-                        tracing::warn!(
-                            target: "malvin::sdk_drain_timeout",
-                            value = %s,
-                            "MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS is not a positive integer; using default"
-                        );
-                        DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS
-                    },
-                    |n| n.max(1),
-                )
-            }),
+    crate::command_output_timeout::timeout_ms_from_env(
+        IDLE_TIMEOUT_ENV,
+        DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS,
     )
 }
 
@@ -37,21 +26,16 @@ pub fn sdk_drain_idle_slice(idle_remaining: Duration) -> Duration {
     idle_remaining.min(Duration::from_millis(SDK_DRAIN_IDLE_SLICE_MAX_MS))
 }
 
+/// Sets the idle timeout for the caller's scope; the prior value is restored on drop,
+/// including when the test panics.
 #[cfg(test)]
-pub(crate) fn tests_set_idle_ms_for_test(ms: u64) {
+#[must_use]
+pub(crate) fn tests_set_idle_ms_for_test(ms: u64) -> crate::test_support::test_utils::SavedEnvVars {
+    let saved = crate::test_support::test_utils::SavedEnvVars::capture(&[IDLE_TIMEOUT_ENV]);
     unsafe {
-        std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", ms.to_string());
+        std::env::set_var(IDLE_TIMEOUT_ENV, ms.to_string());
     }
-}
-
-#[cfg(test)]
-pub(crate) fn tests_restore_idle_ms_for_test(prior: Option<std::ffi::OsString>) {
-    unsafe {
-        match prior {
-            Some(v) => std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", v),
-            None => std::env::remove_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS"),
-        }
-    }
+    saved
 }
 
 #[cfg(test)]
@@ -63,15 +47,15 @@ mod tests {
     #[test]
     fn sdk_drain_idle_timeout_from_env_rejects_zero_and_garbage() {
         let _lock = test_env_lock();
-        let prior = std::env::var_os("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
+        let _saved = crate::test_support::test_utils::SavedEnvVars::capture(&[IDLE_TIMEOUT_ENV]);
         #[allow(unsafe_code)]
         unsafe {
-            std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", "0");
+            std::env::set_var(IDLE_TIMEOUT_ENV, "0");
         }
         assert_eq!(sdk_drain_idle_timeout_from_env(), Duration::from_millis(1));
         #[allow(unsafe_code)]
         unsafe {
-            std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", "nope");
+            std::env::set_var(IDLE_TIMEOUT_ENV, "nope");
         }
         assert_eq!(
             sdk_drain_idle_timeout_from_env(),
@@ -79,19 +63,12 @@ mod tests {
         );
         #[allow(unsafe_code)]
         unsafe {
-            std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", "250");
+            std::env::set_var(IDLE_TIMEOUT_ENV, "250");
         }
         assert_eq!(
             sdk_drain_idle_timeout_from_env(),
             Duration::from_millis(250)
         );
-        #[allow(unsafe_code)]
-        unsafe {
-            match prior {
-                Some(v) => std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", v),
-                None => std::env::remove_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS"),
-            }
-        }
     }
 
     #[test]
@@ -109,15 +86,25 @@ mod tests {
     #[test]
     fn sdk_bridge_startup_timeout_floors_below_min() {
         let _lock = test_env_lock();
-        let prior = std::env::var_os("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
-        tests_set_idle_ms_for_test(100);
+        let before = std::env::var_os(IDLE_TIMEOUT_ENV);
+        let outcome = std::panic::catch_unwind(|| {
+            let _idle = tests_set_idle_ms_for_test(80);
+            assert_eq!(sdk_drain_idle_timeout_from_env(), Duration::from_millis(80));
+            panic!("simulated assertion failure");
+        });
+        assert!(outcome.is_err());
+        assert_eq!(
+            std::env::var_os(IDLE_TIMEOUT_ENV),
+            before,
+            "restored on panic"
+        );
+        let _idle = tests_set_idle_ms_for_test(100);
         assert_eq!(
             sdk_bridge_startup_timeout(),
             Duration::from_millis(SDK_BRIDGE_STARTUP_TIMEOUT_MIN_MS)
         );
-        tests_set_idle_ms_for_test(5_000);
+        let _idle = tests_set_idle_ms_for_test(5_000);
         assert_eq!(sdk_bridge_startup_timeout(), Duration::from_secs(5));
-        tests_restore_idle_ms_for_test(prior);
     }
 
     #[test]
