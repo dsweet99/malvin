@@ -1,6 +1,6 @@
 description: Problems Worth Solving for writing
 
-- **Mystifying synonymy**: Confusing the reading by referring to the same thing by two different terms.
+- **Mystifying synonymy**: Confusing the reader by referring to the same thing by two different terms.
     Example: "Dog is man's best friend. You should take good care of your canine."  Just say "dog" twice.
 - **Non-local reference**: An offset (e.g., parenthetical) definition that isn't right next to the noun it defines.
     Example: "A pound of prevention (an imperial measure of weight) is worth a pound of cure." should be "A pound (an imperial measure of weight) of prevention is worth a pound of cure."

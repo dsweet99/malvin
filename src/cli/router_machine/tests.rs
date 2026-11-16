@@ -2,7 +2,6 @@ use super::*;
 fn one() -> Iteration {
     Iteration::new(1, 1).expect("valid")
 }
-#[test]
 fn transition_table_covers_router_terminal_choices() {
     let impasse = transition(
         RouterState::Restoring {
@@ -31,7 +30,6 @@ fn transition_table_covers_router_terminal_choices() {
     assert_eq!(failed.effect, Some(Effect::SendSummary));
 }
 
-#[test]
 fn transition_table_covers_the_documented_paths() {
     assert_effect(
         RouterState::Starting(one()),
@@ -83,19 +81,16 @@ fn assert_effect(state: RouterState, event: RouterEvent, effect: Effect) {
         Some(effect)
     );
 }
-#[test]
 fn rejects_events_outside_their_phase() {
     assert!(matches!(
         transition(RouterState::AwaitingAudit(one()), RouterEvent::GatesPassed),
         Err(ProtocolError::InvalidEvent { .. })
     ));
 }
-#[test]
 fn iteration_constructor_excludes_invalid_bounds() {
     assert!(Iteration::new(0, 1).is_err());
     assert!(Iteration::new(2, 1).is_err());
 }
-#[test]
 fn bounded_exploration_preserves_router_invariants() {
     for max in 1..=3 {
         explore(
@@ -105,7 +100,6 @@ fn bounded_exploration_preserves_router_invariants() {
     }
 }
 
-#[test]
 fn effect_failures_close_the_session_and_preserve_gate_failure() {
     let failed_prompt = transition(RouterState::AwaitingWork(one()), RouterEvent::EffectFailed)
         .expect("transition");
@@ -129,7 +123,6 @@ fn effect_failures_close_the_session_and_preserve_gate_failure() {
     assert_eq!(closed.next, RouterState::Finished(RunOutcome::GatesFailed));
 }
 
-#[test]
 fn every_effect_boundary_has_a_failure_transition() {
     let states = [
         RouterState::Starting(one()),
@@ -168,7 +161,6 @@ fn every_effect_boundary_has_a_failure_transition() {
     );
 }
 
-#[test]
 fn scripted_executor_records_representative_effect_sequences() {
     let impasse = execute(
         vec![
@@ -235,6 +227,18 @@ fn scripted_executor_records_representative_effect_sequences() {
             Effect::CloseSession,
         ]
     );
+}
+
+#[test]
+fn merged_transition_table_covers_router_terminal_choices() {
+    transition_table_covers_router_terminal_choices();
+    transition_table_covers_the_documented_paths();
+    rejects_events_outside_their_phase();
+    iteration_constructor_excludes_invalid_bounds();
+    bounded_exploration_preserves_router_invariants();
+    effect_failures_close_the_session_and_preserve_gate_failure();
+    every_effect_boundary_has_a_failure_transition();
+    scripted_executor_records_representative_effect_sequences();
 }
 
 fn execute(events: Vec<RouterEvent>, max: usize) -> Vec<Effect> {

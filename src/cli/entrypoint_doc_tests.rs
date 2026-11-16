@@ -3,7 +3,6 @@ use super::{
 };
 use crate::cli::SharedOpts;
 use malvin::test_support::test_utils::with_isolated_home;
-#[test]
 fn prepare_cli_output_initializes_output_state_and_entrypoint_from_doc_argv_exits_success() {
     {
         malvin::output::set_stdout_suppressed(true);
@@ -72,7 +71,6 @@ fn entrypoint_from_credits_exits_success_and_entrypoint_from_credits_with_reques
     }
 }
 
-#[test]
 fn entrypoint_from_advice_unknown_tag_exits_failure() {
     with_isolated_home(|_| {
         assert_eq!(
@@ -82,7 +80,6 @@ fn entrypoint_from_advice_unknown_tag_exits_failure() {
     });
 }
 
-#[test]
 fn entrypoint_from_background_is_rejected() {
     use clap::Parser;
     let err = crate::cli::Cli::try_parse_from(["malvin", "--background", "--doc"])
@@ -116,7 +113,6 @@ fn entrypoint_from_bare_malvin_exits_success_and_entrypoint_from_admin_models_do
     }
 }
 
-#[test]
 fn entrypoint_from_admin_rejects_gates_flag() {
     use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
@@ -134,7 +130,6 @@ fn entrypoint_from_admin_rejects_gates_flag() {
     });
 }
 
-#[test]
 fn entrypoint_from_admin_rejects_quiet_flag() {
     use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
@@ -152,7 +147,6 @@ fn entrypoint_from_admin_rejects_quiet_flag() {
     });
 }
 
-#[test]
 fn entrypoint_from_admin_rejects_very_quiet_flag() {
     use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
@@ -170,7 +164,6 @@ fn entrypoint_from_admin_rejects_very_quiet_flag() {
     });
 }
 
-#[test]
 fn entrypoint_from_admin_rejects_removed_verbose_flag() {
     with_isolated_home(|_| {
         let err = crate::cli::config_defaults::parse_cli_with_config_defaults([
@@ -185,7 +178,6 @@ fn entrypoint_from_admin_rejects_removed_verbose_flag() {
     });
 }
 
-#[test]
 fn entrypoint_from_admin_rejects_max_loops_flag() {
     use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
@@ -203,7 +195,6 @@ fn entrypoint_from_admin_rejects_max_loops_flag() {
     });
 }
 
-#[test]
 fn entrypoint_from_admin_rejects_max_acp_retries_flag() {
     use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
@@ -228,13 +219,26 @@ fn entrypoint_from_admin_rejects_max_acp_retries_flag() {
     });
 }
 
-#[test]
 fn entrypoint_from_doc_does_not_suppress_stdout() {
     with_isolated_home(|_| {
         malvin::output::set_stdout_suppressed(false);
         assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
         assert!(!malvin::output::stdout_suppressed());
     });
+}
+
+#[test]
+fn merged_prepare_cli_output_initializes_output_state_and_entrypoint_from_doc_argv_exits_success() {
+    prepare_cli_output_initializes_output_state_and_entrypoint_from_doc_argv_exits_success();
+    entrypoint_from_advice_unknown_tag_exits_failure();
+    entrypoint_from_background_is_rejected();
+    entrypoint_from_admin_rejects_gates_flag();
+    entrypoint_from_admin_rejects_quiet_flag();
+    entrypoint_from_admin_rejects_very_quiet_flag();
+    entrypoint_from_admin_rejects_removed_verbose_flag();
+    entrypoint_from_admin_rejects_max_loops_flag();
+    entrypoint_from_admin_rejects_max_acp_retries_flag();
+    entrypoint_from_doc_does_not_suppress_stdout();
 }
 
 #[test]

@@ -1,8 +1,8 @@
 
 from __future__ import annotations
 
-import importlib
 import sys
+from importlib import import_module
 from pathlib import Path
 from types import ModuleType
 
@@ -33,4 +33,4 @@ def load_library(modname: str) -> ModuleType:
             return existing
 
     
-    return importlib.import_module(modname)
+    return import_module(modname)

@@ -14,7 +14,6 @@ use super::stdout_heartbeat_test_support::{
     due_heartbeat_render_capture_test, fresh_heartbeat_log_capture_test, heartbeat_test_guards,
 };
 
-#[test]
 fn heartbeat_log_line_uses_logger_timestamp_only() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         try_emit_heartbeat_if_due(Instant::now(), false);
@@ -32,7 +31,6 @@ fn heartbeat_log_line_uses_logger_timestamp_only() {
     assert!(!terminal.is_empty());
 }
 
-#[test]
 fn heartbeat_emits_once_when_interval_not_elapsed() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         maybe_emit_stdout_heartbeat();
@@ -53,7 +51,6 @@ fn heartbeat_emits_once_when_interval_not_elapsed() {
     assert!(!terminal.trim().starts_with("20"));
 }
 
-#[test]
 fn due_heartbeat_terminal_uses_color_without_wall_clock_prefix() {
     init_stdout_style_for_test(false);
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
@@ -73,7 +70,6 @@ fn due_heartbeat_terminal_uses_color_without_wall_clock_prefix() {
     }
 }
 
-#[test]
 fn first_tagged_stdout_line_is_not_preceded_by_immediate_heartbeat() {
     let (_guard, _stdout_guard) = heartbeat_test_guards();
     reset_stdout_heartbeat_for_test();
@@ -87,7 +83,6 @@ fn first_tagged_stdout_line_is_not_preceded_by_immediate_heartbeat() {
     assert!(text.contains("|payload"));
 }
 
-#[test]
 fn try_emit_heartbeat_if_due_immediate_when_no_active_sink() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         try_emit_heartbeat_if_due(Instant::now(), false);
@@ -103,7 +98,6 @@ fn try_emit_heartbeat_if_due_immediate_when_no_active_sink() {
     assert!(!terminal.trim().starts_with("20"));
 }
 
-#[test]
 fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
     init_stdout_style_for_test(false);
     crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed();
@@ -121,7 +115,6 @@ fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
     assert!(!terminal.trim().starts_with("20"));
 }
 
-#[test]
 fn celebration_emoji_replaces_only_the_first_center_dot() {
     use crate::output::stdout_log_pair::heartbeat_shown_payload;
 
@@ -138,7 +131,6 @@ fn celebration_emoji_replaces_only_the_first_center_dot() {
     );
 }
 
-#[test]
 fn heartbeat_payload_is_unchanged_without_a_dot_to_replace_or_an_emoji() {
     use crate::output::stdout_log_pair::heartbeat_shown_payload;
 
@@ -158,7 +150,6 @@ fn heartbeat_payload_is_unchanged_without_a_dot_to_replace_or_an_emoji() {
     );
 }
 
-#[test]
 fn celebration_emoji_appears_only_on_a_colored_heartbeat_and_never_in_the_log() {
     use crate::output::stdout_log_pair::{
         heartbeat_display_and_log_line_for_color, tagged_log_line,
@@ -190,7 +181,6 @@ fn celebration_emoji_appears_only_on_a_colored_heartbeat_and_never_in_the_log() 
     assert!(matched, "{display}");
 }
 
-#[test]
 fn heartbeat_suppressed_for_do_plain_stdout() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         crate::output::set_heartbeat_stdout_suppressed(true);
@@ -206,6 +196,20 @@ fn heartbeat_suppressed_for_do_plain_stdout() {
         text.is_empty(),
         "do plain must not emit h| to stdout.log; got {text:?}"
     );
+}
+
+#[test]
+fn merged_heartbeat_log_line_uses_logger_timestamp_only() {
+    heartbeat_log_line_uses_logger_timestamp_only();
+    heartbeat_emits_once_when_interval_not_elapsed();
+    due_heartbeat_terminal_uses_color_without_wall_clock_prefix();
+    first_tagged_stdout_line_is_not_preceded_by_immediate_heartbeat();
+    try_emit_heartbeat_if_due_immediate_when_no_active_sink();
+    heartbeat_logs_during_stdout_silence_when_interval_elapsed();
+    celebration_emoji_replaces_only_the_first_center_dot();
+    heartbeat_payload_is_unchanged_without_a_dot_to_replace_or_an_emoji();
+    celebration_emoji_appears_only_on_a_colored_heartbeat_and_never_in_the_log();
+    heartbeat_suppressed_for_do_plain_stdout();
 }
 
 #[test]

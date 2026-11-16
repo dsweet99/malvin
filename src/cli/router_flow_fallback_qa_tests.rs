@@ -80,16 +80,32 @@ fn singular_insufficient_credit_tries_backup() {
 }
 
 #[test]
-fn reached_or_exhausted_account_limits_try_backup() {
+fn hit_usage_limit_tries_backup() {
     check_model_switch("You've hit your usage limit", true);
+}
+
+#[test]
+fn billing_hard_limit_tries_backup() {
     check_model_switch("Billing hard limit has been reached", true);
+}
+
+#[test]
+fn quota_exhausted_tries_backup() {
     check_model_switch("Quota exhausted", true);
 }
 
 #[test]
-fn credential_and_throughput_failures_stay_on_the_first_model() {
+fn missing_credentials_stay_on_the_first_model() {
     check_model_switch("no credentials", false);
+}
+
+#[test]
+fn rate_limit_exceeded_stays_on_the_first_model() {
     check_model_switch("rate limit exceeded", false);
+}
+
+#[test]
+fn per_minute_rate_limit_stays_on_the_first_model() {
     check_model_switch(
         "Rate limit reached for requests per min. Limit: 20 / min.",
         false,

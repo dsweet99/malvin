@@ -22,7 +22,6 @@ fn big_alias(name: &str) -> Option<String> {
     }
 }
 
-#[test]
 fn suboptions_parse_in_any_order_and_each_is_optional() {
     let all = ModalOptions {
         gpu: Some(GpuChoice::Gpu("A100-80GB:4".to_string())),
@@ -50,7 +49,6 @@ fn suboptions_parse_in_any_order_and_each_is_optional() {
     );
 }
 
-#[test]
 fn suboptions_reject_unknown_duplicate_and_malformed_items() {
     assert!(
         parse_modal_spec("cpu=2")
@@ -75,7 +73,6 @@ fn suboptions_reject_unknown_duplicate_and_malformed_items() {
     assert!(parse_modal_spec("gpu").unwrap_err().contains("key=value"));
 }
 
-#[test]
 fn value_parsers_accept_documented_forms_only() {
     assert_eq!(parse_gpu("T4:2"), Ok(GpuChoice::Gpu("T4:2".to_string())));
     assert_eq!(
@@ -110,7 +107,6 @@ fn value_parsers_accept_documented_forms_only() {
     }
 }
 
-#[test]
 fn parse_timeout_bare_minutes_stops_at_24_hours() {
     assert_eq!(parse_timeout("1440"), Ok(86_400));
     let over = parse_timeout("1441").expect_err("1441 minutes is past 24 hours");
@@ -120,7 +116,6 @@ fn parse_timeout_bare_minutes_stops_at_24_hours() {
     );
 }
 
-#[test]
 fn bracketed_flag_is_rewritten_for_clap() {
     let normalized = args(&["malvin", "--remote=modal:sandbox", "--do", "x"]);
     let (out, opts) = extract_modal_options(
@@ -178,7 +173,6 @@ fn bracketed_flag_is_rewritten_for_clap() {
     );
 }
 
-#[test]
 fn bracketed_flag_errors_name_the_problem() {
     let err = |items: &[&str]| extract_modal_options(args(items), no_alias).unwrap_err();
     assert!(err(&["malvin", "--remote=modal:sandbox[ncpu=4"]).contains("closing `]`"));
@@ -210,7 +204,6 @@ fn bracketed_flag_errors_name_the_problem() {
     assert!(err(&["malvin", "--remote"]).contains("needs a value"));
 }
 
-#[test]
 fn failures_near_the_deadline_name_the_timeout() {
     let at = |secs| {
         super::session::with_timeout_hint(
@@ -230,7 +223,6 @@ fn failures_near_the_deadline_name_the_timeout() {
     ));
 }
 
-#[test]
 fn remote_aliases_expand_before_parsing() {
     let normalized = args(&["malvin", "--remote=modal:sandbox", "--do", "x"]);
     for typed in [
@@ -264,7 +256,6 @@ fn remote_aliases_expand_before_parsing() {
     assert!(err(&["malvin", "--remote=small"]).contains("[aliases.remotes]"));
 }
 
-#[test]
 fn builtin_remote_names_skip_the_alias_lookup() {
     let panic_alias = |name: &str| -> Option<String> { panic!("looked up {name}") };
     assert!(
@@ -276,4 +267,17 @@ fn builtin_remote_names_skip_the_alias_lookup() {
     );
     assert!(extract_modal_options(args(&["malvin", "--remote=aws:box"]), panic_alias).is_err());
     assert!(extract_modal_options(args(&["malvin", "--do", "x"]), panic_alias).is_ok());
+}
+
+#[test]
+fn merged_suboptions_parse_in_any_order_and_each_is_optional() {
+    suboptions_parse_in_any_order_and_each_is_optional();
+    suboptions_reject_unknown_duplicate_and_malformed_items();
+    value_parsers_accept_documented_forms_only();
+    parse_timeout_bare_minutes_stops_at_24_hours();
+    bracketed_flag_is_rewritten_for_clap();
+    bracketed_flag_errors_name_the_problem();
+    failures_near_the_deadline_name_the_timeout();
+    remote_aliases_expand_before_parsing();
+    builtin_remote_names_skip_the_alias_lookup();
 }

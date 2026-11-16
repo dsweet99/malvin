@@ -13,7 +13,7 @@ pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, sect
 #[derive(Args, Debug, Clone, Default)]
 #[command(override_usage = "malvin admin models [OPTION]... [PREFIX]...")]
 pub struct ModelsArgs {
-    /// Force-refresh the `pi:` model catalog (also runs automatically every 24h).
+    /// Force-refresh the `pi:` and `claude:` model catalogs (also runs automatically every 24h).
     #[arg(long)]
     pub refresh: bool,
     /// Print MODEL's canonical id and backend as one JSON line (`[aliases.models]` names expanded), then exit.

@@ -1,6 +1,5 @@
 use super::*;
 
-#[test]
 fn log_path_sanitizes_slashes_and_backslashes() {
     let r = RunArtifacts {
         run_dir: PathBuf::from("/tmp/run"),
@@ -17,7 +16,6 @@ fn log_path_sanitizes_slashes_and_backslashes() {
     );
 }
 
-#[test]
 fn create_run_artifacts_relative_plan_uses_dot_work_dir() {
     crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
@@ -31,7 +29,6 @@ fn create_run_artifacts_relative_plan_uses_dot_work_dir() {
     });
 }
 
-#[test]
 fn create_run_artifacts_from_text_uses_base_dir_as_work_dir() {
     crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
@@ -41,7 +38,6 @@ fn create_run_artifacts_from_text_uses_base_dir_as_work_dir() {
     });
 }
 
-#[test]
 fn create_run_artifacts_use_random_plan_request_filenames() {
     crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
@@ -68,7 +64,6 @@ fn create_run_artifacts_use_random_plan_request_filenames() {
     });
 }
 
-#[test]
 fn create_run_artifacts_opts_without_gc_skips_prune() {
     crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
@@ -87,7 +82,6 @@ fn create_run_artifacts_opts_without_gc_skips_prune() {
     });
 }
 
-#[test]
 fn create_run_artifacts_from_text_opts_without_gc() {
     crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
@@ -101,7 +95,6 @@ fn create_run_artifacts_from_text_opts_without_gc() {
     });
 }
 
-#[test]
 fn create_run_artifacts_from_text_writes_plan_and_exp_log() {
     crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
@@ -132,7 +125,6 @@ fn work_dir_for_path_uses_parent_or_dot_and_resolve_user_md_request_literal_uses
     }
 }
 
-#[test]
 fn resolve_user_md_request_reads_existing_md_file() {
     let _guard = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
@@ -150,7 +142,6 @@ fn resolve_user_md_request_reads_existing_md_file() {
     );
 }
 
-#[test]
 fn is_existing_md_file_path_rejects_invalid_and_directory() {
     assert!(is_existing_md_file_path("fix plan.md").is_none());
     assert!(is_existing_md_file_path("missing.md").is_none());
@@ -165,4 +156,17 @@ fn is_existing_md_file_path_rejects_invalid_and_directory() {
     std::fs::create_dir_all(&dir).unwrap();
     assert!(is_existing_md_file_path("notes.md").is_none());
     std::env::set_current_dir(old_cwd).unwrap();
+}
+
+#[test]
+fn merged_log_path_sanitizes_slashes_and_backslashes() {
+    log_path_sanitizes_slashes_and_backslashes();
+    create_run_artifacts_relative_plan_uses_dot_work_dir();
+    create_run_artifacts_from_text_uses_base_dir_as_work_dir();
+    create_run_artifacts_use_random_plan_request_filenames();
+    create_run_artifacts_opts_without_gc_skips_prune();
+    create_run_artifacts_from_text_opts_without_gc();
+    create_run_artifacts_from_text_writes_plan_and_exp_log();
+    resolve_user_md_request_reads_existing_md_file();
+    is_existing_md_file_path_rejects_invalid_and_directory();
 }

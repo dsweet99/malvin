@@ -13,8 +13,11 @@ pub fn generate() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));
 
     println!("cargo:rerun-if-changed={}", advice_dir.display());
+    write_registry(&advice_dir, &out_dir);
+}
 
-    let mut entries = collect_entries(&advice_dir);
+fn write_registry(advice_dir: &Path, out_dir: &Path) {
+    let mut entries = collect_entries(advice_dir);
     entries.sort_by(|a, b| a.tag.cmp(&b.tag));
     assert_no_duplicate_tags(&entries);
 
@@ -190,8 +193,34 @@ fn escape_rust_str(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{append_file_stats, is_advice_markdown};
+    #![allow(unsafe_code)]
+    use super::{append_file_stats, generate, is_advice_markdown, write_registry};
     use std::path::Path;
+
+    #[test]
+    fn write_registry_renders_every_advice_file() {
+        let out = tempfile::tempdir().expect("tempdir");
+        let advice = Path::new(env!("CARGO_MANIFEST_DIR")).join(super::ADVICE_DIR);
+        write_registry(&advice, out.path());
+        let code = std::fs::read_to_string(out.path().join("advice_registry.rs")).expect("read");
+        assert!(code.contains("tag: \"creativity\""), "{code}");
+    }
+
+    #[test]
+    fn generate_writes_registry_into_out_dir() {
+        let _lock = crate::test_support::test_utils::test_env_lock();
+        let out = tempfile::tempdir().expect("tempdir");
+        let old = std::env::var_os("OUT_DIR");
+        unsafe { std::env::set_var("OUT_DIR", out.path()) };
+        generate();
+        unsafe {
+            match old {
+                Some(v) => std::env::set_var("OUT_DIR", v),
+                None => std::env::remove_var("OUT_DIR"),
+            }
+        }
+        assert!(out.path().join("advice_registry.rs").is_file());
+    }
 
     #[test]
     fn file_stats_use_line_when_count_is_one() {

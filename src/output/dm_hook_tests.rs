@@ -15,7 +15,6 @@ impl Drop for Reset {
     }
 }
 
-#[test]
 fn on_emit_string_parses_and_other_shapes_do_not_run() {
     let tokens = dm_hook_config::on_emit_tokens("[dm]\non_emit = \"slack send {body}\"\n")
         .expect("string")
@@ -41,7 +40,6 @@ fn on_emit_string_parses_and_other_shapes_do_not_run() {
     assert!(err.contains("string"), "{err}");
 }
 
-#[test]
 fn home_config_supplies_the_command_and_workspace_config_does_not() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         let home = crate::malvin_home_config_path();
@@ -58,7 +56,6 @@ fn home_config_supplies_the_command_and_workspace_config_does_not() {
     });
 }
 
-#[test]
 fn streamed_body_is_one_argument_and_indexes_count_finished_messages() {
     let _dm = crate::output::DO_DM_TEST_LOCK
         .lock()
@@ -92,7 +89,6 @@ fn stdin_carries_the_body_when_the_command_has_no_body_word() {
     assert_eq!(std::fs::read_to_string(&out).expect("out"), "via stdin\n");
 }
 
-#[test]
 fn a_finished_message_runs_the_hook_when_quiet_mode_is_off() {
     let _dm = crate::output::DO_DM_TEST_LOCK
         .lock()
@@ -106,7 +102,6 @@ fn a_finished_message_runs_the_hook_when_quiet_mode_is_off() {
     assert_eq!(std::fs::read_to_string(&out).expect("out"), "plain");
 }
 
-#[test]
 fn empty_and_unfinished_messages_do_not_start_the_program() {
     let _dm = crate::output::DO_DM_TEST_LOCK
         .lock()
@@ -121,7 +116,6 @@ fn empty_and_unfinished_messages_do_not_start_the_program() {
     assert!(!out.exists(), "hook ran too early");
 }
 
-#[test]
 fn failure_is_logged_and_success_stays_off_stderr() {
     let _reset = Reset;
     let _guard = super::super::STDOUT_LOG_TEST_LOCK
@@ -171,7 +165,6 @@ fn missing_program_and_timeout_are_reported() {
     assert!(err.iter().any(|line| line.contains("timed out")), "{err:?}");
 }
 
-#[test]
 fn modal_sandbox_emits_a_mark_instead_of_starting_the_program() {
     let _reset = Reset;
     let dir = tempfile::tempdir().expect("temp");
@@ -188,7 +181,6 @@ fn modal_sandbox_emits_a_mark_instead_of_starting_the_program() {
     );
 }
 
-#[test]
 fn hook_env_records_the_workspace_and_run_directory() {
     let _reset = Reset;
     let _env = crate::test_support::test_utils::test_env_lock();
@@ -212,6 +204,18 @@ fn hook_env_records_the_workspace_and_run_directory() {
     let mut lines = text.lines();
     assert_eq!(lines.next(), Some(work.to_str().expect("utf8")));
     assert_eq!(lines.next(), Some(dir.path().to_str().expect("utf8")));
+}
+
+#[test]
+fn merged_on_emit_string_parses_and_other_shapes_do_not_run() {
+    on_emit_string_parses_and_other_shapes_do_not_run();
+    home_config_supplies_the_command_and_workspace_config_does_not();
+    streamed_body_is_one_argument_and_indexes_count_finished_messages();
+    a_finished_message_runs_the_hook_when_quiet_mode_is_off();
+    empty_and_unfinished_messages_do_not_start_the_program();
+    failure_is_logged_and_success_stays_off_stderr();
+    modal_sandbox_emits_a_mark_instead_of_starting_the_program();
+    hook_env_records_the_workspace_and_run_directory();
 }
 
 fn sh_cat(path: &std::path::Path) -> Vec<String> {

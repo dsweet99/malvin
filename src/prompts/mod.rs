@@ -5,10 +5,10 @@ mod template;
 pub use template::*;
 
 pub use defaults::{
-    HEADER_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD,
-    ROUTER_B_SATISFY_MD, ROUTER_C_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
-    header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
-    router_b_prompt_file, router_b_satisfy_prompt_file,
+    HEADER_MD, NEW_FACT_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD,
+    ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_C_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
+    TIDY_FACTS_MD, header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file,
+    router_a_prompt_file, router_b_prompt_file, router_b_satisfy_prompt_file,
 };
 
 #[allow(unused_imports)]
@@ -67,6 +67,9 @@ mod prompts_tests_a;
 #[cfg(test)]
 #[path = "prompts_tests_b.rs"]
 mod prompts_tests_b;
+#[cfg(test)]
+#[path = "tests/user_home_dir_tests.rs"]
+mod user_home_dir_tests;
 
 #[cfg(test)]
 mod kiss_cov_auto {

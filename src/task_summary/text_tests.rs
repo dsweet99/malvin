@@ -1,6 +1,5 @@
 use super::*;
 
-#[test]
 fn short_requests_are_clipped_at_a_word_and_marked() {
     assert_eq!(
         local_task("Investigate extraordinarily complicated parsing failures").as_deref(),
@@ -20,7 +19,6 @@ fn short_requests_are_clipped_at_a_word_and_marked() {
     );
 }
 
-#[test]
 fn summary_is_at_most_twenty_characters() {
     assert_eq!(
         normalize("\"Fix the parser\""),
@@ -39,7 +37,6 @@ fn summary_is_at_most_twenty_characters() {
     assert_eq!(normalize(" \n"), None);
 }
 
-#[test]
 fn summary_must_describe_the_source_rather_than_the_directions() {
     let directions = directions("user request");
     assert!(accept("Thanks", "Return only that summary", &directions).is_err());
@@ -54,7 +51,6 @@ fn summary_must_describe_the_source_rather_than_the_directions() {
     );
 }
 
-#[test]
 fn stored_direction_text_is_not_publishable() {
     assert_eq!(publishable("Return only that"), None);
     assert_eq!(
@@ -63,7 +59,6 @@ fn stored_direction_text_is_not_publishable() {
     );
 }
 
-#[test]
 fn model_summaries_fit_at_word_and_unicode_boundaries() {
     let directions = directions("agent's current status");
     assert_eq!(
@@ -98,14 +93,12 @@ fn model_summaries_fit_at_word_and_unicode_boundaries() {
     );
 }
 
-#[test]
 fn prompts_state_the_enforced_limit() {
     let stated = format!("{MAX_CHARS} characters or fewer");
     assert!(directions("user request").contains(&stated));
     assert!(directions("agent's current status").contains(&stated));
 }
 
-#[test]
 fn status_excerpt_keeps_the_recent_tail() {
     assert_eq!(status_excerpt("  \n"), None);
     assert_eq!(status_excerpt(" Reading "), Some("Reading".into()));
@@ -113,4 +106,15 @@ fn status_excerpt_keeps_the_recent_tail() {
     let excerpt = status_excerpt(&long).unwrap();
     assert_eq!(excerpt.chars().count(), 4_000);
     assert!(excerpt.ends_with("TAIL"));
+}
+
+#[test]
+fn merged_short_requests_are_clipped_at_a_word_and_marked() {
+    short_requests_are_clipped_at_a_word_and_marked();
+    summary_is_at_most_twenty_characters();
+    summary_must_describe_the_source_rather_than_the_directions();
+    stored_direction_text_is_not_publishable();
+    model_summaries_fit_at_word_and_unicode_boundaries();
+    prompts_state_the_enforced_limit();
+    status_excerpt_keeps_the_recent_tail();
 }

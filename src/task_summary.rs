@@ -5,6 +5,7 @@ mod text;
 mod watch;
 mod worker;
 pub use worker::run_if_worker;
+pub(crate) use worker::worker_runtime;
 
 use std::path::Path;
 
@@ -31,6 +32,14 @@ pub fn start(artifacts: &RunArtifacts) -> Option<SummaryTask> {
             watch::until_exit(child, &artifacts.run_dir).await;
         }
     })))
+}
+
+pub async fn run_background_prompt(
+    models: &ModelList,
+    artifacts: &RunArtifacts,
+    prompt: &str,
+) -> Result<String, String> {
+    model::ask(models, artifacts, prompt).await
 }
 
 pub(super) async fn generate_task(

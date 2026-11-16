@@ -6,7 +6,6 @@ use crate::run_timing::RunTiming;
 use crate::run_timing::report::format_timing_stdout_line_from_json;
 use crate::run_timing::report_cost_line::format_cost_stdout_line_from_json;
 
-#[test]
 fn absorb_sums_new_work_without_recounting_carried_totals() {
     let mut totals = Ledger::default();
     let mut first = RunTiming {
@@ -33,7 +32,6 @@ fn absorb_sums_new_work_without_recounting_carried_totals() {
     assert_eq!(totals.edit, Duration::from_millis(7));
 }
 
-#[test]
 fn second_absorb_on_the_same_timer_adds_only_the_increment() {
     let mut totals = Ledger::default();
     let mut timing = RunTiming {
@@ -49,7 +47,6 @@ fn second_absorb_on_the_same_timer_adds_only_the_increment() {
     assert_eq!(totals.llm_wait, Duration::from_millis(25));
 }
 
-#[test]
 fn absorb_sums_estimated_dollars_across_slices() {
     let mut totals = Ledger::default();
     let mut timing = RunTiming {
@@ -69,7 +66,6 @@ fn absorb_sums_estimated_dollars_across_slices() {
     assert!((cost_tot - 2_000.0).abs() < 1e-9, "cost_tot={cost_tot}");
 }
 
-#[test]
 fn footnote_lines_use_process_wall_and_summed_tokens() {
     let totals = Ledger {
         llm_wait: Duration::from_millis(1500),
@@ -92,7 +88,6 @@ fn footnote_lines_use_process_wall_and_summed_tokens() {
     assert!(cost.contains("cost_tot = 0.5000"), "{cost}");
 }
 
-#[test]
 fn missing_usage_stays_na_on_the_cost_line() {
     let json = super::footnotes_value(&Ledger::default(), 0);
     let cost = format_cost_stdout_line_from_json(&json);
@@ -100,7 +95,6 @@ fn missing_usage_stays_na_on_the_cost_line() {
     assert!(cost.contains("cost_tot = n/a"), "{cost}");
 }
 
-#[test]
 fn attach_syncs_the_cursor_to_carried_tokens() {
     let mut slot = None;
     let first = crate::run_timing::attach_new_run_timing(&mut slot, "cursor:auto");
@@ -126,7 +120,6 @@ fn capture_emit(arm: bool) -> String {
     crate::output::take_captured_stdout()
 }
 
-#[test]
 fn armed_emit_prints_timing_and_cost_outside_dm_mode() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
@@ -153,4 +146,15 @@ fn armed_emit_prints_timing_and_cost_outside_dm_mode() {
     );
     assert!(restored.contains("TIMING:"), "{restored}");
     assert!(restored.contains("COST:"), "{restored}");
+}
+
+#[test]
+fn merged_absorb_sums_new_work_without_recounting_carried_totals() {
+    absorb_sums_new_work_without_recounting_carried_totals();
+    second_absorb_on_the_same_timer_adds_only_the_increment();
+    absorb_sums_estimated_dollars_across_slices();
+    footnote_lines_use_process_wall_and_summed_tokens();
+    missing_usage_stays_na_on_the_cost_line();
+    attach_syncs_the_cursor_to_carried_tokens();
+    armed_emit_prints_timing_and_cost_outside_dm_mode();
 }

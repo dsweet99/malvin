@@ -21,14 +21,12 @@ fn help_lists_subcommand_line(help: &str, name: &str) -> bool {
         .any(|line| line.starts_with(&format!("  {name} ")))
 }
 
-#[test]
 fn removed_do_flag_is_rejected() {
     let err = parse_cli_with_config_defaults(["malvin", "--do", "task"]).expect_err("removed");
     let msg = err.to_string();
     assert!(msg.contains("unexpected") || msg.contains("--do"), "{msg}");
 }
 
-#[test]
 fn do_subcommand_is_removed() {
     // Former `do` subcommand is gone; `do` / `task` are ordinary bare requests.
     let cli = parse(&["malvin", "do", "task"]);
@@ -36,14 +34,12 @@ fn do_subcommand_is_removed() {
     assert_eq!(cli.requests, vec!["do".to_string(), "task".to_string()]);
 }
 
-#[test]
 fn init_is_not_a_subcommand_and_parses_as_bare_request() {
     let cli = parse(&["malvin", "init"]);
     assert!(cli.command.is_none());
     assert_eq!(cli.first_request().map(String::as_str), Some("init"));
 }
 
-#[test]
 fn code_is_not_a_subcommand_and_parses_as_bare_request() {
     let cli = parse(&["malvin", "code"]);
     assert!(cli.command.is_none());
@@ -65,7 +61,6 @@ fn gates_only_route_parses_without_request_and_bare_request_without_subcommand_p
     }
 }
 
-#[test]
 fn cli_help_omits_removed_subcommands() {
     let mut cmd = Cli::command();
     let help = cmd.render_help().to_string();
@@ -82,7 +77,6 @@ fn cli_help_omits_removed_subcommands() {
     assert!(!help.contains("@code"));
 }
 
-#[test]
 fn multiple_bare_requests_and_double_dash_requests_parse() {
     let cli = parse(&["malvin", "plan_1.md", "plan_2.md"]);
     assert!(cli.command.is_none());
@@ -116,7 +110,6 @@ fn multiple_bare_requests_and_double_dash_requests_parse() {
     );
 }
 
-#[test]
 fn meta_loop_values_are_never_dispatched_as_requests() {
     for argv in [
         vec!["malvin", "--ml", "3", "first", "second"],
@@ -139,7 +132,6 @@ fn meta_loop_values_are_never_dispatched_as_requests() {
     assert!(cli.tagged_requests.is_empty());
 }
 
-#[test]
 fn option_values_and_admin_arguments_are_never_dispatched_as_requests() {
     for argv in [
         vec!["malvin", "--remote", "modal:sandbox", "task"],
@@ -160,7 +152,6 @@ fn option_values_and_admin_arguments_are_never_dispatched_as_requests() {
     }
 }
 
-#[test]
 fn adaptix_subcommand_is_removed() {
     assert!(
         !Cli::command()
@@ -171,4 +162,17 @@ fn adaptix_subcommand_is_removed() {
     let cli = parse(&["malvin", "adaptix"]);
     assert!(cli.command.is_none());
     assert_eq!(cli.first_request().map(String::as_str), Some("adaptix"));
+}
+
+#[test]
+fn merged_removed_do_flag_is_rejected() {
+    removed_do_flag_is_rejected();
+    do_subcommand_is_removed();
+    init_is_not_a_subcommand_and_parses_as_bare_request();
+    code_is_not_a_subcommand_and_parses_as_bare_request();
+    cli_help_omits_removed_subcommands();
+    multiple_bare_requests_and_double_dash_requests_parse();
+    meta_loop_values_are_never_dispatched_as_requests();
+    option_values_and_admin_arguments_are_never_dispatched_as_requests();
+    adaptix_subcommand_is_removed();
 }

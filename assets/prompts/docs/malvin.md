@@ -26,7 +26,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, op
 | *(default)* | `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` and `router_c` on that agent; exit `router_summarize` on the iteration that ends the run. A `router_c` reply that omits `__MALVIN_DONE__` starts another iteration while the budget remains. There is no `--max-loops` flag (`DEFAULT_MAX_LOOPS` is 3) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
-| `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`) |
+| `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`, `facts add`, `facts remove`) |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `assets/prompts/docs/<command>.md`). The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 

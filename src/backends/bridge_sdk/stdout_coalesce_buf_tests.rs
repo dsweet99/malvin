@@ -34,7 +34,6 @@ fn message(
         false,
     )
 }
-#[test]
 fn default_idle_is_250ms_and_newline_emits_immediately_and_leaves_nothing_pending() {
     {
         let buf = StdoutCoalesceBuf::new(sample_io());
@@ -50,7 +49,6 @@ fn default_idle_is_250ms_and_newline_emits_immediately_and_leaves_nothing_pendin
     }
 }
 
-#[test]
 fn flush_publishes_partial_line_before_idle() {
     let buf = build(sample_io(), Duration::from_secs(30));
     assert!(feed(&buf, SessionUpdateChunkKind::Message, "Hi").is_empty());
@@ -61,7 +59,6 @@ fn flush_publishes_partial_line_before_idle() {
     assert!(recorded(&buf).is_empty());
 }
 
-#[test]
 fn partial_line_flushes_once_idle_elapses() {
     let idle = Duration::from_millis(80);
     let buf = build(sample_io(), idle);
@@ -104,7 +101,6 @@ fn latest_character_restarts_idle_window() {
     assert_eq!(recorded(&buf).concat(), "abc");
 }
 
-#[test]
 fn feed_and_write_prints_a_finished_line() {
     enable_stdout_capture();
     let buf = StdoutCoalesceBuf::new(sample_io());
@@ -114,7 +110,6 @@ fn feed_and_write_prints_a_finished_line() {
     assert!(!pending(&buf));
 }
 
-#[test]
 fn flush_and_write_prints_a_partial_line() {
     let buf = build(sample_io(), Duration::from_secs(30));
     enable_stdout_capture();
@@ -127,7 +122,6 @@ fn flush_and_write_prints_a_partial_line() {
     assert!(!pending(&buf));
 }
 
-#[test]
 fn drop_does_not_wait_out_the_idle_window() {
     let buf = build(sample_io(), Duration::from_secs(30));
     feed(&buf, SessionUpdateChunkKind::Message, "x");
@@ -136,7 +130,6 @@ fn drop_does_not_wait_out_the_idle_window() {
     assert!(started.elapsed() < Duration::from_millis(500));
 }
 
-#[test]
 fn cap_still_emits_without_waiting() {
     let buf = build(sample_io(), Duration::from_secs(30));
     let chunk = "a".repeat(125);
@@ -145,7 +138,6 @@ fn cap_still_emits_without_waiting() {
     assert_eq!(got[0].1, chunk);
     assert!(!pending(&buf));
 }
-#[test]
 fn write_coalesced_emissions_prints_message_and_write_coalesced_emissions_skips_hidden_thought() {
     {
         enable_stdout_capture();
@@ -168,7 +160,6 @@ fn write_coalesced_emissions_prints_message_and_write_coalesced_emissions_skips_
     }
 }
 
-#[test]
 fn write_coalesced_emissions_skips_when_not_teeing() {
     let mut io = sample_io();
     io.no_tee = true;
@@ -177,7 +168,6 @@ fn write_coalesced_emissions_skips_when_not_teeing() {
     assert!(take_captured_stdout().is_empty());
 }
 
-#[test]
 fn write_coalesced_emissions_prints_raw_message() {
     let mut io = sample_io();
     io.raw_output = true;
@@ -185,6 +175,20 @@ fn write_coalesced_emissions_prints_raw_message() {
     write_coalesced_emissions(io, vec![message("raw")]);
     let raw = take_captured_stdout();
     assert!(raw.contains("raw"), "{raw}");
+}
+
+#[test]
+fn merged_default_idle_is_250ms_and_newline_emits_immediately_and_leaves_nothing_pending() {
+    default_idle_is_250ms_and_newline_emits_immediately_and_leaves_nothing_pending();
+    flush_publishes_partial_line_before_idle();
+    partial_line_flushes_once_idle_elapses();
+    feed_and_write_prints_a_finished_line();
+    flush_and_write_prints_a_partial_line();
+    drop_does_not_wait_out_the_idle_window();
+    cap_still_emits_without_waiting();
+    write_coalesced_emissions_prints_message_and_write_coalesced_emissions_skips_hidden_thought();
+    write_coalesced_emissions_skips_when_not_teeing();
+    write_coalesced_emissions_prints_raw_message();
 }
 
 #[test]

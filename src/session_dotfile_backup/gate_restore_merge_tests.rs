@@ -29,7 +29,6 @@ fn bundle_with(gitignore: GitignoreBackup, checks: MalvinChecksBackup) -> Sessio
     }
 }
 
-#[test]
 fn merge_rejects_deleted_vision() {
     let vision_present = |bytes: &[u8]| crate::session_dotfile_backup::VisionBackup::Present {
         backup_root: std::path::PathBuf::from("/tmp/test"),
@@ -49,7 +48,6 @@ fn merge_rejects_deleted_vision() {
     ));
 }
 
-#[test]
 fn merge_rejects_deleted_gitignore() {
     let anchor = bundle_with(gitignore_present(b"baseline\n"), present(b"make lint\n"));
     let progress = bundle_with(GitignoreBackup::Missing, present(b"make lint\n"));
@@ -61,7 +59,6 @@ fn merge_rejects_deleted_gitignore() {
     ));
 }
 
-#[test]
 fn merge_rejects_tampered_malvin_checks() {
     let anchor = bundle_with(GitignoreBackup::Missing, present(b"make lint\n"));
     let progress = bundle_with(GitignoreBackup::Missing, present(b"TAMPERED\n"));
@@ -72,7 +69,6 @@ fn merge_rejects_tampered_malvin_checks() {
     assert_eq!(payload.bytes, b"make lint\n");
 }
 
-#[test]
 fn merge_keeps_agent_edited_vision_content() {
     let vision_present = |bytes: &[u8]| crate::session_dotfile_backup::VisionBackup::Present {
         backup_root: std::path::PathBuf::from("/tmp/test"),
@@ -92,7 +88,6 @@ fn merge_keeps_agent_edited_vision_content() {
     assert_eq!(files[0].bytes, b"improved vision\n");
 }
 
-#[test]
 fn merge_keeps_agent_edited_gitignore_content() {
     let anchor = bundle_with(gitignore_present(b"baseline\n"), present(b"make lint\n"));
     let progress = bundle_with(
@@ -106,7 +101,6 @@ fn merge_keeps_agent_edited_gitignore_content() {
     assert_eq!(files[0].bytes, b"baseline\nextra/\n");
 }
 
-#[test]
 fn merge_keeps_progress_when_gitignore_present_without_root_file() {
     let nested_only = GitignoreBackup::Present {
         backup_root: std::path::PathBuf::from("/tmp/test"),
@@ -124,7 +118,6 @@ fn merge_keeps_progress_when_gitignore_present_without_root_file() {
     assert_eq!(files[0].rel, std::path::PathBuf::from("pkg/.gitignore"));
 }
 
-#[test]
 fn merge_keeps_progress_when_vision_present_without_root_file() {
     let nested_only = crate::session_dotfile_backup::VisionBackup::Present {
         backup_root: std::path::PathBuf::from("/tmp/test"),
@@ -142,4 +135,15 @@ fn merge_keeps_progress_when_vision_present_without_root_file() {
         panic!("expected vision present");
     };
     assert_eq!(files[0].rel, std::path::PathBuf::from("pkg/VISION.md"));
+}
+
+#[test]
+fn merged_merge_rejects_deleted_vision() {
+    merge_rejects_deleted_vision();
+    merge_rejects_deleted_gitignore();
+    merge_rejects_tampered_malvin_checks();
+    merge_keeps_agent_edited_vision_content();
+    merge_keeps_agent_edited_gitignore_content();
+    merge_keeps_progress_when_gitignore_present_without_root_file();
+    merge_keeps_progress_when_vision_present_without_root_file();
 }

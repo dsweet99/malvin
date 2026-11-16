@@ -2,6 +2,7 @@ use crate::cli::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::cli::router_flow::router_flow_prompt;
 use crate::cli::router_machine::Completion;
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file};
+use malvin::slow_task_watch::WatchedPromptFlag;
 use std::path::Path;
 
 use super::router_flow::router_flow_acp::RouterAcpIterationInput;
@@ -9,6 +10,7 @@ use super::router_flow::router_flow_acp::router_flow_coder_prompts::{
     RouterInitialCoderPrompt, run_router_b_coder_prompt, run_router_followup_coder_prompt,
     run_router_initial_coder_prompt,
 };
+use super::router_flow_fact_agent::{FactAgentSpec, start_fact_agent_watch};
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
@@ -49,8 +51,20 @@ pub(crate) async fn run_router_turns(
         .force_fresh_coder_agent()
         .await
         .map_err(|e| e.to_string())?;
-    let iteration_backups = deliver_router_initial_turn(input, log_path).await?;
-    let followup = finish_router_a_maybe_b(input, log_path, &model).await?;
+    let flag = WatchedPromptFlag::default();
+    let _fact_watch = start_fact_agent_watch(
+        &FactAgentSpec {
+            store: input.prompt_store,
+            artifacts: input.artifacts,
+            models: &input.shared.model,
+        },
+        &flag,
+    );
+    flag.set(true);
+    let initial = deliver_router_initial_turn(input, log_path).await;
+    flag.set(false);
+    let iteration_backups = initial?;
+    let followup = finish_router_a_maybe_b(input, log_path, &model, &flag).await?;
     Ok(RouterTurnsOutcome {
         iteration_backups,
         completion: followup,
@@ -112,6 +126,7 @@ async fn finish_router_a_maybe_b(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
     model: &str,
+    flag: &WatchedPromptFlag,
 ) -> Result<Completion, String> {
     let router_a_2 = router_flow_prompt::build_router_a_2_prompt(input.prompt_store)?;
     run_router_followup_coder_prompt(
@@ -130,7 +145,10 @@ async fn finish_router_a_maybe_b(
             artifacts: input.artifacts,
             model,
         })?;
-    run_router_b_coder_prompt(input.client, &router_b, log_path).await?;
+    flag.set(true);
+    let b_result = run_router_b_coder_prompt(input.client, &router_b, log_path).await;
+    flag.set(false);
+    b_result?;
     send_router_c(input, log_path).await
 }
 

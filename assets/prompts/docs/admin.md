@@ -22,6 +22,8 @@ malvin admin models [OPTION]... [PREFIX]...
 malvin admin remotes
 malvin admin reset-herdr
 malvin admin rh
+malvin admin facts add FIELD=VALUE...
+malvin admin facts remove FACT_ID
 ```
 
 `malvin admin` with no subcommand prints a short catalog of the admin subcommands with their descriptions and exits 0, like bare `malvin`.
@@ -49,3 +51,16 @@ Alias: `rh`.
 Release the current herdr pane's malvin agent so the agents-list entry goes away, and clear display metadata.
 
 Requires a herdr-hosted environment: `HERDR_ENV=1`, `HERDR_SOCKET_PATH`, and `HERDR_PANE_ID`. Useful when a prior malvin process exited without tearing down and the pane still shows `working` or a leftover idle circle.
+
+### `facts add`
+
+`malvin admin facts add field_name=value [field_name=value ...]` appends one fact to `~/.malvinconf/facts.jsonl` and exits (no agent, no run logs). It is meant for LLM agents: fields may come in any order, and bad input is rejected with an error and exit status 1.
+
+- Fields: `fact_id` (required; lowercase letters, digits, `-`, `_`; starts with a letter; at most 64 characters; must not already exist in the file), `fact` (required; at most 4000 characters), and `symptoms` (optional; repeat the field once per symptom; at most 20, each at most 500 characters).
+- Values are trimmed, must be non-empty, and must be a single line without control or invisible formatting characters. Unknown or repeated `fact_id`/`fact` fields are errors. Quote values that contain spaces.
+- The file and its directory are created if missing. A lock file `facts.jsonl.lock` guards the uniqueness check; remove it if a crashed run left it behind.
+- Example: `malvin admin facts add fact_id=tectonic-path fact="Only Tectonic is installed." symptoms="pdflatex not found"`
+
+### `facts remove`
+
+`malvin admin facts remove FACT_ID` deletes the fact with that `fact_id` from `~/.malvinconf/facts.jsonl` and exits. An unknown id, an invalid id, or a missing file is an error with exit status 1. Other lines are left untouched. The same `facts.jsonl.lock` lock guards the rewrite.

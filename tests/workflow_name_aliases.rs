@@ -3,14 +3,12 @@ use malvin::{
     resolve_workspace_malvin_config_path,
 };
 
-#[test]
 fn canonical_workflow_name_maps_adaptix_to_inspire() {
     assert_eq!(canonical_workflow_name("adaptix"), "inspire");
     assert_eq!(canonical_workflow_name("inspire"), "inspire");
     assert_eq!(canonical_workflow_name("tidy"), "tidy");
 }
 
-#[test]
 fn resolve_session_log_path_falls_back_to_adaptix_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run = tmp.path().join("run");
@@ -20,7 +18,6 @@ fn resolve_session_log_path_falls_back_to_adaptix_log() {
     assert_eq!(resolve_session_log_path(&run, "inspire"), adaptix);
 }
 
-#[test]
 fn resolve_session_log_path_prefers_inspire_log_when_present() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run = tmp.path().join("run");
@@ -31,7 +28,6 @@ fn resolve_session_log_path_prefers_inspire_log_when_present() {
     assert_eq!(resolve_session_log_path(&run, "inspire"), inspire);
 }
 
-#[test]
 fn resolve_session_log_path_returns_canonical_when_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run = tmp.path().join("run");
@@ -39,7 +35,6 @@ fn resolve_session_log_path_returns_canonical_when_missing() {
     assert_eq!(resolve_session_log_path(&run, "tidy"), run.join("tidy.log"));
 }
 
-#[test]
 fn resolve_session_log_path_resolves_non_inspire_workflow() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run = tmp.path().join("run");
@@ -49,7 +44,6 @@ fn resolve_session_log_path_resolves_non_inspire_workflow() {
     assert_eq!(resolve_session_log_path(&run, "tidy"), tidy);
 }
 
-#[test]
 fn resolve_session_log_path_defaults_to_inspire_log_when_all_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run = tmp.path().join("run");
@@ -60,7 +54,6 @@ fn resolve_session_log_path_defaults_to_inspire_log_when_all_missing() {
     );
 }
 
-#[test]
 fn resolve_session_log_path_maps_adaptix_workflow_to_inspire_aliases() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run = tmp.path().join("run");
@@ -70,7 +63,6 @@ fn resolve_session_log_path_maps_adaptix_workflow_to_inspire_aliases() {
     assert_eq!(resolve_session_log_path(&run, "adaptix"), adaptix);
 }
 
-#[test]
 fn resolve_workspace_malvin_config_path_prefers_config_toml_over_legacy() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let malvin = tmp.path().join(".malvin");
@@ -81,7 +73,6 @@ fn resolve_workspace_malvin_config_path_prefers_config_toml_over_legacy() {
     assert_eq!(resolve_workspace_malvin_config_path(tmp.path()), config);
 }
 
-#[test]
 fn resolve_workspace_malvin_config_path_prefers_meta_toml_when_newer_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let meta = tmp.path().join(".malvin/meta.toml");
@@ -90,7 +81,6 @@ fn resolve_workspace_malvin_config_path_prefers_meta_toml_when_newer_missing() {
     assert_eq!(resolve_workspace_malvin_config_path(tmp.path()), meta);
 }
 
-#[test]
 fn run_artifacts_resolve_session_log_path_matches_helper() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = RunArtifacts {
@@ -104,4 +94,18 @@ fn run_artifacts_resolve_session_log_path_matches_helper() {
         resolve_session_log_path(&artifacts.run_dir, "inspire"),
         artifacts.run_dir.join("adaptix.log")
     );
+}
+
+#[test]
+fn merged_canonical_workflow_name_maps_adaptix_to_inspire() {
+    canonical_workflow_name_maps_adaptix_to_inspire();
+    resolve_session_log_path_falls_back_to_adaptix_log();
+    resolve_session_log_path_prefers_inspire_log_when_present();
+    resolve_session_log_path_returns_canonical_when_missing();
+    resolve_session_log_path_resolves_non_inspire_workflow();
+    resolve_session_log_path_defaults_to_inspire_log_when_all_missing();
+    resolve_session_log_path_maps_adaptix_workflow_to_inspire_aliases();
+    resolve_workspace_malvin_config_path_prefers_config_toml_over_legacy();
+    resolve_workspace_malvin_config_path_prefers_meta_toml_when_newer_missing();
+    run_artifacts_resolve_session_log_path_matches_helper();
 }

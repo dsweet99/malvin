@@ -10,7 +10,6 @@ fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
     Ok(buf)
 }
 
-#[test]
 fn subcommand_doc_embeds_have_malvin_heading() {
     let md = command_doc_markdown(&Commands::Admin(AdminArgs {
         command: Some(AdminCommand::Models(ModelsArgs::default())),
@@ -19,7 +18,6 @@ fn subcommand_doc_embeds_have_malvin_heading() {
     assert!(ROUTER_DOC.starts_with("# malvin"));
 }
 
-#[test]
 fn print_doc_none_writes_overview_then_router() {
     let out = capture_doc(None).expect("capture");
     let expected = format!("{MALVIN_OVERVIEW_DOC}\n---\n\n{ROUTER_DOC}");
@@ -30,20 +28,17 @@ fn print_doc_none_writes_overview_then_router() {
     assert!(text.contains("# malvin (default route)"));
 }
 
-#[test]
 fn top_level_doc_parses_without_subcommand() {
     let cli = Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
     assert!(cli.command.is_none());
 }
 
-#[test]
 fn removed_do_flag_does_not_select_a_doc() {
     let err = Cli::try_parse_from(["malvin", "--do", "--doc"]).expect_err("removed");
     let msg = err.to_string();
     assert!(msg.contains("unexpected") || msg.contains("--do"), "{msg}");
 }
-#[test]
 fn admin_doc_parses_with_doc_flag_and_print_doc_admin_writes_subcommand_md() {
     {
         let cli = Cli::try_parse_from(["malvin", "admin", "models", "--doc"]).expect("parse");
@@ -62,7 +57,6 @@ fn admin_doc_parses_with_doc_flag_and_print_doc_admin_writes_subcommand_md() {
     }
 }
 
-#[test]
 fn bare_admin_doc_writes_admin_md() {
     for argv in [["malvin", "admin", "--doc"], ["malvin", "--doc", "admin"]] {
         let cli = Cli::try_parse_from(argv).expect("parse");
@@ -72,7 +66,6 @@ fn bare_admin_doc_writes_admin_md() {
     }
 }
 
-#[test]
 fn bare_admin_without_doc_parses_with_no_subcommand() {
     malvin::test_support::test_utils::with_isolated_home(|_| {
         let (cli, _) =
@@ -85,7 +78,6 @@ fn bare_admin_without_doc_parses_with_no_subcommand() {
     });
 }
 
-#[test]
 fn malvin_doc_embeds_name_section() {
     let out = capture_doc(None).expect("capture");
     let text = String::from_utf8(out).expect("utf8");
@@ -101,6 +93,18 @@ fn malvin_doc_embeds_name_section() {
         !text.contains("### `--name"),
         "doc must not document removed --name option"
     );
+}
+
+#[test]
+fn merged_subcommand_doc_embeds_have_malvin_heading() {
+    subcommand_doc_embeds_have_malvin_heading();
+    print_doc_none_writes_overview_then_router();
+    top_level_doc_parses_without_subcommand();
+    removed_do_flag_does_not_select_a_doc();
+    admin_doc_parses_with_doc_flag_and_print_doc_admin_writes_subcommand_md();
+    bare_admin_doc_writes_admin_md();
+    bare_admin_without_doc_parses_with_no_subcommand();
+    malvin_doc_embeds_name_section();
 }
 
 #[cfg(test)]

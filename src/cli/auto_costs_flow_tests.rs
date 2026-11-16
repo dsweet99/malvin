@@ -74,7 +74,6 @@ fn drive(env: &CostSetupEnv<'_>, configs: Vec<MalvinConfig>, outcome: CostSetupO
     }
 }
 
-#[test]
 fn rendered_request_names_the_model_and_forbids_repo_edits() {
     let text = render_set_costs_request(&cursor()).expect("render");
     assert!(text.contains("cursor:auto"));
@@ -83,7 +82,6 @@ fn rendered_request_names_the_model_and_forbids_repo_edits() {
     assert!(!text.contains("{{"));
 }
 
-#[test]
 fn setup_is_guarded_by_switches_live_prices_and_configured_rates() {
     let cursor = cursor();
     assert!(should_setup_costs(&config(true), &cursor, false));
@@ -99,7 +97,6 @@ fn setup_is_guarded_by_switches_live_prices_and_configured_rates() {
     assert!(!should_setup_costs(&priced, &cursor, false));
 }
 
-#[test]
 fn failed_workflow_without_detail_uses_the_plain_warning() {
     let model = cursor();
     let seam = drive(
@@ -117,7 +114,6 @@ fn failed_workflow_without_detail_uses_the_plain_warning() {
     assert!(!seam.stderr.contains("remain unset"));
 }
 
-#[test]
 fn failed_workflow_reloads_config_and_warns() {
     let model = cursor();
     let seam = drive(
@@ -138,7 +134,6 @@ fn failed_workflow_reloads_config_and_warns() {
     );
 }
 
-#[test]
 fn completed_workflow_reloads_saved_rates_without_a_warning() {
     let model = cursor();
     let seam = drive(
@@ -151,7 +146,6 @@ fn completed_workflow_reloads_saved_rates_without_a_warning() {
     assert_eq!(seam.stderr, "");
 }
 
-#[test]
 fn completed_workflow_warns_when_reloaded_rates_stay_unset() {
     let model = cursor();
     let seam = drive(
@@ -168,7 +162,6 @@ fn completed_workflow_warns_when_reloaded_rates_stay_unset() {
     );
 }
 
-#[test]
 fn disabled_priced_and_live_models_do_not_run() {
     let cursor = cursor();
     let disabled = drive(
@@ -194,7 +187,6 @@ fn disabled_priced_and_live_models_do_not_run() {
     }
 }
 
-#[test]
 fn cost_setup_router_clears_harness_gates() {
     let mut router = crate::cli::RouterOpts::test_defaults();
     router.gates = true;
@@ -204,12 +196,10 @@ fn cost_setup_router_clears_harness_gates() {
     assert_eq!(setup.max_loops, router.max_loops);
 }
 
-#[test]
 fn unit_tests_skip_the_real_cost_workflow() {
     assert!(skip_automatic_cost_setup());
 }
 
-#[test]
 fn cost_setup_runs_in_process_router_before_init() {
     let src = include_str!("auto_costs.rs");
     assert!(
@@ -238,4 +228,18 @@ fn cost_setup_runs_in_process_router_before_init() {
         .expect("init bootstrap");
     assert!(cost_at > async_at);
     assert!(cost_at < init_at);
+}
+
+#[test]
+fn merged_rendered_request_names_the_model_and_forbids_repo_edits() {
+    rendered_request_names_the_model_and_forbids_repo_edits();
+    setup_is_guarded_by_switches_live_prices_and_configured_rates();
+    failed_workflow_without_detail_uses_the_plain_warning();
+    failed_workflow_reloads_config_and_warns();
+    completed_workflow_reloads_saved_rates_without_a_warning();
+    completed_workflow_warns_when_reloaded_rates_stay_unset();
+    disabled_priced_and_live_models_do_not_run();
+    cost_setup_router_clears_harness_gates();
+    unit_tests_skip_the_real_cost_workflow();
+    cost_setup_runs_in_process_router_before_init();
 }

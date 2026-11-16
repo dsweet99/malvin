@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 TASK_ID = "FT-30"
@@ -118,14 +119,15 @@ def _oracle_fix(workspace: Path) -> None:
 
 
 def _with_stub_kiss_if_needed(td: Path) -> None:
-    """Ensure ``kiss`` is on PATH for self-test when the host has no kiss-ai.
+    """Put a stub ``kiss`` on PATH for self-test.
+
+    The stub keeps the self-test fast (a real ``kiss check`` made it exceed the
+    test time limit under load) and independent of the host's kiss install.
 
     Real grading still requires a real ``kiss`` binary; evaluate() returns 0
     when kiss is missing. Self-test only needs a successful exit from the
     ``kiss check`` gate line so pytest / hidden-test logic can be verified.
     """
-    if _kiss_available():
-        return
     bin_dir = td / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
     stub = bin_dir / "kiss"
@@ -141,12 +143,16 @@ def self_test() -> None:
         _with_stub_kiss_if_needed(td_path)
         fail_ws = td_path / "fail"
         shutil.copytree(src, fail_ws)
-        assert evaluate(fail_ws) == 0, "starter must fail"
-
         pass_ws = td_path / "pass"
         shutil.copytree(src, pass_ws)
         _oracle_fix(pass_ws)
-        assert evaluate(pass_ws) == 1, "oracle must pass"
+        # The two evaluations are independent; run them concurrently so the
+        # self-test stays within the test time limit when the host is loaded.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fail_future = pool.submit(evaluate, fail_ws)
+            pass_future = pool.submit(evaluate, pass_ws)
+            assert fail_future.result() == 0, "starter must fail"
+            assert pass_future.result() == 1, "oracle must pass"
     print(f"{TASK_ID} self-test OK")
 
 

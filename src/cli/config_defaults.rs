@@ -74,14 +74,37 @@ pub(crate) fn apply_shared_config_defaults(
     }
 }
 
+fn tag_per_request_models(
+    matches: &ArgMatches,
+    cli: &Cli,
+    segments: Option<&crate::cli::model_segments::ModelSegments>,
+) -> Result<Vec<crate::cli::request_argv::TaggedRequest>, clap::Error> {
+    use crate::cli::request_argv::{tag_requests, tag_requests_with_models};
+    let Some(seg) = segments else {
+        return Ok(tag_requests(&cli.requests));
+    };
+    let indices: Vec<usize> = matches
+        .indices_of("requests")
+        .map(Iterator::collect)
+        .unwrap_or_default();
+    let models = seg
+        .models_at(&indices, &cli.shared.model)
+        .map_err(|e| usage_error(clap::error::ErrorKind::InvalidValue, &e))?;
+    Ok(tag_requests_with_models(&cli.requests, models))
+}
+
 pub fn parse_cli_with_config_defaults(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Result<(Cli, ArgMatches), clap::Error> {
     let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
+    let segments = crate::cli::model_segments::split_repeated_model_flags(&args);
     let cmd = Cli::command();
-    let matches = cmd.try_get_matches_from(args)?;
+    let matches = match &segments {
+        Some(seg) => cmd.try_get_matches_from(seg.args.clone())?,
+        None => cmd.try_get_matches_from(args)?,
+    };
     let mut cli = Cli::from_arg_matches(&matches)?;
-    cli.tagged_requests = crate::cli::request_argv::tag_requests(&cli.requests);
+    cli.tagged_requests = tag_per_request_models(&matches, &cli, segments.as_ref())?;
     if let Err(e) = apply_workspace_config_defaults(&matches, &mut cli) {
         return Err(usage_error(clap::error::ErrorKind::InvalidValue, &e));
     }

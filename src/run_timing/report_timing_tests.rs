@@ -5,7 +5,6 @@ use serde_json::Value;
 use super::report_timing_line::format_timing_stdout_line_from_json;
 use super::{duration_ms_u64, to_json_value, write_json_and_print_summary, write_json_only};
 
-#[test]
 fn timing_line_implement_echoes_json_ms_via_same_formatter() {
     use crate::run_timing::{RunTiming, TimingPhase};
 
@@ -23,7 +22,6 @@ fn timing_line_implement_echoes_json_ms_via_same_formatter() {
     assert!(line.contains("llm_wait = 23.5s"), "line={line:?}");
 }
 
-#[test]
 fn timing_line_from_json_matches_to_json_value_snapshot() {
     use crate::run_timing::{RunTiming, TimingPhase};
 
@@ -42,7 +40,6 @@ fn timing_line_from_json_matches_to_json_value_snapshot() {
     assert!(line.contains("llm_wait = "));
 }
 
-#[test]
 fn timing_line_uses_phase_display_name_alias_when_present() {
     use crate::run_timing::{RunTiming, TimingPhase};
 
@@ -58,7 +55,6 @@ fn timing_line_uses_phase_display_name_alias_when_present() {
     assert!(!line.contains("implement = "));
 }
 
-#[test]
 fn timing_line_uses_one_decimal_and_includes_live_buckets() {
     use crate::run_timing::{RUN_TIMING_SUMMARY_PREFIX, RunTiming, TimingPhase};
 
@@ -90,7 +86,6 @@ fn duration_ms_u64_converts_duration_to_milliseconds_and_print_summary_from_run_
     }
 }
 
-#[test]
 fn print_summary_from_run_dir_reads_existing_json() {
     use crate::run_timing::{RunTiming, TimingPhase};
 
@@ -103,7 +98,6 @@ fn print_summary_from_run_dir_reads_existing_json() {
     crate::run_timing::print_summary_from_run_dir(tmp.path()).expect("print");
 }
 
-#[test]
 fn write_json_and_print_summary_creates_file() {
     use crate::run_timing::{RUN_TIMING_JSON_FILE, RunTiming, TimingPhase};
 
@@ -116,7 +110,6 @@ fn write_json_and_print_summary_creates_file() {
     assert!(tmp.path().join(RUN_TIMING_JSON_FILE).exists());
 }
 
-#[test]
 fn run_timing_json_includes_cost_block_with_reported_usage() {
     use crate::run_timing::ResponseUsage;
     use crate::run_timing::{RunTiming, TimingPhase};
@@ -133,7 +126,6 @@ fn run_timing_json_includes_cost_block_with_reported_usage() {
     assert!(json.get("cost").is_some());
 }
 
-#[test]
 fn no_cost_block_when_no_cost_data() {
     use crate::run_timing::RunTiming;
 
@@ -142,7 +134,6 @@ fn no_cost_block_when_no_cost_data() {
     assert!(json.get("cost").is_none());
 }
 
-#[test]
 fn cost_fields_on_combined_stdout_line_not_timing_line() {
     use super::super::report_cost_line::format_cost_stdout_line_from_json;
     use crate::run_timing::ResponseUsage;
@@ -162,4 +153,17 @@ fn cost_fields_on_combined_stdout_line_not_timing_line() {
     assert!(cost_line.starts_with("COST:"));
     assert!(cost_line.contains("cost_tot = 0.0000"));
     assert!(cost_line.contains("steps ="));
+}
+
+#[test]
+fn merged_timing_line_implement_echoes_json_ms_via_same_formatter() {
+    timing_line_implement_echoes_json_ms_via_same_formatter();
+    timing_line_from_json_matches_to_json_value_snapshot();
+    timing_line_uses_phase_display_name_alias_when_present();
+    timing_line_uses_one_decimal_and_includes_live_buckets();
+    print_summary_from_run_dir_reads_existing_json();
+    write_json_and_print_summary_creates_file();
+    run_timing_json_includes_cost_block_with_reported_usage();
+    no_cost_block_when_no_cost_data();
+    cost_fields_on_combined_stdout_line_not_timing_line();
 }

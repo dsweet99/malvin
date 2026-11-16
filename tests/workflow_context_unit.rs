@@ -8,7 +8,6 @@ use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::format_malvin_command;
 use malvin::workflow_context::{format_prompt_path, workflow_context_paths_only};
 
-#[test]
 fn workflow_context_paths_include_plan() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -18,7 +17,6 @@ fn workflow_context_paths_include_plan() {
     assert!(ctx.contains_key("plan_path"));
 }
 
-#[test]
 fn format_prompt_path_strips_base() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -27,7 +25,6 @@ fn format_prompt_path_strips_base() {
     assert!(s.starts_with("./"));
 }
 
-#[test]
 fn workflow_context_paths_include_review_and_gates_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -43,7 +40,6 @@ fn workflow_context_paths_include_review_and_gates_log() {
     assert!(ctx.contains_key("run_meta_dir"));
 }
 
-#[test]
 fn workflow_context_paths_use_relative_prompt_paths() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -87,7 +83,6 @@ fn workflow_context_paths_use_relative_prompt_paths() {
     );
 }
 
-#[test]
 fn workflow_context_paths_include_quality_gates_log_alias() {
     with_isolated_home(|work, _home| {
         let plan = work.join("plan.md");
@@ -102,7 +97,6 @@ fn workflow_context_paths_include_quality_gates_log_alias() {
     });
 }
 
-#[test]
 fn format_prompt_path_resolves_relative_under_work_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let sub = tmp.path().join("nested");
@@ -114,7 +108,6 @@ fn format_prompt_path_resolves_relative_under_work_dir() {
     assert!(formatted.starts_with("./"));
 }
 
-#[test]
 fn format_prompt_path_handles_non_canonical_file_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("pending").join("plan.md");
@@ -123,7 +116,6 @@ fn format_prompt_path_handles_non_canonical_file_path() {
     assert!(formatted.contains("plan.md"));
 }
 
-#[test]
 fn format_prompt_path_falls_back_when_outside_work_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let outside = std::env::temp_dir().join(format!("malvin-outside-{}", std::process::id()));
@@ -131,4 +123,16 @@ fn format_prompt_path_falls_back_when_outside_work_dir() {
     let formatted = format_prompt_path(&outside, tmp.path());
     assert!(!formatted.starts_with("./"));
     let _ = std::fs::remove_file(&outside);
+}
+
+#[test]
+fn merged_workflow_context_paths_include_plan() {
+    workflow_context_paths_include_plan();
+    format_prompt_path_strips_base();
+    workflow_context_paths_include_review_and_gates_log();
+    workflow_context_paths_use_relative_prompt_paths();
+    workflow_context_paths_include_quality_gates_log_alias();
+    format_prompt_path_resolves_relative_under_work_dir();
+    format_prompt_path_handles_non_canonical_file_path();
+    format_prompt_path_falls_back_when_outside_work_dir();
 }

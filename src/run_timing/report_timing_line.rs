@@ -88,14 +88,12 @@ mod tests {
         }
     }
 
-    #[test]
     fn timing_line_wall_na_when_missing_from_json() {
         let json = json!({ "phases_ms": {} });
         let line = format_timing_stdout_line_from_json(&json);
         assert!(line.contains("wall = n/a"));
     }
 
-    #[test]
     fn timing_stdout_append_helpers_cover_branches() {
         let mut s = String::new();
         let mut first = true;
@@ -115,7 +113,6 @@ mod tests {
         assert!(!s.contains("implement = "));
     }
 
-    #[test]
     fn timing_line_append_part_formats_key_value_pairs() {
         let mut out = String::new();
         let mut first = true;
@@ -126,7 +123,6 @@ mod tests {
         assert_eq!(out, "foo = 1.0s bar = 2.0s");
     }
 
-    #[test]
     fn timing_line_includes_tool_calls_and_implement_bucket() {
         let json = json!({
             "wall_clock_ms": 1000,
@@ -147,7 +143,6 @@ mod tests {
         assert!(!line.contains("concerns = "));
     }
 
-    #[test]
     fn phase_display_name_returns_alias_or_key() {
         // Phase display aliases remain in run_timing.json but are not printed on TIMING.
         let json = json!({
@@ -162,7 +157,6 @@ mod tests {
         assert!(!line.contains("implement = "));
     }
 
-    #[test]
     fn timing_line_includes_nonzero_tool_calls_by_type_after_aggregate() {
         let json = json!({
             "wall_clock_ms": 1000,
@@ -192,7 +186,6 @@ mod tests {
         assert!(!line.contains("implement = "));
     }
 
-    #[test]
     fn timing_line_omits_agent_retry_backoff_even_when_present_in_json() {
         let json = json!({
             "wall_clock_ms": 532_200,
@@ -207,5 +200,16 @@ mod tests {
         assert!(line.contains("tool_calls = 254.2s"));
         assert!(!line.contains("implement = "));
         assert!(!line.contains("agent_retry_backoff"));
+    }
+
+    #[test]
+    fn merged_timing_line_wall_na_when_missing_from_json() {
+        timing_line_wall_na_when_missing_from_json();
+        timing_stdout_append_helpers_cover_branches();
+        timing_line_append_part_formats_key_value_pairs();
+        timing_line_includes_tool_calls_and_implement_bucket();
+        phase_display_name_returns_alias_or_key();
+        timing_line_includes_nonzero_tool_calls_by_type_after_aggregate();
+        timing_line_omits_agent_retry_backoff_even_when_present_in_json();
     }
 }

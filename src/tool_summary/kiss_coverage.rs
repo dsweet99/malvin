@@ -1,10 +1,8 @@
-#[test]
 fn kiss_cov_mod_private_record_helpers() {
     let _ = super::new_tool_call_record;
     let _ = super::merge_parsed_into_record;
 }
 
-#[test]
 fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     let _ = super::tool_summary_lines;
     let record = super::ToolCallRecord {
@@ -82,7 +80,6 @@ fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     let _ = super::parse_acp::acp_normalize_path;
 }
 
-#[test]
 fn kiss_cov_tool_summary_parse_acp_symbols_for_kiss() {
     let _ = super::parse_acp::acp_content_diff_paths;
     let _ = super::parse_acp::merge_content_diff_paths;
@@ -98,7 +95,6 @@ fn kiss_cov_tool_summary_parse_acp_symbols_for_kiss() {
     let _ = super::parse_acp::merge_paths_into_raw;
 }
 
-#[test]
 fn kiss_cov_format_first_non_empty_line_and_escape_quoted_behavioral() {
     assert_eq!(
         super::format::first_non_empty_line("  \n hello \n"),
@@ -108,7 +104,6 @@ fn kiss_cov_format_first_non_empty_line_and_escape_quoted_behavioral() {
     assert_eq!(super::format::escape_quoted(r#"a"b"#), r#"a\"b"#);
 }
 
-#[test]
 fn kiss_cov_tool_summary_format_symbols_for_kiss() {
     let _ = super::format::append_elapsed;
     let _ = super::format::append_start_title;
@@ -126,7 +121,6 @@ fn kiss_cov_tool_summary_format_symbols_for_kiss() {
     let _ = super::format::escape_quoted;
 }
 
-#[test]
 fn kiss_cov_tool_summary_human_symbols_for_kiss() {
     let _ = super::human_a_done::human_done_line;
     let _ = super::human_a_done::human_search_start;
@@ -149,14 +143,12 @@ fn kiss_cov_tool_summary_human_symbols_for_kiss() {
     let _ = super::human_a_done::human_edit_counts;
 }
 
-#[test]
 fn kiss_cov_classify_bash_comment_symbols_for_kiss() {
     let _ = super::classify_bash::tool_comment_log_prefix;
     let _ = super::classify_bash::TOOL_COMMENT_LOG_PREFIX_CHARS;
     let _: Option<super::classify_bash::ClassifiedToolLineInput> = None;
 }
 
-#[test]
 fn kiss_cov_tool_summary_human_b_detail_symbols_for_kiss() {
     let _ = super::human_b::read_output_path;
     let _ = super::human_b::human_edit_subject_path;
@@ -171,4 +163,16 @@ fn kiss_cov_tool_summary_human_b_detail_symbols_for_kiss() {
     let _ = super::ansi::ansi_style_tool_segment_running_or_path;
     let _ = super::ansi::ansi_style_path_tail;
     let _ = super::ansi::take_done_verb;
+}
+
+#[test]
+fn merged_kiss_cov_mod_private_record_helpers() {
+    kiss_cov_mod_private_record_helpers();
+    kiss_cov_tool_summary_core_symbols_for_kiss();
+    kiss_cov_tool_summary_parse_acp_symbols_for_kiss();
+    kiss_cov_format_first_non_empty_line_and_escape_quoted_behavioral();
+    kiss_cov_tool_summary_format_symbols_for_kiss();
+    kiss_cov_tool_summary_human_symbols_for_kiss();
+    kiss_cov_classify_bash_comment_symbols_for_kiss();
+    kiss_cov_tool_summary_human_b_detail_symbols_for_kiss();
 }

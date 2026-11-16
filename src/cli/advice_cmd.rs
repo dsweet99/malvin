@@ -110,7 +110,6 @@ mod tests {
     use std::fs;
     use std::path::Path;
 
-    #[test]
     fn doc_design_tag_prints_document_design() {
         let mut buf = Vec::new();
         print_advice_to_writer("doc_design", &mut buf).expect("print");
@@ -119,7 +118,6 @@ mod tests {
         assert!(s.contains("Make Structure Visible"));
     }
 
-    #[test]
     fn scholar_tag_prints_scholarly_advice() {
         let mut buf = Vec::new();
         print_advice_to_writer("scholar", &mut buf).expect("print");
@@ -128,7 +126,6 @@ mod tests {
         assert!(s.contains("Canonical structure"));
     }
 
-    #[test]
     fn report_tag_prints_report_advice() {
         let mut buf = Vec::new();
         print_advice_to_writer("report", &mut buf).expect("print");
@@ -137,7 +134,6 @@ mod tests {
         assert!(s.contains("complete sentences"));
     }
 
-    #[test]
     fn unknown_tag_errors() {
         let err = advice_text("nope").expect_err("unknown");
         assert!(err.contains("unknown"), "{err}");
@@ -147,7 +143,6 @@ mod tests {
         assert!(err.contains("facts"), "{err}");
     }
 
-    #[test]
     fn invalid_tag_shape_errors() {
         assert!(advice_text("Bad").is_err());
         assert!(advice_text("1abc").is_err());
@@ -156,7 +151,6 @@ mod tests {
         assert!(advice_text(&"a".repeat(33)).is_err());
     }
 
-    #[test]
     fn valid_tag_shape_accepted_for_lookup() {
         assert!(is_valid_advice_tag("design"));
         assert!(is_valid_advice_tag("doc_design"));
@@ -165,7 +159,6 @@ mod tests {
         assert!(is_valid_advice_tag(&"a".repeat(32)));
     }
 
-    #[test]
     fn advice_list_prints_tag_colon_description_lines() {
         let mut buf = Vec::new();
         print_advice_list_to_writer(&mut buf).expect("list");
@@ -193,7 +186,6 @@ mod tests {
         assert_eq!(lines.last(), Some(&""), "{s}");
     }
 
-    #[test]
     fn all_advice_descriptions_are_at_most_seven_words() {
         for entry in ADVICE_ENTRIES {
             let Some((base, _)) = entry.description.split_once(" [") else {
@@ -208,7 +200,6 @@ mod tests {
         }
     }
 
-    #[test]
     fn advice_descriptions_come_from_first_line_without_prefix() {
         for entry in ADVICE_ENTRIES {
             let content = entry.body;
@@ -234,7 +225,6 @@ mod tests {
         }
     }
 
-    #[test]
     fn every_advice_md_stem_is_registered_as_tag() {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/prompts/advice");
         let mut stems = HashSet::new();
@@ -264,5 +254,19 @@ mod tests {
         for entry in ADVICE_ENTRIES {
             assert!(stems.contains(entry.tag));
         }
+    }
+
+    #[test]
+    fn merged_doc_design_tag_prints_document_design() {
+        doc_design_tag_prints_document_design();
+        scholar_tag_prints_scholarly_advice();
+        report_tag_prints_report_advice();
+        unknown_tag_errors();
+        invalid_tag_shape_errors();
+        valid_tag_shape_accepted_for_lookup();
+        advice_list_prints_tag_colon_description_lines();
+        all_advice_descriptions_are_at_most_seven_words();
+        advice_descriptions_come_from_first_line_without_prefix();
+        every_advice_md_stem_is_registered_as_tag();
     }
 }

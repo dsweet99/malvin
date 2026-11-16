@@ -13,7 +13,6 @@ fn cfg(text: &str, mem: u64) -> Result<ModalConfig, String> {
     parse_modal_config(&text.parse::<toml::Value>().unwrap(), mem)
 }
 
-#[test]
 fn modal_config_defaults_to_8_gib_and_shrinks_the_remote_cap() {
     let c = cfg("mem_limit_gb = 16", 16).unwrap();
     assert_eq!(
@@ -26,7 +25,6 @@ fn modal_config_defaults_to_8_gib_and_shrinks_the_remote_cap() {
     assert_eq!(cfg("", 4).unwrap().remote_mem_limit_gb(), 4);
 }
 
-#[test]
 fn modal_config_reads_overrides_and_shrinks_the_remote_cap() {
     let text = "[modal]\ngpu = \"A100\"\nncpu = 4\nmem = 8\ntimeout = \"3h\"\nimage = \"python:3.12\"\nsetup = [\"RUN pip install x\"]";
     let c = cfg(text, 16).unwrap();
@@ -41,7 +39,6 @@ fn modal_config_reads_overrides_and_shrinks_the_remote_cap() {
     assert_eq!((c.gpu.as_deref(), c.ncpu, c.timeout_s), (None, 2, 45 * 60));
 }
 
-#[test]
 fn modal_config_rejects_bad_values() {
     assert!(
         cfg("[modal]\ntimeout = \"25h\"", 4)
@@ -96,7 +93,6 @@ fn modal_config_rejects_bad_values() {
     );
 }
 
-#[test]
 fn cli_suboptions_override_config_defaults() {
     let base = cfg("[modal]\ngpu = \"T4\"\nncpu = 8\ntimeout = 90", 4).unwrap();
     let keep = base.clone().with_options(&ModalOptions::default());
@@ -115,7 +111,6 @@ fn cli_suboptions_override_config_defaults() {
     );
 }
 
-#[test]
 fn remote_config_keeps_settings_and_sets_the_cap() {
     let root: toml::Value = "theme = \"dark\"\nmem_limit_gb = 16\n[modal]\nmem = \"8GiB\""
         .parse()
@@ -127,7 +122,6 @@ fn remote_config_keeps_settings_and_sets_the_cap() {
     assert_eq!(back["theme"].as_str(), Some("dark"));
 }
 
-#[test]
 fn read_config_root_treats_a_missing_file_as_empty() {
     let tmp = tempfile::tempdir().unwrap();
     assert!(
@@ -141,7 +135,6 @@ fn read_config_root_treats_a_missing_file_as_empty() {
     assert!(read_config_root(&tmp.path().join("bad.toml")).is_err());
 }
 
-#[test]
 fn image_name_changes_with_every_input() {
     let layers = vec![vec!["RUN a".to_string()]];
     let base = image_name("b", &layers, 1);
@@ -152,7 +145,6 @@ fn image_name_changes_with_every_input() {
     assert_ne!(base, image_name("b", &layers, 2));
 }
 
-#[test]
 fn image_spec_layers_toolchain_setup_and_source() {
     let tmp = tempfile::tempdir().unwrap();
     let bin = tmp.path().join("malvin");
@@ -182,7 +174,6 @@ fn image_spec_layers_toolchain_setup_and_source() {
     assert!(crates_io_layer("9.9.9")[1].contains("--version 9.9.9 --locked"));
 }
 
-#[test]
 fn base_follows_host_glibc_and_ubuntu_images_install_node() {
     assert_eq!(base_for_host_glibc(None), DEFAULT_BASE);
     assert_eq!(base_for_host_glibc(Some("2.41")), DEFAULT_BASE);
@@ -195,7 +186,6 @@ fn base_follows_host_glibc_and_ubuntu_images_install_node() {
     assert!(ubuntu[0].contains("xz-utils") && ubuntu[1].contains("nodejs.org/dist/v22.23.3"));
 }
 
-#[test]
 fn forwarded_env_keeps_only_set_provider_credentials() {
     let env = forwarded_env(|k| match k {
         "OPENAI_API_KEY" => Some("sk".to_string()),
@@ -225,6 +215,19 @@ fn forwarded_env_keeps_only_set_provider_credentials() {
 }
 
 #[test]
+fn merged_modal_config_defaults_to_8_gib_and_shrinks_the_remote_cap() {
+    modal_config_defaults_to_8_gib_and_shrinks_the_remote_cap();
+    modal_config_reads_overrides_and_shrinks_the_remote_cap();
+    modal_config_rejects_bad_values();
+    cli_suboptions_override_config_defaults();
+    remote_config_keeps_settings_and_sets_the_cap();
+    read_config_root_treats_a_missing_file_as_empty();
+    image_name_changes_with_every_input();
+    image_spec_layers_toolchain_setup_and_source();
+    base_follows_host_glibc_and_ubuntu_images_install_node();
+    forwarded_env_keeps_only_set_provider_credentials();
+}
+
 fn every_pi_provider_key_is_forwarded_to_the_sandbox() {
     let env = forwarded_env(|k| Some(format!("value-of-{k}")));
     for key in [
@@ -257,7 +260,6 @@ fn with_modal_home_and_pi_dir(body: impl FnOnce(&std::path::Path, &std::path::Pa
     );
 }
 
-#[test]
 fn pi_preflight_rejects_a_provider_without_credentials() {
     with_modal_home_and_pi_dir(|home, _| {
         crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
@@ -270,7 +272,6 @@ fn pi_preflight_rejects_a_provider_without_credentials() {
     });
 }
 
-#[test]
 fn pi_preflight_checks_every_pi_model_in_the_list() {
     with_modal_home_and_pi_dir(|home, _| {
         crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
@@ -283,7 +284,6 @@ fn pi_preflight_checks_every_pi_model_in_the_list() {
     });
 }
 
-#[test]
 fn pi_preflight_accepts_each_local_credential_source() {
     with_modal_home_and_pi_dir(|home, pi_dir| {
         crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
@@ -302,7 +302,6 @@ fn pi_preflight_accepts_each_local_credential_source() {
     });
 }
 
-#[test]
 fn file_logins_depend_on_the_backend() {
     let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
@@ -329,7 +328,6 @@ fn file_logins_depend_on_the_backend() {
     });
 }
 
-#[test]
 fn preflight_checks_each_backend_credential() {
     let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
@@ -351,7 +349,6 @@ fn preflight_checks_each_backend_credential() {
     });
 }
 
-#[test]
 fn backend_setup_rejects_unparseable_models() {
     let tmp = tempfile::tempdir().unwrap();
     std::fs::write(tmp.path().join(".modal.toml"), "").unwrap();
@@ -363,7 +360,6 @@ fn backend_setup_rejects_unparseable_models() {
     );
 }
 
-#[test]
 fn preflight_names_missing_modal_credentials() {
     let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
@@ -387,4 +383,16 @@ fn preflight_names_missing_modal_credentials() {
             });
         });
     });
+}
+
+#[test]
+fn merged_every_pi_provider_key_is_forwarded_to_the_sandbox() {
+    every_pi_provider_key_is_forwarded_to_the_sandbox();
+    pi_preflight_rejects_a_provider_without_credentials();
+    pi_preflight_checks_every_pi_model_in_the_list();
+    pi_preflight_accepts_each_local_credential_source();
+    file_logins_depend_on_the_backend();
+    preflight_checks_each_backend_credential();
+    backend_setup_rejects_unparseable_models();
+    preflight_names_missing_modal_credentials();
 }

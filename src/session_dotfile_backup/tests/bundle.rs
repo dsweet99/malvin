@@ -29,7 +29,6 @@ fn assert_workspace_restored(work: &Path) {
     assert_eq!(std::fs::read_to_string(&gi).unwrap(), "g\n");
 }
 
-#[test]
 fn session_snapshot_bundle_round_trip() {
     with_isolated_home(|work| {
         seed_workspace(work);
@@ -43,7 +42,6 @@ fn session_snapshot_bundle_round_trip() {
     });
 }
 
-#[test]
 fn restore_excluding_malvin_checks_leaves_checks_unchanged() {
     with_isolated_home(|work| {
         seed_workspace(work);
@@ -63,7 +61,6 @@ fn restore_excluding_malvin_checks_leaves_checks_unchanged() {
     });
 }
 
-#[test]
 fn restore_session_dotfiles_strips_legacy_root_checks_file() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();
@@ -73,7 +70,6 @@ fn restore_session_dotfiles_strips_legacy_root_checks_file() {
     assert!(!work.join(".malvin_checks").exists());
 }
 
-#[test]
 fn vision_snapshot_round_trip() {
     with_isolated_home(|work| {
         seed_workspace(work);
@@ -86,7 +82,6 @@ fn vision_snapshot_round_trip() {
     });
 }
 
-#[test]
 fn vision_missing_at_snapshot_removes_agent_created_file() {
     with_isolated_home(|work| {
         std::fs::create_dir_all(work).unwrap();
@@ -98,7 +93,6 @@ fn vision_missing_at_snapshot_removes_agent_created_file() {
     });
 }
 
-#[test]
 fn gitignore_snapshot_round_trip() {
     with_isolated_home(|work| {
         seed_workspace(work);
@@ -110,7 +104,6 @@ fn gitignore_snapshot_round_trip() {
     });
 }
 
-#[test]
 fn gitignore_missing_at_snapshot_removes_agent_created_file() {
     with_isolated_home(|work| {
         std::fs::create_dir_all(work).unwrap();
@@ -122,7 +115,6 @@ fn gitignore_missing_at_snapshot_removes_agent_created_file() {
     });
 }
 
-#[test]
 fn workspace_malvin_config_is_not_snapshotted_or_restored() {
     with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).unwrap();
@@ -138,7 +130,6 @@ fn workspace_malvin_config_is_not_snapshotted_or_restored() {
     });
 }
 
-#[test]
 fn gate_restore_restore_excludes_malvin_checks() {
     with_isolated_home(|work| {
         seed_workspace(work);
@@ -154,7 +145,6 @@ fn gate_restore_restore_excludes_malvin_checks() {
     });
 }
 
-#[test]
 fn home_config_survives_session_restore() {
     with_isolated_home(|work| {
         seed_workspace(work);
@@ -166,4 +156,18 @@ fn home_config_survives_session_restore() {
             "user-edited\n"
         );
     });
+}
+
+#[test]
+fn merged_session_snapshot_bundle_round_trip() {
+    session_snapshot_bundle_round_trip();
+    restore_excluding_malvin_checks_leaves_checks_unchanged();
+    restore_session_dotfiles_strips_legacy_root_checks_file();
+    vision_snapshot_round_trip();
+    vision_missing_at_snapshot_removes_agent_created_file();
+    gitignore_snapshot_round_trip();
+    gitignore_missing_at_snapshot_removes_agent_created_file();
+    workspace_malvin_config_is_not_snapshotted_or_restored();
+    gate_restore_restore_excludes_malvin_checks();
+    home_config_survives_session_restore();
 }

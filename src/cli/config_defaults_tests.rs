@@ -37,7 +37,6 @@ pub(super) fn with_seeded_agent_config(f: impl FnOnce()) {
     });
 }
 
-#[test]
 fn write_agent_config_adds_agent_section_to_partial_file() {
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let path = malvin::malvin_config_path(work);
@@ -50,7 +49,6 @@ fn write_agent_config_adds_agent_section_to_partial_file() {
     });
 }
 
-#[test]
 fn flag_and_shared_helpers_detect_and_apply_defaults() {
     let matches = Cli::command().get_matches_from(["malvin", "admin", "models"]);
     assert!(!global_flag_from_command_line(&matches, "model"));
@@ -80,7 +78,6 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     assert_eq!(shared.max_acp_retries, 6);
 }
 
-#[test]
 fn apply_workspace_config_defaults_overrides_unset_flags_for_gates_only() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from(["malvin", "-g"]);
@@ -92,7 +89,6 @@ fn apply_workspace_config_defaults_overrides_unset_flags_for_gates_only() {
     });
 }
 
-#[test]
 fn apply_workspace_config_defaults_respects_explicit_cli_flags_for_gates_only() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from([
@@ -110,7 +106,6 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags_for_gates_only() 
     });
 }
 
-#[test]
 fn apply_workspace_config_defaults_for_admin_command() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from(["malvin", "admin", "models"]);
@@ -121,7 +116,6 @@ fn apply_workspace_config_defaults_for_admin_command() {
     });
 }
 
-#[test]
 fn apply_workspace_config_defaults_for_request_does_not_create_config() {
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
@@ -136,7 +130,6 @@ fn apply_workspace_config_defaults_for_request_does_not_create_config() {
     });
 }
 
-#[test]
 fn parse_cli_with_config_defaults_gates_only() {
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
@@ -149,7 +142,6 @@ fn parse_cli_with_config_defaults_gates_only() {
     });
 }
 
-#[test]
 fn model_list_config_and_cli_override_preserve_order() {
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let path = malvin::malvin_config_path(work);
@@ -168,4 +160,16 @@ fn model_list_config_and_cli_override_preserve_order() {
                 .unwrap();
         assert_eq!(list.shared.model.cli_value(), "codex:gpt-5.6,cursor:auto");
     });
+}
+
+#[test]
+fn merged_write_agent_config_adds_agent_section_to_partial_file() {
+    write_agent_config_adds_agent_section_to_partial_file();
+    flag_and_shared_helpers_detect_and_apply_defaults();
+    apply_workspace_config_defaults_overrides_unset_flags_for_gates_only();
+    apply_workspace_config_defaults_respects_explicit_cli_flags_for_gates_only();
+    apply_workspace_config_defaults_for_admin_command();
+    apply_workspace_config_defaults_for_request_does_not_create_config();
+    parse_cli_with_config_defaults_gates_only();
+    model_list_config_and_cli_override_preserve_order();
 }

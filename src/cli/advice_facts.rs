@@ -5,8 +5,9 @@ use std::path::{Path, PathBuf};
 pub(crate) const FACTS_TAG: &str = "facts";
 const FACTS_DESCRIPTION: &str = "Time-saving facts you've discovered";
 const FACTS_FILE: &str = "facts.jsonl";
+const NO_FACTS_MESSAGE: &str = "No facts saved yet.";
 
-fn facts_path() -> PathBuf {
+pub(crate) fn facts_path() -> PathBuf {
     crate::malvin_user_home_root().join(FACTS_FILE)
 }
 
@@ -52,12 +53,38 @@ pub(crate) fn facts_list_line() -> String {
     facts_list_line_at(&facts_path())
 }
 
+fn one_line(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn render_fact_line(line: &str) -> String {
+    let parsed: Option<serde_json::Value> = serde_json::from_str(line).ok();
+    let field = |key: &str| {
+        parsed
+            .as_ref()
+            .and_then(|v| v.get(key))
+            .and_then(serde_json::Value::as_str)
+    };
+    match (field("fact_id"), field("fact")) {
+        (Some(id), Some(fact)) => format!("{id}: {}", one_line(fact)),
+        (None, Some(fact)) => one_line(fact),
+        _ => one_line(line),
+    }
+}
+
 fn write_facts_at(path: &Path, mut out: impl Write) -> Result<(), String> {
-    let file = File::open(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
-    let last = for_each_chunk(file, |chunk| out.write_all(chunk))
-        .map_err(|e| format!("cannot dump {}: {e}", path.display()))?;
-    if last != b'\n' {
-        out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(format!("cannot read {}: {e}", path.display())),
+    };
+    let mut any = false;
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        any = true;
+        writeln!(out, "{}", render_fact_line(line)).map_err(|e| format!("stdout: {e}"))?;
+    }
+    if !any {
+        writeln!(out, "{NO_FACTS_MESSAGE}").map_err(|e| format!("stdout: {e}"))?;
     }
     Ok(())
 }
@@ -99,13 +126,28 @@ mod tests {
     }
 
     #[test]
-    fn write_facts_dumps_file_and_errors_when_missing() {
-        let (_dir, path) = temp_facts(b"{\"id\":1}\n{\"id\":2}");
+    fn write_facts_renders_one_line_per_fact_and_reports_none_when_missing_or_empty() {
+        let (_dir, path) = temp_facts(
+            b"{\"fact_id\":\"a\",\"fact\":\"one\\ntwo  three\",\"symptoms\":[\"s\"]}\n\nnot json\n{\"fact_id\":\"b\",\"fact\":\"four\"}",
+        );
         let mut buf = Vec::new();
-        write_facts_at(&path, &mut buf).expect("dump");
-        assert_eq!(buf, b"{\"id\":1}\n{\"id\":2}\n");
+        write_facts_at(&path, &mut buf).expect("render");
+        assert_eq!(
+            String::from_utf8(buf).expect("utf8"),
+            "a: one two three\nnot json\nb: four\n"
+        );
         let missing = path.with_file_name("absent.jsonl");
-        let err = write_facts_at(&missing, Vec::new()).expect_err("missing");
-        assert!(err.contains("absent.jsonl"), "{err}");
+        let mut buf = Vec::new();
+        write_facts_at(&missing, &mut buf).expect("missing is ok");
+        assert_eq!(buf, b"No facts saved yet.\n");
+        for content in [&b""[..], &b"\n  \n"[..]] {
+            let (_d, p) = temp_facts(content);
+            let mut buf = Vec::new();
+            write_facts_at(&p, &mut buf).expect("empty is ok");
+            assert_eq!(buf, b"No facts saved yet.\n");
+        }
+        let dir = tempfile::tempdir().expect("tempdir");
+        let err = write_facts_at(dir.path(), Vec::new()).expect_err("directory");
+        assert!(err.contains("cannot read"), "{err}");
     }
 }

@@ -1,3 +1,4 @@
+mod add_fact;
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
 mod advice_facts;
@@ -13,9 +14,11 @@ pub(crate) mod entrypoint;
 mod entrypoint_checks;
 pub(crate) mod error_run_log;
 pub(crate) mod exit;
+mod facts_cmd;
 pub(crate) mod init_flow;
 pub(crate) mod malvin_workflow;
 pub(crate) mod ml_loop;
+pub(crate) mod model_segments;
 pub(crate) mod models_cmd;
 pub(crate) mod refresh_notice;
 pub(crate) mod remotes_cmd;
@@ -135,6 +138,8 @@ pub(crate) mod router_flow_acp;
 pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 pub(super) mod router_flow_coder_prompts;
+#[path = "router_flow_fact_agent.rs"]
+pub(crate) mod router_flow_fact_agent;
 #[path = "router_flow_loop.rs"]
 pub(crate) mod router_flow_loop;
 #[path = "router_flow_loop_decide.rs"]

@@ -55,7 +55,6 @@ fn tar_names(tar: &Path) -> Vec<String> {
     names
 }
 
-#[test]
 fn pack_workspace_selects_tracked_and_unignored_files() {
     let tmp = repo();
     let list = selected_files(tmp.path()).unwrap();
@@ -110,14 +109,12 @@ fn pack_workspace_keeps_ignored_files_out_when_a_name_is_not_utf8() {
     assert!(!names.iter().any(|n| n.contains(".git/")), "{names:?}");
 }
 
-#[test]
 fn pack_workspace_refuses_a_work_tree_git_cannot_list() {
     let tmp = repo_with_ignored_secret();
     fs::write(tmp.path().join(".git/index"), "not an index").unwrap();
     assert_refused_without_archive(tmp.path(), "could not list");
 }
 
-#[test]
 fn upload_is_refused_when_git_metadata_exists_but_git_cannot_read_it() {
     use super::workspace::check_upload_size;
     let tmp = tempfile::tempdir().unwrap();
@@ -129,7 +126,6 @@ fn upload_is_refused_when_git_metadata_exists_but_git_cannot_read_it() {
     assert!(err.contains("git could not read"), "{err}");
 }
 
-#[test]
 fn pack_workspace_without_git_skips_heavy_dirs() {
     let tmp = tempfile::tempdir().unwrap();
     fs::create_dir_all(tmp.path().join("target")).unwrap();
@@ -146,7 +142,6 @@ fn pack_workspace_without_git_skips_heavy_dirs() {
     assert!(!names.iter().any(|n| n.contains("target")), "{names:?}");
 }
 
-#[test]
 fn recent_run_dirs_are_newest_first_and_packable() {
     let tmp = tempfile::tempdir().unwrap();
     for name in [
@@ -186,7 +181,6 @@ fn patch_from(dir: &Path, edit: impl Fn(&Path)) -> Vec<u8> {
     out.stdout
 }
 
-#[test]
 fn apply_patch_applies_keeps_or_reports_empty() {
     let tmp = repo();
     let d = tmp.path();
@@ -216,7 +210,6 @@ fn apply_patch_applies_keeps_or_reports_empty() {
     assert!(describe_outcome(&PatchOutcome::Merged).contains("3-way"));
 }
 
-#[test]
 fn apply_patch_outside_git_keeps_the_patch() {
     let plain = tempfile::tempdir().unwrap();
     let file = plain.path().join("p.patch");
@@ -233,7 +226,6 @@ fn fake_bridge(script: &str) -> ModalBridge {
     ModalBridge::spawn(cmd).unwrap()
 }
 
-#[test]
 fn bridge_call_relays_events_and_maps_replies() {
     let mut ok = fake_bridge(
         r#"read l; echo '{"id":1,"event":"log","data":"hi"}'; echo '{"id":1,"ok":true,"v":3}'"#,
@@ -252,7 +244,6 @@ fn bridge_call_relays_events_and_maps_replies() {
     assert!(junk.call("w", json!({})).unwrap_err().contains("bad line"));
 }
 
-#[test]
 fn bridge_tags_bare_remote_lines_across_chunks() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
@@ -268,7 +259,6 @@ fn bridge_tags_bare_remote_lines_across_chunks() {
     assert_eq!(out, "r|\nr|added 11 packages in 3s\nr|tail");
 }
 
-#[test]
 fn bridge_relays_bare_remote_stdout_as_dm_body_in_do_mode() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
@@ -296,6 +286,20 @@ fn bridge_relays_bare_remote_stdout_as_dm_body_in_do_mode() {
         err.is_empty(),
         "quiet --do must not print status lines: {err:?}"
     );
+}
+
+#[test]
+fn merged_pack_workspace_selects_tracked_and_unignored_files() {
+    pack_workspace_selects_tracked_and_unignored_files();
+    pack_workspace_refuses_a_work_tree_git_cannot_list();
+    upload_is_refused_when_git_metadata_exists_but_git_cannot_read_it();
+    pack_workspace_without_git_skips_heavy_dirs();
+    recent_run_dirs_are_newest_first_and_packable();
+    apply_patch_applies_keeps_or_reports_empty();
+    apply_patch_outside_git_keeps_the_patch();
+    bridge_call_relays_events_and_maps_replies();
+    bridge_tags_bare_remote_lines_across_chunks();
+    bridge_relays_bare_remote_stdout_as_dm_body_in_do_mode();
 }
 
 #[test]

@@ -3,7 +3,6 @@ use super::backend_error_tracker::{
     format_backend_consecutive_error_message,
 };
 
-#[test]
 fn tracker_starts_with_zero_count_and_no_error() {
     let tracker = BackendErrorTracker::default();
     assert_eq!(tracker.consecutive_count(), 0);
@@ -11,7 +10,6 @@ fn tracker_starts_with_zero_count_and_no_error() {
     assert!(!tracker.should_stop_and_exit());
 }
 
-#[test]
 fn tracker_increments_for_same_error_and_triggers_at_three() {
     let mut tracker = BackendErrorTracker::new();
     assert!(!tracker.record_error("timeout"));
@@ -28,7 +26,6 @@ fn tracker_increments_for_same_error_and_triggers_at_three() {
     assert_eq!(MAX_CONSECUTIVE_SAME_BACKEND_ERRORS, 3);
 }
 
-#[test]
 fn tracker_resets_counter_on_different_error() {
     let mut tracker = BackendErrorTracker::new();
     assert!(!tracker.record_error("error_a"));
@@ -48,7 +45,6 @@ fn tracker_resets_counter_on_different_error() {
     assert!(tracker.should_stop_and_exit());
 }
 
-#[test]
 fn tracker_resets_counter_on_success() {
     let mut tracker = BackendErrorTracker::new();
     assert!(!tracker.record_error("failure"));
@@ -64,7 +60,6 @@ fn tracker_resets_counter_on_success() {
     assert_eq!(tracker.consecutive_count(), 1);
 }
 
-#[test]
 fn tracker_treats_trimmed_whitespace_variation_as_same_error() {
     let mut tracker = BackendErrorTracker::new();
     assert!(!tracker.record_error("internal error\n"));
@@ -76,7 +71,6 @@ fn tracker_treats_trimmed_whitespace_variation_as_same_error() {
     assert!(tracker.should_stop_and_exit());
 }
 
-#[test]
 fn tracker_restarts_streak_when_same_error_returns_after_reset_window() {
     use super::backend_error_tracker::SAME_BACKEND_ERROR_STREAK_RESET;
     use std::time::Duration;
@@ -95,7 +89,6 @@ fn tracker_restarts_streak_when_same_error_returns_after_reset_window() {
     assert!(tracker.should_stop_and_exit());
 }
 
-#[test]
 fn tracker_keeps_streak_when_each_gap_is_within_reset_window() {
     use super::backend_error_tracker::SAME_BACKEND_ERROR_STREAK_RESET;
     let mut tracker = BackendErrorTracker::new();
@@ -106,7 +99,6 @@ fn tracker_keeps_streak_when_each_gap_is_within_reset_window() {
     assert_eq!(tracker.consecutive_count(), 3);
 }
 
-#[test]
 fn format_backend_consecutive_error_message_contains_details() {
     let msg = format_backend_consecutive_error_message("cursor", "connection lost", 3);
     assert!(msg.contains("cursor backend error repeated 3 times"));
@@ -114,7 +106,6 @@ fn format_backend_consecutive_error_message_contains_details() {
     assert!(msg.contains("connection lost"));
 }
 
-#[test]
 fn config_zero_is_one_try_for_the_client_and_the_tracker() {
     use super::backend_error_tracker::AcpRetryCount;
     let retries = AcpRetryCount::at_least_one(0);
@@ -134,7 +125,6 @@ fn config_zero_is_one_try_for_the_client_and_the_tracker() {
     assert_eq!(client.backend_error_tracker().max_consecutive(), 1);
 }
 
-#[test]
 fn tracker_respects_custom_max_consecutive() {
     let mut tracker = BackendErrorTracker::with_limit(
         super::backend_error_tracker::AcpRetryCount::at_least_one(2).as_consecutive_limit(),
@@ -145,6 +135,20 @@ fn tracker_respects_custom_max_consecutive() {
     assert!(tracker.record_error("timeout"));
     assert_eq!(tracker.consecutive_count(), 2);
     assert!(tracker.should_stop_and_exit());
+}
+
+#[test]
+fn merged_tracker_starts_with_zero_count_and_no_error() {
+    tracker_starts_with_zero_count_and_no_error();
+    tracker_increments_for_same_error_and_triggers_at_three();
+    tracker_resets_counter_on_different_error();
+    tracker_resets_counter_on_success();
+    tracker_treats_trimmed_whitespace_variation_as_same_error();
+    tracker_restarts_streak_when_same_error_returns_after_reset_window();
+    tracker_keeps_streak_when_each_gap_is_within_reset_window();
+    format_backend_consecutive_error_message_contains_details();
+    config_zero_is_one_try_for_the_client_and_the_tracker();
+    tracker_respects_custom_max_consecutive();
 }
 
 #[tokio::test]

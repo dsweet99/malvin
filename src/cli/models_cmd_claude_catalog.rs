@@ -10,10 +10,12 @@ impl ModelCatalog for ClaudeCatalog {
     }
 
     fn list_display_models(&self) -> ModelListing {
-        ModelListing::rows(vec![
-            "claude:sonnet\tClaude Sonnet effort=low|medium|high|xhigh|max".into(),
-            "claude:opus\tClaude Opus effort=low|medium|high|xhigh|max fast=true|false".into(),
-            "claude:haiku\tClaude Haiku effort=low|medium|high|xhigh|max".into(),
-        ])
+        let prefix = self.prefix();
+        ModelListing::rows(
+            malvin::backends::claude_sdk::models_list::list_claude_display_models()
+                .into_iter()
+                .map(|(id, detail)| format!("{prefix}{id}\t{detail}"))
+                .collect(),
+        )
     }
 }
