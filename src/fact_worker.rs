@@ -17,7 +17,7 @@ pub async fn run(models: &ModelList, artifacts: &RunArtifacts, prompt: &str) -> 
         .map_err(|e| format!("cannot write {}: {e}", prompt_path.display()))?;
     let mut child = worker_command(models, artifacts, &prompt_path, &log_path)?
         .spawn()
-        .map_err(|e| format!("cannot start fact agent worker: {e}"))?;
+        .map_err(|e| format!("cannot start fact agent worker: {e} ({})", spawn_context(artifacts)))?;
     let _stdin = child.stdin.take();
     let status = child.wait().await.map_err(|e| e.to_string())?;
     if status.success() {
@@ -33,7 +33,7 @@ fn worker_command(
     prompt_path: &Path,
     log_path: &Path,
 ) -> Result<tokio::process::Command, String> {
-    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let exe = worker_exe()?;
     let log = open_log(log_path)?;
     let mut command = tokio::process::Command::new(exe);
     command
@@ -49,6 +49,28 @@ fn worker_command(
     crate::herdr::strip_herdr_env_tokio(&mut command);
     Ok(command)
 }
+
+fn strip_deleted_suffix(exe: PathBuf) -> PathBuf {
+    exe.to_str()
+        .and_then(|s| s.strip_suffix(" (deleted)"))
+        .map(PathBuf::from)
+        .unwrap_or(exe)
+}
+
+fn worker_exe() -> Result<PathBuf, String> {
+    std::env::current_exe()
+        .map(strip_deleted_suffix)
+        .map_err(|e| e.to_string())
+}
+
+fn spawn_context(artifacts: &RunArtifacts) -> String {
+    format!(
+        "exe={:?}, cwd={}",
+        worker_exe().ok(),
+        artifacts.work_dir.display()
+    )
+}
+
 fn open_log(log_path: &Path) -> Result<std::fs::File, String> {
     std::fs::OpenOptions::new()
         .create(true)

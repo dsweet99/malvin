@@ -1,6 +1,7 @@
-use super::{WORKER_ARG, worker_args, worker_command};
+use super::{WORKER_ARG, strip_deleted_suffix, worker_args, worker_command};
 use crate::artifacts::RunArtifacts;
 use std::ffi::OsString;
+use std::path::PathBuf;
 
 fn os(args: &[&str]) -> impl Iterator<Item = OsString> {
     args.iter()
@@ -31,4 +32,12 @@ fn worker_args_parse_and_command_round_trip() {
     assert_eq!(command.as_std().get_current_dir(), Some(dir.path()));
     let parsed = worker_args(command.as_std().get_args().map(OsString::from));
     assert_eq!(parsed, Some(Ok((prompt, models.cli_value()))));
+    assert_eq!(
+        strip_deleted_suffix(PathBuf::from("/a/malvin (deleted)")),
+        PathBuf::from("/a/malvin")
+    );
+    assert_eq!(
+        strip_deleted_suffix(PathBuf::from("/a/malvin")),
+        PathBuf::from("/a/malvin")
+    );
 }

@@ -23,7 +23,9 @@ fn normalized_agent_text(message: &str) -> String {
 }
 
 fn text_has_usage_words(text: &str) -> bool {
-    text.contains("usage limit") || text.contains("you're out of usage")
+    text.contains("usage limit")
+        || text.contains("session limit")
+        || text.contains("you're out of usage")
 }
 
 fn text_has_usage_code(text: &str) -> bool {
@@ -194,6 +196,7 @@ mod tests {
             "out of credits",
             "OpenRouter billing/credit failure",
             "You've hit your usage limit",
+            "You've hit your session limit · resets 7:10pm (America/New_York)",
             "Usage limit exceeded",
             "Your usage limit has been reached",
             "You\u{2019}re out of usage",
@@ -243,6 +246,10 @@ mod tests {
     fn account_denial_names_the_payment_kind() {
         assert_eq!(
             account_denial("Usage limit exceeded"),
+            Some(AccountDenial::UsageLimit)
+        );
+        assert_eq!(
+            account_denial("You've hit your session limit · resets 7:10pm (America/New_York)"),
             Some(AccountDenial::UsageLimit)
         );
         assert_eq!(

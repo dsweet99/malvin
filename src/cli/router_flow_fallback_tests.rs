@@ -180,6 +180,9 @@ fn other_failures_and_single_model_do_not_fallback() {
     ));
     assert!(should_fallback("You're out of usage"));
     assert!(should_fallback("You've hit your usage limit"));
+    assert!(should_fallback(
+        "You've hit your session limit · resets 7:10pm (America/New_York)"
+    ));
     assert!(should_fallback("Upgrade your plan to continue"));
 }
 
