@@ -50,6 +50,24 @@ fn suboptions_parse_in_any_order_and_each_is_optional() {
 }
 
 fn suboptions_reject_unknown_duplicate_and_malformed_items() {
+    for bad in [
+        "+8",
+        "-1",
+        "0",
+        "",
+        "g",
+        "8gg",
+        "1.5G",
+        "8 G",
+        "18446744073709551615",
+        "1048577",
+    ] {
+        assert!(parse_memory(bad).is_err(), "{bad}");
+        assert!(parse_modal_spec(&format!("mem={bad}")).is_err(), "{bad}");
+    }
+    for (ok, n) in [("8", 8), ("16G", 16), ("32GiB", 32), (" 4gb ", 4)] {
+        assert_eq!(parse_memory(ok), Ok(n));
+    }
     assert!(
         parse_modal_spec("cpu=2")
             .unwrap_err()

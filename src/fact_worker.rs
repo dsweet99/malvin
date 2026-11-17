@@ -17,7 +17,12 @@ pub async fn run(models: &ModelList, artifacts: &RunArtifacts, prompt: &str) -> 
         .map_err(|e| format!("cannot write {}: {e}", prompt_path.display()))?;
     let mut child = worker_command(models, artifacts, &prompt_path, &log_path)?
         .spawn()
-        .map_err(|e| format!("cannot start fact agent worker: {e} ({})", spawn_context(artifacts)))?;
+        .map_err(|e| {
+            format!(
+                "cannot start fact agent worker: {e} ({})",
+                spawn_context(artifacts)
+            )
+        })?;
     let _stdin = child.stdin.take();
     let status = child.wait().await.map_err(|e| e.to_string())?;
     if status.success() {

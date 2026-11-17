@@ -6,6 +6,7 @@ pub use remote_args::{expand_remote_alias, extract_modal_options, parse_remote_v
 pub const DEFAULT_NCPU: u64 = 1;
 pub const DEFAULT_TIMEOUT_S: u64 = 30 * 60;
 pub const DEFAULT_MEMORY_GB: u64 = 8;
+const MAX_MEMORY_GB: u64 = 1 << 20;
 pub const MAX_TIMEOUT_S: u64 = 24 * 3600;
 const KEYS: &str = "gpu, ncpu, mem, timeout";
 
@@ -109,8 +110,9 @@ pub fn parse_memory(raw: &str) -> Result<u64, String> {
         .iter()
         .find_map(|unit| lower.strip_suffix(unit))
         .unwrap_or(&lower);
+    let all_digits = !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit());
     match digits.parse::<u64>() {
-        Ok(n) if n > 0 => Ok(n),
+        Ok(n) if all_digits && n > 0 && n <= MAX_MEMORY_GB => Ok(n),
         _ => Err(format!(
             "mem `{raw}` is not valid: use a positive whole number of GiB, such as `8` or `16G`"
         )),
