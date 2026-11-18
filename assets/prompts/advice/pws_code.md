@@ -34,4 +34,6 @@ description: Problems Worth Solving for coding / SWE
 10. **Speculative abstraction**
     An abstraction, indirection, configuration mechanism, or extension point exists primarily to support hypothetical future variation rather than variation that the codebase actually needs.
 
-
+11. **When in Rome**
+    Performing tasks in a style inconsistent with the rest of the codebase, such as performing tasks directly when there exists code for the task in the codebase; using tooling or a method that is different from what is used in the rest of the codebase. Examples: args parsing, date/time manipulation, http requests, async/sync/threads/processes
+    
