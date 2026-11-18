@@ -118,7 +118,7 @@ pub struct RouterOpts {
     /// Print nothing (`-qq` is the short form)
     #[arg(long = "very-quiet", default_value_t = false, help = VERY_QUIET_HELPTEXT)]
     pub very_quiet: bool,
-    /// Run workspace quality gates; treat failures as loop or exit criteria
+    /// Run workspace quality gates; treat failures as loop or exit criteria. May be repeated; each use applies to the prompts that follow it
     #[arg(short = 'g', long, default_value_t = false)]
     pub gates: bool,
     /// Outer-loop budget for the default route and gates-only runs
