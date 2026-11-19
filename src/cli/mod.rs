@@ -139,6 +139,8 @@ pub(crate) mod router_flow_acp;
 pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 pub(super) mod router_flow_coder_prompts;
+#[path = "fact_agent_throttle.rs"]
+pub(crate) mod fact_agent_throttle;
 #[path = "router_flow_fact_agent.rs"]
 pub(crate) mod router_flow_fact_agent;
 #[path = "router_flow_loop.rs"]

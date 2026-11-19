@@ -6,6 +6,7 @@ use malvin::slow_task_watch::{
 };
 use std::time::Duration;
 
+use super::fact_agent_throttle;
 use super::router_flow_prompt_turns::{RouterHeaderPromptInput, build_router_header_prompt};
 
 pub(crate) struct FactAgentSpec<'a> {
@@ -66,6 +67,13 @@ pub(crate) fn start_fact_agent_watch_with(
     let models = spec.models.clone();
     let artifacts = spec.artifacts.clone();
     start(timing, flag.clone(), move || {
+        let claimed = fact_agent_throttle::try_claim(
+            &fact_agent_throttle::record_path(),
+            malvin::clock::unix_now_secs(),
+        );
+        if !claimed {
+            return;
+        }
         tokio::spawn(async move {
             let model = models.first().canonical();
             let result = match fact_agent_prompt(&store, &artifacts, &model) {
