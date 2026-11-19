@@ -156,8 +156,6 @@ fn notify_run_end_inner() {
         snap.agent_session_id.as_deref(),
         next_seq(),
     );
-    let clear_meta = clear_metadata_teardown(&snap.pane_id, next_seq());
-    let release = release_agent(&snap.pane_id, next_seq());
     let idle_ok = send_end_retry(
         &snap.socket_path,
         snap.run_dir.as_deref(),
@@ -168,14 +166,16 @@ fn notify_run_end_inner() {
         &snap.socket_path,
         snap.run_dir.as_deref(),
         "end-clear",
-        &clear_meta,
+        &clear_metadata_teardown(&snap.pane_id, next_seq()),
     );
-    let release_ok = send_end_retry(
-        &snap.socket_path,
-        snap.run_dir.as_deref(),
-        "end-release",
-        &release,
-    );
+    let release_ok =
+        (idle_ok && clear_ok && super::linger::spawn_linger(&snap.socket_path, &snap.pane_id))
+            || send_end_retry(
+                &snap.socket_path,
+                snap.run_dir.as_deref(),
+                "end-release",
+                &release_agent(&snap.pane_id, next_seq()),
+            );
     if idle_ok && clear_ok && release_ok {
         clear_session();
     }

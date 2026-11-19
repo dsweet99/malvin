@@ -3,7 +3,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-const FIELDS: &str = "fact_id, fact, symptoms";
+use super::tag_list::limit_words;
+use crate::desc_limit::MAX_DESC_WORDS;
+
+const FIELDS: &str = "fact_id, description, fact, symptoms";
 const ID_MAX: usize = 64;
 const FACT_MAX: usize = 4000;
 const SYMPTOM_MAX: usize = 500;
@@ -13,6 +16,7 @@ const LOCK_WAIT: Duration = Duration::from_secs(2);
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 struct NewFact {
     fact_id: String,
+    description: String,
     fact: String,
     symptoms: Vec<String>,
 }
@@ -52,8 +56,19 @@ fn clean_id(raw: &str) -> Result<String, String> {
     Ok(id.to_string())
 }
 
+fn clean_description(raw: &str) -> Result<String, String> {
+    let value = clean_text("description", raw, FACT_MAX)?;
+    let words = value.split_whitespace().count();
+    if words > MAX_DESC_WORDS {
+        return Err(format!(
+            "description must be at most {MAX_DESC_WORDS} words (got {words})"
+        ));
+    }
+    Ok(value)
+}
+
 fn parse_args(args: &[String]) -> Result<NewFact, String> {
-    let (mut id, mut fact, mut symptoms) = (None, None, Vec::new());
+    let (mut id, mut fact, mut description, mut symptoms) = (None, None, None, Vec::new());
     for arg in args {
         let (key, value) = arg.split_once('=').ok_or_else(|| {
             format!("argument `{arg}` is not field_name=value (fields: {FIELDS})")
@@ -61,6 +76,7 @@ fn parse_args(args: &[String]) -> Result<NewFact, String> {
         let slot = match key.trim() {
             "fact_id" => &mut id,
             "fact" => &mut fact,
+            "description" => &mut description,
             "symptoms" | "symptom" => {
                 symptoms.push(clean_text("symptoms", value, SYMPTOM_MAX)?);
                 continue;
@@ -76,9 +92,15 @@ fn parse_args(args: &[String]) -> Result<NewFact, String> {
     }
     let id = id.ok_or("missing required field `fact_id`")?;
     let fact = fact.ok_or("missing required field `fact`")?;
+    let fact = clean_text("fact", fact, FACT_MAX)?;
+    let description = match description {
+        Some(raw) => clean_description(raw)?,
+        None => limit_words(&fact),
+    };
     Ok(NewFact {
         fact_id: clean_id(id)?,
-        fact: clean_text("fact", fact, FACT_MAX)?,
+        description,
+        fact,
         symptoms,
     })
 }
@@ -163,7 +185,7 @@ fn append_fact_at(path: &Path, new: &NewFact) -> Result<(), String> {
 
 pub(crate) fn add_fact(args: &[String]) -> Result<String, String> {
     let new = parse_args(args)?;
-    let path = super::advice_facts::facts_path();
+    let path = super::facts_view::facts_path();
     append_fact_at(&path, &new)?;
     Ok(format!(
         "added fact `{}` to {}",
@@ -206,7 +228,7 @@ fn remove_fact_at(path: &Path, id: &str) -> Result<(), String> {
 
 pub(crate) fn remove_fact(fact_id: &str) -> Result<String, String> {
     let id = clean_id(fact_id)?;
-    let path = super::advice_facts::facts_path();
+    let path = super::facts_view::facts_path();
     remove_fact_at(&path, &id)?;
     Ok(format!("removed fact `{id}` from {}", path.display()))
 }

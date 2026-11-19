@@ -1,6 +1,6 @@
 # Find one new fact in your logs that is worth remembering
 
-`malvin --advice facts` lists time-saving facts. Find one more fact that earlier sessions kept
+`malvin --facts` lists time-saving facts. Find one more fact that earlier sessions kept
 rediscovering, support it with evidence, and add it to the list.
 
 ## Scope

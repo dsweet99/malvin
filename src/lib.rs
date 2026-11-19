@@ -94,6 +94,7 @@ pub use workspace::user_home::user_home_dir;
 mod advice_registry_build;
 pub mod agent_process;
 pub mod ansi_strip;
+pub(crate) mod desc_limit;
 pub(crate) mod http_fetch;
 pub mod local_llm;
 pub mod modal_run;

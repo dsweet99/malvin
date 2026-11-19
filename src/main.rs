@@ -7,6 +7,9 @@ fn main() -> malvin::Exit {
     if let Some(exit) = malvin::fact_worker::run_if_worker() {
         return exit;
     }
+    if let Some(exit) = malvin::herdr::run_if_linger_worker() {
+        return exit;
+    }
     malvin::run_timing::note_process_start();
     let exit = malvin::entrypoint();
     malvin::run_timing::emit_process_footnotes_if_armed();

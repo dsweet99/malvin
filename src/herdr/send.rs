@@ -16,6 +16,10 @@ pub fn send_request(socket_path: &Path, request: &Value) {
 }
 
 pub(crate) fn send_request_checked(socket_path: &Path, request: &Value) -> Result<(), String> {
+    send_request_reply(socket_path, request).map(|_| ())
+}
+
+pub(crate) fn send_request_reply(socket_path: &Path, request: &Value) -> Result<Value, String> {
     let mut line = serde_json::to_string(request).map_err(|e| e.to_string())?;
     line.push('\n');
     let mut stream = open_timed_stream(socket_path)?;
@@ -92,17 +96,16 @@ fn herdr_json_error(v: &Value) -> Option<String> {
     Some(format!("{code}: {msg}"))
 }
 
-fn classify_reply(bytes: &[u8]) -> Result<(), String> {
+fn classify_reply(bytes: &[u8]) -> Result<Value, String> {
     let line = first_nonempty_line(bytes)?;
     let v =
         serde_json::from_str::<Value>(&line).map_err(|e| format!("herdr reply not json: {e}"))?;
     if let Some(msg) = herdr_json_error(&v) {
         return Err(msg);
     }
-    if v.get("result").is_none() {
-        return Err("herdr reply missing result".into());
-    }
-    Ok(())
+    v.get("result")
+        .cloned()
+        .ok_or_else(|| "herdr reply missing result".to_string())
 }
 
 fn open_timed_stream(socket_path: &Path) -> Result<UnixStream, String> {

@@ -2,6 +2,7 @@ mod bind;
 mod env;
 mod identity;
 mod lifecycle;
+mod linger;
 mod request;
 mod reset;
 mod run_done;
@@ -12,6 +13,7 @@ pub use env::{strip_herdr_env, strip_herdr_env_tokio};
 pub use lifecycle::{
     notify_reclaim, notify_run_end, notify_run_start, notify_summary_ready, notify_working,
 };
+pub use linger::run_if_worker as run_if_linger_worker;
 pub use reset::reset_to_not_working;
 pub use run_done::notify_run_done;
 
@@ -40,6 +42,7 @@ mod kiss_cov {
         let _ = super::notify_run_done;
         let _ = super::notify_run_end;
         let _ = super::reset_to_not_working;
+        let _ = super::run_if_linger_worker;
         let _ = crate::herdr::env::HerdrEnv::from_os_env;
         let _ = crate::herdr::env::from_values;
         let _ = crate::herdr::request::next_seq;

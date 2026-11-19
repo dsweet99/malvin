@@ -1,7 +1,6 @@
 mod add_fact;
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
-mod advice_facts;
 pub(crate) mod args;
 mod auto_costs;
 pub(crate) mod cli_request;
@@ -15,6 +14,7 @@ mod entrypoint_checks;
 pub(crate) mod error_run_log;
 pub(crate) mod exit;
 mod facts_cmd;
+mod facts_view;
 pub(crate) mod init_flow;
 pub(crate) mod malvin_workflow;
 pub(crate) mod ml_loop;
@@ -28,6 +28,7 @@ pub(crate) mod router_flow;
 mod router_flow_fallback;
 pub(crate) mod run_emit;
 pub(crate) mod shared_opts;
+mod tag_list;
 pub(crate) mod tidy_flow;
 
 mod code_flow_a;

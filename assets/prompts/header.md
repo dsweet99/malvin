@@ -15,7 +15,7 @@
   - Creativity!
   It's a good idea to check the advice. It helps improve quality *and* it defines your style & personality.
 
-- **Facts** you've culled from previous work with this operator (user) are available under `malvin --advice facts`. That'll
+- **Facts** you've culled from previous work with this operator (user) are available under `malvin --facts`. That'll
   dump all the facts. You can dump to a temp file and grep for facts that are useful to you. These facts will help
   you save time.
   
