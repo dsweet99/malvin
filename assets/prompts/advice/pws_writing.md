@@ -20,3 +20,6 @@ description: Problems Worth Solving for writing
 - **List of sentences**: Each sentence in a paragraph is individually clear and relevant but lacks a logical connection to the next. (This often happens during editing, when sentences are polished independently, destroying the paragraph’s natural progression of ideas. ) Transition words won't fix the underlying problem. Try given-new information flow, thematic progression, entity continuation, or rhetorical relation.
 - **Post-def/No-def**: You use a new or unusual term and either don't define it or define it afterward, leaving the reading wondering what you're talking about. As a rule, define a term (that needs defining) the first time you use it.
     Example: "We set num_axniks=3 for this study.  ... talk about the study ...  The parameter num_axniks controls [explain now]."
+- **Wrong lexicon**: You write with terminology is unfamiliar to the literature of the field and/or you avoid terminology that is.
+    Example: "The focused gate certified the sampled actor string" instead of "The new function passed the unit test."
+    
