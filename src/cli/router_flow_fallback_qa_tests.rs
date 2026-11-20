@@ -80,8 +80,12 @@ fn singular_insufficient_credit_tries_backup() {
 }
 
 #[test]
-fn hit_usage_or_session_limit_tries_backup() {
+fn hit_usage_limit_tries_backup() {
     check_model_switch("You've hit your usage limit", true);
+}
+
+#[test]
+fn hit_session_limit_tries_backup() {
     check_model_switch(
         "You've hit your session limit · resets 7:10pm (America/New_York)",
         true,

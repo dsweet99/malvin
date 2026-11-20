@@ -105,6 +105,7 @@ pub fn note_active_sandbox_session(
 ) -> Result<(), String> {
     let acp_lock_slot = crate::agent_process::acp_spawn_lock::active_acp_lock_slot();
     acquire_acp_spawn_lock(work_dir)?;
+    crate::agent_process::agent_scope::attach_pending_agent_scope(pgid);
     *ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ActiveSandboxSession {
@@ -121,6 +122,7 @@ pub fn clear_active_sandbox_session() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .take();
+    crate::agent_process::agent_cgroup::release_active_agent_cgroup();
     if let Some(session) = session {
         release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);
     }
@@ -147,6 +149,7 @@ pub fn teardown_active_sandbox_for_interrupt() {
         );
         crate::agent_process::clear_session_spawn_affiliation();
     }
+    crate::agent_process::agent_cgroup::release_active_agent_cgroup();
     release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);
 }
 

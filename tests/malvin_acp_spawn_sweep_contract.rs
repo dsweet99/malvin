@@ -46,25 +46,6 @@ fn run_malvin_home(
 
 #[cfg(unix)]
 #[test]
-fn malvin_doc_does_not_sweep_stale_locks() {
-    let work_dir = tempfile::tempdir().expect("workdir");
-    let work = work_dir.path();
-    let chamber = work.join(".malvin/acp_spawn");
-    std::fs::create_dir_all(&chamber).expect("mkdir chamber");
-    let stale = chamber.join("dead.lock");
-    std::fs::write(&stale, "424242").expect("stale lock");
-    let home = tempfile::tempdir().expect("home");
-    let doc = run_malvin_home(home.path(), work, &["--doc"]);
-    assert!(
-        doc.status.success(),
-        "stderr={}",
-        String::from_utf8_lossy(&doc.stderr)
-    );
-    assert!(stale.is_file(), "--doc must not sweep stale locks");
-}
-
-#[cfg(unix)]
-#[test]
 fn malvin_doc_does_not_sweep_but_models_does() {
     let work_dir = tempfile::tempdir().expect("workdir");
     let work = work_dir.path();
@@ -82,7 +63,18 @@ fn malvin_doc_does_not_sweep_but_models_does() {
     let stale = chamber.join("dead.lock");
     std::fs::write(&stale, "424242").expect("stale lock");
     let home = tempfile::tempdir().expect("home");
-    let models = run_malvin_home(home.path(), work, &["admin", "models", "pi:"]);
+    let doc = run_malvin_home(home.path(), work, &["--doc"]);
+    assert!(
+        doc.status.success(),
+        "stderr={}",
+        String::from_utf8_lossy(&doc.stderr)
+    );
+    assert!(stale.is_file(), "--doc must not sweep stale locks");
+    let models = run_malvin_home(
+        home.path(),
+        work,
+        &["admin", "models", "--resolve", "pi:openai/gpt-4o"],
+    );
     assert!(
         models.status.success(),
         "stderr={}",

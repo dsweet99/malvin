@@ -51,6 +51,7 @@ fn teardown_poll_tick(
         return;
     }
     if (force_kill || state.polls >= teardown_kill_after_polls()) && !state.pg_sigkill {
+        super::agent_cgroup::kill_active_agent_cgroup(process_group_id);
         signal_pid(pgid, 9);
         signal_process_group(pgid, 9);
         state.pg_sigkill = true;
@@ -61,6 +62,7 @@ fn teardown_agent_sandbox_fast_tick(
     process_group_id: Option<u32>,
     baseline_opt: Option<&HashSet<u32>>,
 ) {
+    super::agent_cgroup::kill_active_agent_cgroup(process_group_id);
     if baseline_opt.is_none() {
         if let Some(pgid) = process_group_id {
             signal_pid(pgid, 9);
@@ -136,6 +138,7 @@ pub(crate) fn teardown_agent_sandbox_for_interrupt(
             signal_pid(pid, 9);
         }
     }
+    super::agent_cgroup::kill_active_agent_cgroup(process_group_id);
     if let Some(pgid) = process_group_id {
         signal_process_group(pgid, 9);
     }

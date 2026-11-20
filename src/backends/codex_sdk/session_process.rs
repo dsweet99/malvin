@@ -63,7 +63,7 @@ pub(super) fn configured_codex_command(
     bin: std::path::PathBuf,
     cwd: &std::path::Path,
 ) -> tokio::process::Command {
-    let mut cmd = crate::agent_process::malvin_sandbox::malvin_tokio_command(bin);
+    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(bin, cwd);
     configure_codex_sandbox(&mut cmd, codex_uses_outer_sandbox());
     cmd.arg("app-server")
         .arg("--stdio")
@@ -145,10 +145,6 @@ mod tests {
                 ]
             );
         }
-    }
-
-    #[test]
-    fn configure_codex_sandbox_sets_mode_without_outer_bypass() {
         let mut cmd = tokio::process::Command::new("codex");
         configure_codex_sandbox(&mut cmd, false);
         let args: Vec<_> = cmd

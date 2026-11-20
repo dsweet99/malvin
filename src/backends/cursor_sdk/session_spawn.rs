@@ -133,7 +133,7 @@ fn cursor_build_bridge_command(
     cwd: &std::path::Path,
 ) -> tokio::process::Command {
     use std::process::Stdio;
-    let mut cmd = crate::agent_process::malvin_sandbox::malvin_tokio_command(node);
+    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, cwd);
     super::cursor_sdk::node_resolve::apply_quiet_node_cli(&mut cmd);
     cmd.arg(bridge)
         .current_dir(cwd)

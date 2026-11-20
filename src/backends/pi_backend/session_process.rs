@@ -40,7 +40,7 @@ fn configured_npm_pi_command(
         ))
     })?;
     crate::local_llm::prepare_local_llm(args.cwd, provider, model).map_err(AgentError)?;
-    let mut cmd = crate::agent_process::malvin_sandbox::malvin_tokio_command(node);
+    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, args.cwd);
     cmd.arg(&entry);
     if !entry_is_rpc_entry(&entry) {
         cmd.arg("--mode").arg("rpc");

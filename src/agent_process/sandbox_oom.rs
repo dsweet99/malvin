@@ -5,6 +5,7 @@ use crate::malvin_constants::SANDBOX_OOM_JSON;
 
 pub const OOM_REASON_MEMORY_LIMIT: &str = "memory_limit";
 pub const OOM_REASON_MEASUREMENT_FAIL_CLOSED: &str = "measurement_fail_closed";
+pub const OOM_REASON_CGROUP_OOM_KILL: &str = "cgroup_oom_kill";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SandboxOomKillFacts<'a> {
@@ -72,7 +73,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn record_and_detect_oom_for_gate_iteration() {
+    fn record_and_detect_oom_for_gate_iteration_and_missing_marker() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
             .expect("artifacts");
@@ -91,13 +92,9 @@ mod tests {
         .expect("write");
         assert!(gate_iteration_oom_killed(&artifacts, 2));
         assert!(!gate_iteration_oom_killed(&artifacts, 1));
-    }
-
-    #[test]
-    fn gate_iteration_oom_killed_false_when_marker_missing() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        let empty = tempfile::tempdir().expect("tempdir");
+        let missing = crate::artifacts::create_run_artifacts_from_text("code", Some(empty.path()))
             .expect("artifacts");
-        assert!(!gate_iteration_oom_killed(&artifacts, 1));
+        assert!(!gate_iteration_oom_killed(&missing, 1));
     }
 }

@@ -105,6 +105,16 @@ fn extend_baseline_teardown_targets(
     targets.extend(malvin_session_spawn_pids(baseline, rows));
 }
 
+fn agent_session_member_pids(pgid: u32, rows: &[ProcRow]) -> HashSet<u32> {
+    let pg_members = process_group_member_pids(pgid);
+    let mut members = descendant_pids(&pg_members, rows);
+    members.extend(&pg_members);
+    members.extend(super::agent_cgroup::active_agent_cgroup_member_pids(Some(
+        pgid,
+    )));
+    members
+}
+
 pub(crate) fn kill_targets_for_teardown(
     process_group_id: Option<u32>,
     spawn_baseline: Option<&HashSet<u32>>,
@@ -115,9 +125,7 @@ pub(crate) fn kill_targets_for_teardown(
     let rows = list_proc_rows().unwrap_or_default();
     let mut targets = HashSet::new();
     if let Some(pgid) = process_group_id {
-        let pg_members = process_group_member_pids(pgid);
-        targets.extend(&pg_members);
-        targets.extend(descendant_pids(&pg_members, &rows));
+        targets.extend(agent_session_member_pids(pgid, &rows));
     }
     if let Some(baseline) = spawn_baseline.filter(|b| !b.is_empty()) {
         extend_baseline_teardown_targets(&mut targets, baseline, &rows);
