@@ -36,4 +36,7 @@ description: Problems Worth Solving for coding / SWE
 
 11. **When in Rome**
     Performing tasks in a style inconsistent with the rest of the codebase, such as performing tasks directly when there exists code for the task in the codebase; using tooling or a method that is different from what is used in the rest of the codebase. Examples: args parsing, date/time manipulation, http requests, async/sync/threads/processes
+
+12. **Hardcoded Constants**
+    Well-known. Don't.
     

@@ -52,13 +52,41 @@ fn scan_flags(
     flags
 }
 
+fn is_short_cluster(text: &str) -> bool {
+    text.len() > 1 && text.starts_with('-') && !text.starts_with("--")
+}
+
 fn gates_flag_at(args: &[OsString], i: usize) -> Option<ModelFlag> {
     let text = args[i].to_str()?;
-    matches!(text, "-g" | "--gates").then(|| ModelFlag {
+    let bundled = is_short_cluster(text) && text[1..].contains('g');
+    (text == "--gates" || bundled).then(|| ModelFlag {
         start: i,
         width: 1,
         value: String::new(),
     })
+}
+
+fn without_gates(arg: &OsString) -> Option<OsString> {
+    let text = arg.to_str()?;
+    if text == "--gates" {
+        return None;
+    }
+    let rest: String = text[1..].chars().filter(|&c| c != 'g').collect();
+    (!rest.is_empty()).then(|| OsString::from(format!("-{rest}")))
+}
+
+fn clap_width(text: &str, after_double_dash: bool) -> usize {
+    if after_double_dash {
+        1
+    } else if text == "--" {
+        0
+    } else if text.starts_with("--") {
+        if text.contains('=') { 2 } else { 1 }
+    } else if is_short_cluster(text) {
+        text.chars().count() - 1
+    } else {
+        1
+    }
 }
 fn model_in_effect(flags: &[ModelFlag], i: usize) -> Option<String> {
     flags
@@ -86,17 +114,23 @@ pub(crate) fn split_repeated_model_flags(args: &[OsString]) -> Option<ModelSegme
         gates_in_effect: Vec::new(),
         multi_model: flags.len() >= 2,
     };
-    for i in (0..args.len()).filter(|&i| !is_removed(&flags, i) && !is_removed(&gates, i)) {
+    for i in (0..args.len()).filter(|&i| !is_removed(&flags, i)) {
+        let arg = if is_removed(&gates, i) {
+            without_gates(&args[i])
+        } else {
+            Some(args[i].clone())
+        };
+        let Some(arg) = arg else { continue };
         let model = model_in_effect(&flags, i);
         let on = gates.first().is_some_and(|g| g.start <= i);
-        segments.push(&args[i], model, on);
+        segments.push(arg, model, on);
     }
     Some(segments)
 }
 
 impl ModelSegments {
-    fn push(&mut self, arg: &OsString, model: Option<String>, on: bool) {
-        self.args.push(arg.clone());
+    fn push(&mut self, arg: OsString, model: Option<String>, on: bool) {
+        self.args.push(arg);
         self.in_effect.push(model);
         self.gates_in_effect.push(on);
     }
@@ -104,12 +138,13 @@ impl ModelSegments {
     pub(crate) fn arg_positions(&self, clap_indices: &[usize]) -> Vec<usize> {
         let mut starts = Vec::with_capacity(self.args.len());
         let mut next = 0;
+        let mut after_double_dash = false;
         for arg in &self.args {
-            starts.push(next);
-            let split = arg
-                .to_str()
-                .is_some_and(|t| t.starts_with("--") && t.contains('='));
-            next += if split { 2 } else { 1 };
+            let text = arg.to_str().unwrap_or("");
+            let width = clap_width(text, after_double_dash);
+            starts.push(if width == 0 { usize::MAX } else { next });
+            next += width;
+            after_double_dash |= text == "--";
         }
         clap_indices
             .iter()

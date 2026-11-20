@@ -118,9 +118,38 @@ mod tests {
         assert!(Cli::try_parse_from(["malvin", "--ml=2", "--ml=3", "a.md"]).is_err());
     }
 
+    fn short_clusters_and_double_dash_keep_assignments() {
+        let got = models(&[
+            "malvin",
+            "-qq",
+            "--model=cursor:opus",
+            "a.md",
+            "--model=cursor:sonnet",
+            "b.md",
+        ]);
+        assert!(got[0].as_deref().is_some_and(|m| m.contains("opus")));
+        assert!(got[1].as_deref().is_some_and(|m| m.contains("sonnet")));
+        let got = models(&[
+            "malvin",
+            "--model=cursor:opus",
+            "a.md",
+            "--model=cursor:sonnet",
+            "--",
+            "b.md",
+        ]);
+        assert!(got[1].as_deref().is_some_and(|m| m.contains("sonnet")));
+        let (f, t) = (Some(false), Some(true));
+        assert_eq!(gates(&["malvin", "-qq", "a.md", "-g", "b.md"]), vec![f, t]);
+        assert_eq!(gates(&["malvin", "-qq", "a.md", "b.md", "-g", "c.md"]), vec![f, f, t]);
+        assert_eq!(gates(&["malvin", "a.md", "-qg", "b.md"]), vec![f, t]);
+        assert_eq!(gates(&["malvin", "-qg", "a.md", "-g", "b.md"]), vec![t, t]);
+        assert_eq!(gates(&["malvin", "a.md", "-g", "b.md", "-gq", "c.md"]), vec![f, t, t]);
+    }
+
     #[test]
     fn single_model_leaves_requests_untagged() {
         gates_apply_only_to_prompts_after_the_flag();
+        short_clusters_and_double_dash_keep_assignments();
         let got = models(&["malvin", "--model=cursor:opus", "a.md", "b.md"]);
         assert_eq!(got, vec![None, None]);
         assert!(Cli::try_parse_from(["malvin", "--model=cursor:opus", "a.md"]).is_ok());
