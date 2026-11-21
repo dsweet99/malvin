@@ -17,7 +17,6 @@ fn agent_cgroup_reads_members_population_oom_and_kills_via_registry() {
     assert_eq!(parse_unified_cgroup_path("1:name=x:/y\n"), None);
     assert_eq!(parse_flat_keyed("low 0\noom_kill 3\n", "oom_kill"), Some(3));
     assert_eq!(parse_flat_keyed("oom_kill_x 3\n", "oom_kill"), None);
-    assert!(pid_cgroup_dir(std::process::id()).is_some_and(|d| d.starts_with(CGROUP_ROOT)));
     let tmp = fake_cgroup(
         "10\n11\n\n",
         "populated 1\nfrozen 0\n",
@@ -43,4 +42,15 @@ fn agent_cgroup_reads_members_population_oom_and_kills_via_registry() {
     gone.kill();
     assert!(gone.kill_and_wait(Duration::ZERO));
     assert!(!gone.is_populated() && gone.member_pids().is_empty() && gone.oom_kill_count() == 0);
+}
+
+#[test]
+fn pid_cgroup_dir_handles_host_without_unified_cgroups() {
+    assert!(pid_cgroup_dir(u32::MAX).is_none());
+    #[cfg(target_os = "linux")]
+    if let Some(dir) = pid_cgroup_dir(std::process::id()) {
+        assert!(dir.starts_with(CGROUP_ROOT));
+    }
+    #[cfg(not(target_os = "linux"))]
+    assert!(pid_cgroup_dir(std::process::id()).is_none());
 }
