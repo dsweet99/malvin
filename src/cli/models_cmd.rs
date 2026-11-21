@@ -19,7 +19,7 @@ pub struct ModelsArgs {
     /// Print MODEL's canonical id and backend as one JSON line (`[aliases.models]` names expanded), then exit.
     #[arg(long, value_name = "MODEL", conflicts_with_all = ["refresh", "words"])]
     pub resolve: Option<String>,
-    /// Optional prefix filter (for example `cursor:`, `pi:`, or `codex:`)
+    /// Optional model prefix (for example `pi:`), or `aliases` to list configured model aliases.
     #[arg(
         value_name = "PREFIX",
         trailing_var_arg = true,
@@ -42,16 +42,22 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     if let Some(raw) = args.resolve.as_deref() {
         return models_cmd_resolve::write_resolved_model(raw, &mut std::io::stdout().lock());
     }
+    if args.words == ["aliases"] {
+        super::config_alias_list::print_home_model_aliases();
+        return Ok(());
+    }
     let filter = models_list_prefix(&args.words)?;
     let filter_ref = filter.as_deref();
     maybe_refresh_models_catalog(args.refresh);
     print_models_sections(filter_ref);
-    print_models_suffix(current_model);
+    print_models_suffix(current_model, filter.is_none());
     Ok(())
 }
 
-pub(crate) fn print_models_suffix(current_model: &str) {
-    super::config_alias_list::print_home_model_aliases();
+pub(crate) fn print_models_suffix(current_model: &str, include_aliases: bool) {
+    if include_aliases {
+        super::config_alias_list::print_home_model_aliases();
+    }
     print_current_footer(current_model);
 }
 
