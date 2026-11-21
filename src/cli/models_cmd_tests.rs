@@ -93,6 +93,23 @@ fn run_models_reads_fake_agent_models_output() {
     assert_eq!(path, agent);
 }
 
+fn assert_model_alias_selection() {
+    use super::models_cmd::{ModelsArgs, run_models};
+    use malvin::output::{enable_stdout_capture, take_captured_stdout};
+
+    for (word, aliases_only) in [("aliases", true), ("unmatched", false)] {
+        let args = ModelsArgs {
+            words: vec![word.to_string()],
+            ..ModelsArgs::default()
+        };
+        enable_stdout_capture();
+        run_models(args, "cursor:auto").expect("list");
+        let out = take_captured_stdout();
+        assert_eq!(out.contains("astra\tcursor:gpt-5"), aliases_only, "{out}");
+        assert_eq!(out.contains("Current: cursor:auto"), !aliases_only, "{out}");
+    }
+}
+
 fn model_list_suffix_places_config_aliases_above_current() {
     use super::models_cmd::print_models_suffix;
     use malvin::output::{enable_stdout_capture, take_captured_stdout};
@@ -104,7 +121,7 @@ fn model_list_suffix_places_config_aliases_above_current() {
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "[agent]\nmodel = \"cursor:auto\"\n").expect("write");
         enable_stdout_capture();
-        print_models_suffix("cursor:auto");
+        print_models_suffix("cursor:auto", true);
         let empty = take_captured_stdout();
         assert!(!empty.contains("[aliases.models]"), "{empty}");
         assert!(empty.contains("Current: cursor:auto"), "{empty}");
@@ -114,13 +131,16 @@ fn model_list_suffix_places_config_aliases_above_current() {
         )
         .expect("write");
         enable_stdout_capture();
-        print_models_suffix("cursor:auto");
+        print_models_suffix("cursor:auto", true);
         let out = take_captured_stdout();
         let header = out.find("[aliases.models]").expect("header");
         let astra = out.find("astra\tcursor:gpt-5").expect("astra");
         let nova = out.find("nova\tpi:openai/gpt-5").expect("nova");
         let current = out.find("Current: cursor:auto").expect("current");
         assert!(header < astra && astra < nova && nova < current, "{out}");
+        super::models_cmd_refresh::save_last_refresh_secs(malvin::clock::unix_now_secs())
+            .expect("save refresh time");
+        assert_model_alias_selection();
     });
 }
 

@@ -15,6 +15,7 @@ pub struct AdminArgs {
 #[derive(Subcommand, Debug, Clone)]
 pub enum AdminCommand {
     /// List available models
+    #[command(alias = "model")]
     Models(ModelsArgs),
     /// List remotes for `--remote` and their suboptions
     Remotes(RemotesArgs),
