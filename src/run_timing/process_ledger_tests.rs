@@ -51,7 +51,7 @@ fn absorb_sums_estimated_dollars_across_slices() {
     let mut totals = Ledger::default();
     let mut timing = RunTiming {
         token_cost_rates: TokenCostRates {
-            usd_per_microtoken_in: 1_000.0,
+            usd_per_megatoken_in: 1_000.0,
             ..TokenCostRates::default()
         },
         tokens_in: Some(1_000_000),

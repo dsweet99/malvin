@@ -162,10 +162,10 @@ mod tests {
     fn cost_stats_rate_times_tokens_components() {
         let mut r = RunTiming {
             token_cost_rates: TokenCostRates {
-                usd_per_microtoken_in: 1000.0,
-                usd_per_microtoken_out: 2000.0,
-                usd_per_microtoken_cache_read: 100.0,
-                usd_per_microtoken_cache_write: 500.0,
+                usd_per_megatoken_in: 1000.0,
+                usd_per_megatoken_out: 2000.0,
+                usd_per_megatoken_cache_read: 100.0,
+                usd_per_megatoken_cache_write: 500.0,
             },
             ..Default::default()
         };

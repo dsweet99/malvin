@@ -79,10 +79,10 @@ mod tests {
             let _ = HerdrEnv::from_os_env();
             let _ = OsString::new();
         }
+        assert_strip_herdr_env_removes_triad();
     }
 
-    #[test]
-    fn strip_herdr_env_removes_triad() {
+    fn assert_strip_herdr_env_removes_triad() {
         let mut std_cmd = std::process::Command::new("true");
         std_cmd.env("HERDR_ENV", "1");
         std_cmd.env("HERDR_SOCKET_PATH", "/tmp/h.sock");

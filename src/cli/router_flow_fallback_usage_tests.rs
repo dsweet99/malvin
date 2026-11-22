@@ -7,12 +7,12 @@ fn run_usage_case(models: &str, expected: (u64, u64, f64, u64)) {
         std::fs::create_dir_all(config.parent().unwrap()).unwrap();
         std::fs::write(
             config,
-            "[agent.cursor.metered-poor]\nusd_per_microtoken_in = 1000\n\
-             [agent.cursor.metered-error]\nusd_per_microtoken_in = 1000\n\
-             [agent.cursor.late-poor]\nusd_per_microtoken_in = 1000\n\
-             [agent.cursor.late-poor-again]\nusd_per_microtoken_in = 2000\n\
-             [agent.cursor.summary-poor]\nusd_per_microtoken_in = 1000\n\
-             [agent.cursor.good]\nusd_per_microtoken_in = 3000\n",
+            "[agent.cursor.metered-poor]\nusd_per_megatoken_in = 1000\n\
+             [agent.cursor.metered-error]\nusd_per_megatoken_in = 1000\n\
+             [agent.cursor.late-poor]\nusd_per_megatoken_in = 1000\n\
+             [agent.cursor.late-poor-again]\nusd_per_megatoken_in = 2000\n\
+             [agent.cursor.summary-poor]\nusd_per_megatoken_in = 1000\n\
+             [agent.cursor.good]\nusd_per_megatoken_in = 3000\n",
         )
         .unwrap();
         let artifacts = run_models_with_gates(work, models, false).unwrap();

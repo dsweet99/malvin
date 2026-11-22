@@ -52,7 +52,7 @@ Release the current herdr pane's malvin agent so the agents-list entry goes away
 
 Requires a herdr-hosted environment: `HERDR_ENV=1`, `HERDR_SOCKET_PATH`, and `HERDR_PANE_ID`. Useful when a prior malvin process exited without tearing down and the pane still shows `working` or a leftover idle circle.
 
-`reset-herdr` cannot help when the pane holds a saved session from another agent, such as an interactive Codex session that has since exited. Herdr keeps that session and ignores malvin's status reports in that pane, and its API offers malvin no way to clear it. When malvin detects this at startup, it prints a warning and writes it to `herdr.log` in the run directory. Run malvin in a new Herdr pane instead.
+`reset-herdr` cannot help when the pane holds a saved session from another agent, such as an interactive Codex session that has since exited. Herdr keeps that session and ignores malvin's status reports in that pane, and its API offers malvin no way to clear it. While malvin runs, Herdr also cannot see the saved session's process exit, so malvin cannot clear it either. When malvin detects this at startup, it prints a warning once and writes it to `herdr.log` in the run directory. To free the pane, start that agent (for example `codex`) in the pane from the shell and quit it; Herdr drops the saved session when the agent exits back to the shell. Alternatively, run malvin in another tab. Tabs in the same workspace can each host a malvin.
 
 ### `facts add`
 

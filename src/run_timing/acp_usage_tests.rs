@@ -6,10 +6,10 @@ use crate::config::malvin_config_file::TokenCostRates;
 fn codex_additive_reasoning_folds_into_tokens_out_and_cost() {
     let mut r = RunTiming {
         token_cost_rates: TokenCostRates {
-            usd_per_microtoken_in: 0.0,
-            usd_per_microtoken_out: 1000.0,
-            usd_per_microtoken_cache_read: 0.0,
-            usd_per_microtoken_cache_write: 0.0,
+            usd_per_megatoken_in: 0.0,
+            usd_per_megatoken_out: 1000.0,
+            usd_per_megatoken_cache_read: 0.0,
+            usd_per_megatoken_cache_write: 0.0,
         },
         ..Default::default()
     };
@@ -32,10 +32,10 @@ fn codex_additive_reasoning_folds_into_tokens_out_and_cost() {
 fn codex_total_keeps_cache_inside_input_tokens() {
     let mut r = RunTiming {
         token_cost_rates: TokenCostRates {
-            usd_per_microtoken_in: 1_000_000.0,
-            usd_per_microtoken_out: 0.0,
-            usd_per_microtoken_cache_read: 1_000_000.0,
-            usd_per_microtoken_cache_write: 0.0,
+            usd_per_megatoken_in: 1_000_000.0,
+            usd_per_megatoken_out: 0.0,
+            usd_per_megatoken_cache_read: 1_000_000.0,
+            usd_per_megatoken_cache_write: 0.0,
         },
         ..Default::default()
     };
@@ -90,10 +90,10 @@ fn cursor_subset_reasoning_does_not_inflate_tokens_out() {
 fn total_only_reported_cost_keeps_billed_total() {
     let mut r = RunTiming {
         token_cost_rates: TokenCostRates {
-            usd_per_microtoken_in: 1_000_000.0,
-            usd_per_microtoken_out: 1_000_000.0,
-            usd_per_microtoken_cache_read: 1_000_000.0,
-            usd_per_microtoken_cache_write: 0.0,
+            usd_per_megatoken_in: 1_000_000.0,
+            usd_per_megatoken_out: 1_000_000.0,
+            usd_per_megatoken_cache_read: 1_000_000.0,
+            usd_per_megatoken_cache_write: 0.0,
         },
         ..Default::default()
     };
@@ -120,10 +120,10 @@ fn total_only_reported_cost_keeps_billed_total() {
 fn reported_cost_usd_skips_rate_estimate() {
     let mut r = RunTiming {
         token_cost_rates: TokenCostRates {
-            usd_per_microtoken_in: 1_000_000.0,
-            usd_per_microtoken_out: 1_000_000.0,
-            usd_per_microtoken_cache_read: 0.0,
-            usd_per_microtoken_cache_write: 0.0,
+            usd_per_megatoken_in: 1_000_000.0,
+            usd_per_megatoken_out: 1_000_000.0,
+            usd_per_megatoken_cache_read: 0.0,
+            usd_per_megatoken_cache_write: 0.0,
         },
         ..Default::default()
     };
@@ -149,10 +149,10 @@ fn reported_cost_usd_skips_rate_estimate() {
 fn mixed_reported_and_estimated_turns_merge_cost_components() {
     let mut r = RunTiming {
         token_cost_rates: TokenCostRates {
-            usd_per_microtoken_in: 1_000_000.0,
-            usd_per_microtoken_out: 0.0,
-            usd_per_microtoken_cache_read: 0.0,
-            usd_per_microtoken_cache_write: 0.0,
+            usd_per_megatoken_in: 1_000_000.0,
+            usd_per_megatoken_out: 0.0,
+            usd_per_megatoken_cache_read: 0.0,
+            usd_per_megatoken_cache_write: 0.0,
         },
         ..Default::default()
     };

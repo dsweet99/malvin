@@ -18,7 +18,7 @@ fn open_config() -> MalvinConfig {
 }
 
 fn priced_config() -> MalvinConfig {
-    parse_malvin_config("[agent.cursor.auto]\nusd_per_microtoken_in = 1.0")
+    parse_malvin_config("[agent.cursor.auto]\nusd_per_megatoken_in = 1.0")
 }
 
 fn config(auto_setup_costs: bool) -> MalvinConfig {
@@ -93,7 +93,7 @@ fn setup_is_guarded_by_switches_live_prices_and_configured_rates() {
     assert!(!should_setup_costs(&config(true), &openrouter, false));
     assert!(!should_setup_costs(&config(true), &portkey, false));
 
-    let priced = parse_malvin_config("[agent.cursor.auto]\nusd_per_microtoken_in = 1.0");
+    let priced = parse_malvin_config("[agent.cursor.auto]\nusd_per_megatoken_in = 1.0");
     assert!(!should_setup_costs(&priced, &cursor, false));
 }
 

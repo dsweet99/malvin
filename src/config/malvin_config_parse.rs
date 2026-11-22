@@ -15,7 +15,7 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
     let (model_aliases, remote_aliases) = parse_aliases_lenient(text);
     let token_cost_rates = parse_or_warn(
         parse_model_token_cost_rates(text),
-        "[agent.*.*] usd_per_microtoken_*",
+        "[agent.*.*] usd_per_megatoken_*",
         BTreeMap::new(),
     );
     let (logs, agent) = parse_config_sections(text, &model_aliases);

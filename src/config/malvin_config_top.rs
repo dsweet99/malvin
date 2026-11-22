@@ -4,15 +4,16 @@ use crate::terminal_palette::TerminalTheme;
 
 pub const DEFAULT_CONTEXT_SIZE: u32 = 8192;
 
-pub const TOKENS_PER_MICROTOKEN: f64 = 1_000_000.0;
+pub const TOKENS_PER_MEGATOKEN: f64 = 1_000_000.0;
+const LEGACY_RATE_PREFIX: &str = "usd_per_microtoken";
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 #[allow(clippy::struct_field_names)]
 pub struct TokenCostRates {
-    pub usd_per_microtoken_in: f64,
-    pub usd_per_microtoken_out: f64,
-    pub usd_per_microtoken_cache_read: f64,
-    pub usd_per_microtoken_cache_write: f64,
+    pub usd_per_megatoken_in: f64,
+    pub usd_per_megatoken_out: f64,
+    pub usd_per_megatoken_cache_read: f64,
+    pub usd_per_megatoken_cache_write: f64,
 }
 
 impl TokenCostRates {
@@ -26,11 +27,11 @@ impl TokenCostRates {
         cache_write_tokens: u64,
     ) -> (f64, f64, f64, f64) {
         (
-            (input_tokens as f64) * self.usd_per_microtoken_in / TOKENS_PER_MICROTOKEN,
-            (output_tokens as f64) * self.usd_per_microtoken_out / TOKENS_PER_MICROTOKEN,
-            (cache_read_tokens as f64) * self.usd_per_microtoken_cache_read / TOKENS_PER_MICROTOKEN,
-            (cache_write_tokens as f64) * self.usd_per_microtoken_cache_write
-                / TOKENS_PER_MICROTOKEN,
+            (input_tokens as f64) * self.usd_per_megatoken_in / TOKENS_PER_MEGATOKEN,
+            (output_tokens as f64) * self.usd_per_megatoken_out / TOKENS_PER_MEGATOKEN,
+            (cache_read_tokens as f64) * self.usd_per_megatoken_cache_read / TOKENS_PER_MEGATOKEN,
+            (cache_write_tokens as f64) * self.usd_per_megatoken_cache_write
+                / TOKENS_PER_MEGATOKEN,
         )
     }
 
@@ -91,7 +92,14 @@ pub(crate) fn parse_model_token_cost_rates(
             let Some(table) = model_val.as_table() else {
                 continue;
             };
-            if !table.keys().any(|k| k.starts_with("usd_per_microtoken")) {
+            if table.keys().any(|k| k.starts_with(LEGACY_RATE_PREFIX)) {
+                return Err(format!(
+                    "[agent.{provider}.{model_name}] uses {LEGACY_RATE_PREFIX}_* keys, which were \
+                     renamed to usd_per_megatoken_* (same values: USD per million tokens); \
+                     rename them"
+                ));
+            }
+            if !table.keys().any(|k| k.starts_with("usd_per_megatoken")) {
                 continue;
             }
             let rates = token_cost_rates_from_value(model_val)?;
@@ -103,21 +111,21 @@ pub(crate) fn parse_model_token_cost_rates(
 
 pub(crate) fn token_cost_rates_from_value(value: &toml::Value) -> Result<TokenCostRates, String> {
     Ok(TokenCostRates {
-        usd_per_microtoken_in: non_negative_rate(
-            value.get("usd_per_microtoken_in"),
-            "usd_per_microtoken_in",
+        usd_per_megatoken_in: non_negative_rate(
+            value.get("usd_per_megatoken_in"),
+            "usd_per_megatoken_in",
         )?,
-        usd_per_microtoken_out: non_negative_rate(
-            value.get("usd_per_microtoken_out"),
-            "usd_per_microtoken_out",
+        usd_per_megatoken_out: non_negative_rate(
+            value.get("usd_per_megatoken_out"),
+            "usd_per_megatoken_out",
         )?,
-        usd_per_microtoken_cache_read: non_negative_rate(
-            value.get("usd_per_microtoken_cache_read"),
-            "usd_per_microtoken_cache_read",
+        usd_per_megatoken_cache_read: non_negative_rate(
+            value.get("usd_per_megatoken_cache_read"),
+            "usd_per_megatoken_cache_read",
         )?,
-        usd_per_microtoken_cache_write: non_negative_rate(
-            value.get("usd_per_microtoken_cache_write"),
-            "usd_per_microtoken_cache_write",
+        usd_per_megatoken_cache_write: non_negative_rate(
+            value.get("usd_per_megatoken_cache_write"),
+            "usd_per_megatoken_cache_write",
         )?,
     })
 }

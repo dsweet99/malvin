@@ -51,14 +51,19 @@ fn bind_requests(
 }
 
 fn explain_missing_agent(env: &HerdrEnv, run_dir: Option<&Path>) {
+    static EXPLAINED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if EXPLAINED.load(std::sync::atomic::Ordering::Relaxed) {
+        return;
+    }
     let pane = &env.pane_id;
     let query = json!({"id": next_request_id(), "method": "pane.get", "params": {"pane_id": pane}});
     let Ok(result) = send_request_reply(&env.socket_path, &query) else {
         return;
     };
     if let Some(owner) = conflicting_session(&result["pane"]) {
+        EXPLAINED.store(true, std::sync::atomic::Ordering::Relaxed);
         let detail = format!(
-            "Herdr pane {pane} still holds a saved {owner} session from an earlier run, so Herdr ignores malvin's working status in this pane. Run malvin in a new Herdr pane to see its status."
+            "Herdr pane {pane} still holds a saved {owner} session from an earlier run, so Herdr leaves malvin out of its agents list for this pane. Malvin cannot clear that session itself. To free the pane, start `{owner}` in it from the shell and quit it, then run malvin there again; or run malvin in another tab."
         );
         log_herdr_failure(run_dir, "registration", &detail);
         crate::output::print_log_warning(&detail);
@@ -126,6 +131,10 @@ mod tests {
         let log = std::fs::read_to_string(dir.path().join("herdr.log")).unwrap();
         assert!(log.contains("herdr rename failed: agent_not_found"));
         assert!(log.contains("herdr registration failed: Herdr pane p1 still holds a saved codex"));
+        assert!(log.contains("start `codex` in it from the shell and quit it"));
+        emit_bind_reports(&env, Some("20261121_143419_sgj5tg58"), Some(dir.path()));
+        let log = std::fs::read_to_string(dir.path().join("herdr.log")).unwrap();
+        assert_eq!(log.matches("herdr registration failed").count(), 1);
         assert_conflicting_session_only_while_unknown();
         assert_abs_path_string_falls_back_when_missing();
     }
