@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::{LITE_DIR, MAIN_DIR, RunArtifacts, TRACE_JSONL};
+use super::{FACT_DIR, LITE_DIR, MAIN_DIR, RunArtifacts, TRACE_JSONL};
 
 pub struct AgentDirs<'a>(pub &'a RunArtifacts);
 
@@ -25,6 +25,11 @@ impl AgentDirs<'_> {
         self.lite().join(TRACE_JSONL)
     }
 
+    #[must_use]
+    pub fn fact_trace(&self) -> PathBuf {
+        self.0.run_dir.join(FACT_DIR).join(TRACE_JSONL)
+    }
+
     pub fn create(&self) -> std::io::Result<()> {
         std::fs::create_dir_all(self.main())?;
         std::fs::create_dir_all(self.lite())
@@ -47,6 +52,10 @@ mod tests {
         assert_eq!(
             dirs.lite_trace(),
             artifacts.run_dir.join("lite/trace.jsonl")
+        );
+        assert_eq!(
+            dirs.fact_trace(),
+            artifacts.run_dir.join("fact/trace.jsonl")
         );
         assert_eq!(
             artifacts.stdout_log_path(),

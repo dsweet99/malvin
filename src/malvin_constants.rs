@@ -4,4 +4,5 @@ pub const STDOUT_LOG: &str = "stdout.log";
 pub const TRACE_JSONL: &str = "trace.jsonl";
 pub const MAIN_DIR: &str = "main";
 pub const LITE_DIR: &str = "lite";
+pub const FACT_DIR: &str = "fact";
 pub const SANDBOX_OOM_JSON: &str = "sandbox_oom.json";

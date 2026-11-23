@@ -155,13 +155,19 @@ fn write_line(path: &Path, existing: &str, new: &NewFact) -> Result<(), String> 
     } else {
         "\n"
     };
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .map_err(|e| format!("cannot open {}: {e}", path.display()))?;
-    file.write_all(format!("{lead}{value}\n").as_bytes())
-        .map_err(|e| format!("cannot write {}: {e}", path.display()))
+    replace_atomically(path, &format!("{existing}{lead}{value}\n"))
+}
+
+fn replace_atomically(path: &Path, text: &str) -> Result<(), String> {
+    let mut tmp_name = path.as_os_str().to_owned();
+    tmp_name.push(".tmp");
+    let tmp = PathBuf::from(tmp_name);
+    let mut file = std::fs::File::create(&tmp)
+        .map_err(|e| format!("cannot create {}: {e}", tmp.display()))?;
+    file.write_all(text.as_bytes())
+        .and_then(|()| file.sync_all())
+        .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, path).map_err(|e| format!("cannot replace {}: {e}", path.display()))
 }
 
 fn append_fact_at(path: &Path, new: &NewFact) -> Result<(), String> {
@@ -219,11 +225,7 @@ fn remove_fact_at(path: &Path, id: &str) -> Result<(), String> {
     let existing = read_existing(path)?;
     let kept = without_fact(&existing, id)
         .ok_or_else(|| format!("fact_id `{id}` not found in {}", path.display()))?;
-    let mut tmp_name = path.as_os_str().to_owned();
-    tmp_name.push(".tmp");
-    let tmp = PathBuf::from(tmp_name);
-    std::fs::write(&tmp, kept).map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-    std::fs::rename(&tmp, path).map_err(|e| format!("cannot replace {}: {e}", path.display()))
+    replace_atomically(path, &kept)
 }
 
 pub(crate) fn remove_fact(fact_id: &str) -> Result<String, String> {

@@ -15,7 +15,7 @@ pub(crate) struct FactAgentSpec<'a> {
     pub models: &'a ModelList,
 }
 
-const NEW_FACT_PERCENT: usize = 25;
+const NEW_FACT_PERCENT: usize = 50;
 
 pub(crate) const fn pick_fact_prompt(roll: usize) -> &'static str {
     if roll < NEW_FACT_PERCENT {

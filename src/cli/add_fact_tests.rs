@@ -88,6 +88,12 @@ fn append_creates_file_enforces_unique_id_and_fixes_missing_newline() {
     assert_eq!(lines[0]["symptoms"], serde_json::json!([]));
     assert_eq!(lines[1]["symptoms"], serde_json::json!(["s"]));
     assert!(!dir.path().join("sub").join("facts.jsonl.lock").exists());
+    assert!(!dir.path().join("sub").join("facts.jsonl.tmp").exists());
+    std::fs::write(&path, "").expect("empty");
+    let link = dir.path().join("sub").join("hard.jsonl");
+    std::fs::hard_link(&path, &link).expect("hard link");
+    append_fact_at(&path, &first).expect("append replaces file");
+    assert!(std::fs::read_to_string(&link).expect("old inode").is_empty());
 }
 
 #[test]

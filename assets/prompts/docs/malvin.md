@@ -120,6 +120,7 @@ Print saved facts from `~/.malvinconf/facts.jsonl`, or list them when `TAG` is o
 - `malvin --facts TAG` — prints the fact whose `fact_id` is `TAG`: its description, the fact text, then its symptoms. An unknown TAG exits 1 and lists the known ids.
 - A missing, empty, or blank-only file is not an error: the list prints `No facts saved yet.` Lines that are not valid JSON objects with `fact_id` and `fact` strings are skipped. A file that exists but cannot be read exits 1 with an error naming the path.
 - A fact without a `description` field shows its first 7 words. `malvin admin facts add` stores `description=...` (at most 7 words) when given, otherwise the first 7 words of the fact.
+- `malvin admin facts add` and `malvin admin facts remove` hold `facts.jsonl.lock`, write the whole new file to `facts.jsonl.tmp`, sync it, and rename it over `facts.jsonl`, so an interrupted command never leaves a half-written file.
 
 ### `--credits`
 
@@ -152,6 +153,7 @@ Every agent-backed command creates `~/.malvinconf/logs/<hash>/<timestamp>_<token
 | `stdout.log` | Tee of agent stdout — **narrative** channel |
 | `trace.jsonl` | Audit record (sdk-shaped JSONL; Pi and Codex events are mapped into the same shapes) — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only) |
+| `fact_agent_prompt.md`, `fact_agent.log`, `fact/trace.jsonl` | Background fact agent (started when a task runs past 5 minutes, at most once an hour; `new_fact.md` or `tidy_facts.md`, 50/50): its prompt, its stderr and final reply, and its own audit trace, kept apart from the lite summarizer's `lite/trace.jsonl` |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
 | `run_timing.json` | Wall/LLM timing, token/step aggregates, and optional cost |
 | `_run/exp_log_*.md` | Experiment / gate-loop logs (`exp_log_<run>.md` scaffold; `exp_log_<run>_g<n>.md` for outer iteration n — kept, never truncated) |

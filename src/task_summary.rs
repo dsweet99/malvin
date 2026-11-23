@@ -38,8 +38,9 @@ pub async fn run_background_prompt(
     models: &ModelList,
     artifacts: &RunArtifacts,
     prompt: &str,
+    trace_path: &Path,
 ) -> Result<String, String> {
-    model::ask(models, artifacts, prompt).await
+    model::ask(models, artifacts, prompt, trace_path).await
 }
 
 pub(super) async fn generate_task(

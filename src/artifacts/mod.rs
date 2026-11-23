@@ -26,7 +26,7 @@ pub use md_request::{
 pub use startup_tag::startup_request_tag_label;
 
 pub use crate::malvin_constants::{
-    LITE_DIR, MAIN_DIR, QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL,
+    FACT_DIR, LITE_DIR, MAIN_DIR, QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL,
 };
 
 #[derive(Debug, Clone)]

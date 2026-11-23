@@ -116,11 +116,12 @@ fn run_worker(prompt_path: PathBuf, models: &str) -> Result<(), String> {
     let prompt = std::fs::read_to_string(&prompt_path)
         .map_err(|e| format!("cannot read {}: {e}", prompt_path.display()))?;
     let artifacts = worker_artifacts(prompt_path)?;
+    let trace_path = fact_trace_path(&artifacts)?;
     let disconnected = parent_disconnected();
     crate::task_summary::worker_runtime()?.block_on(async {
         tokio::select! {
             _ = disconnected => Err("parent malvin exited".to_string()),
-            reply = crate::task_summary::run_background_prompt(&models, &artifacts, &prompt) => {
+            reply = crate::task_summary::run_background_prompt(&models, &artifacts, &prompt, &trace_path) => {
                 eprintln!("fact agent replied: {}", reply?.trim());
                 Ok(())
             }
@@ -138,6 +139,15 @@ fn worker_artifacts(prompt_path: PathBuf) -> Result<RunArtifacts, String> {
         plan_path: prompt_path,
         work_dir: std::env::current_dir().map_err(|e| e.to_string())?,
     })
+}
+
+fn fact_trace_path(artifacts: &RunArtifacts) -> Result<PathBuf, String> {
+    let trace_path = crate::artifacts::AgentDirs(artifacts).fact_trace();
+    if let Some(dir) = trace_path.parent() {
+        std::fs::create_dir_all(dir)
+            .map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
+    }
+    Ok(trace_path)
 }
 
 fn parent_disconnected() -> tokio::sync::oneshot::Receiver<()> {

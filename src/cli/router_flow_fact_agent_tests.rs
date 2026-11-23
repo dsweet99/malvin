@@ -36,13 +36,13 @@ fn prompt_is_header_then_fact_prompt() {
 #[test]
 fn pick_fact_prompt_boundaries_and_ratio() {
     assert_eq!(pick_fact_prompt(0), "new_fact.md");
-    assert_eq!(pick_fact_prompt(24), "new_fact.md");
-    assert_eq!(pick_fact_prompt(25), "tidy_facts.md");
+    assert_eq!(pick_fact_prompt(49), "new_fact.md");
+    assert_eq!(pick_fact_prompt(50), "tidy_facts.md");
     assert_eq!(pick_fact_prompt(99), "tidy_facts.md");
     let new = (0..100)
         .filter(|r| pick_fact_prompt(*r) == "new_fact.md")
         .count();
-    assert_eq!(new, 25);
+    assert_eq!(new, 50);
 }
 
 #[tokio::test]

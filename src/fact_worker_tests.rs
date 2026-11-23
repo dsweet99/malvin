@@ -1,4 +1,4 @@
-use super::{WORKER_ARG, strip_deleted_suffix, worker_args, worker_command};
+use super::{WORKER_ARG, fact_trace_path, strip_deleted_suffix, worker_args, worker_command};
 use crate::artifacts::RunArtifacts;
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -32,6 +32,9 @@ fn worker_args_parse_and_command_round_trip() {
     assert_eq!(command.as_std().get_current_dir(), Some(dir.path()));
     let parsed = worker_args(command.as_std().get_args().map(OsString::from));
     assert_eq!(parsed, Some(Ok((prompt, models.cli_value()))));
+    let trace = fact_trace_path(&artifacts).unwrap();
+    assert_eq!(trace, dir.path().join("fact/trace.jsonl"));
+    assert!(dir.path().join("fact").is_dir());
     assert_eq!(
         strip_deleted_suffix(PathBuf::from("/a/malvin (deleted)")),
         PathBuf::from("/a/malvin")
