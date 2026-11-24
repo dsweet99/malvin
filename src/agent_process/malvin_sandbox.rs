@@ -28,11 +28,14 @@ static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(
 
 #[derive(Debug)]
 pub struct SandboxSpawnTicket {
-    scope_unit: Option<String>,
+    scope_unit: Option<crate::agent_process::agent_scope::ScopeTarget>,
 }
 
 impl SandboxSpawnTicket {
-    pub(crate) fn set_scope_unit(&mut self, unit: Option<String>) {
+    pub(crate) fn set_scope_unit(
+        &mut self,
+        unit: Option<crate::agent_process::agent_scope::ScopeTarget>,
+    ) {
         self.scope_unit = unit;
     }
 
@@ -118,7 +121,7 @@ pub fn note_active_sandbox_session(
 ) -> Result<(), String> {
     let acp_lock_slot = crate::agent_process::acp_spawn_lock::active_acp_lock_slot();
     acquire_acp_spawn_lock(work_dir)?;
-    crate::agent_process::agent_scope::attach_agent_scope(ticket.scope_unit, pgid);
+    crate::agent_process::agent_scope_attach::attach_agent_scope(ticket.scope_unit, pgid);
     *ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ActiveSandboxSession {

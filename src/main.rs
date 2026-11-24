@@ -1,6 +1,9 @@
 #![allow(clippy::multiple_crate_versions)]
 
 fn main() -> malvin::Exit {
+    if let Some(exit) = malvin::agent_process::agent_cgroup_nest::run_if_leaf_shim() {
+        return exit;
+    }
     if let Some(exit) = malvin::self_worker::run_if_worker() {
         return exit;
     }

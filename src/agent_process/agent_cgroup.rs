@@ -13,12 +13,30 @@ const RELEASE_POLL: Duration = Duration::from_millis(10);
 pub struct AgentCgroup {
     leader_pid: u32,
     dir: PathBuf,
+    leaf: Option<PathBuf>,
+    owned: bool,
 }
 
 impl AgentCgroup {
     #[must_use]
     pub const fn new(leader_pid: u32, dir: PathBuf) -> Self {
-        Self { leader_pid, dir }
+        Self {
+            leader_pid,
+            dir,
+            leaf: None,
+            owned: false,
+        }
+    }
+
+    #[must_use]
+    pub fn with_leaf(leader_pid: u32, dir: PathBuf, owned: bool) -> Self {
+        let leaf = Some(dir.join(super::agent_cgroup_nest::LEAF_NAME));
+        Self {
+            leader_pid,
+            dir,
+            leaf,
+            owned,
+        }
     }
 
     #[must_use]
@@ -28,9 +46,9 @@ impl AgentCgroup {
 
     #[must_use]
     pub fn member_pids(&self) -> HashSet<u32> {
-        std::fs::read_to_string(self.dir.join("cgroup.procs"))
-            .map(|text| parse_cgroup_procs(&text))
-            .unwrap_or_default()
+        let mut pids = HashSet::new();
+        collect_member_pids(&self.dir, &mut pids);
+        pids
     }
 
     #[must_use]
@@ -43,10 +61,11 @@ impl AgentCgroup {
 
     #[must_use]
     pub fn oom_kill_count(&self) -> u64 {
-        std::fs::read_to_string(self.dir.join("memory.events"))
-            .ok()
-            .and_then(|text| parse_flat_keyed(&text, "oom_kill"))
-            .unwrap_or(0)
+        let Some(leaf) = &self.leaf else {
+            return read_flat_keyed(&self.dir.join("memory.events"), "oom_kill");
+        };
+        read_flat_keyed(&self.dir.join("memory.events.local"), "oom")
+            + read_flat_keyed(&leaf.join("memory.events.local"), "oom_kill")
     }
 
     pub fn kill(&self) {
@@ -70,6 +89,22 @@ impl AgentCgroup {
             std::thread::sleep(RELEASE_POLL);
         }
         true
+    }
+}
+
+fn read_flat_keyed(path: &Path, key: &str) -> u64 {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|text| parse_flat_keyed(&text, key))
+        .unwrap_or(0)
+}
+
+pub(crate) fn collect_member_pids(dir: &Path, pids: &mut HashSet<u32>) {
+    if let Ok(text) = std::fs::read_to_string(dir.join("cgroup.procs")) {
+        pids.extend(parse_cgroup_procs(&text));
+    }
+    for child in super::agent_cgroup_nest::child_cgroup_dirs(dir) {
+        collect_member_pids(&child, pids);
     }
 }
 
@@ -152,6 +187,9 @@ pub fn release_active_agent_cgroup() {
     };
     if !cgroup.kill_and_wait(RELEASE_WAIT) {
         warn!(dir = %cgroup.dir.display(), "agent cgroup still populated after kill");
+    }
+    if cgroup.owned {
+        super::agent_cgroup_nest::remove_cgroup_tree(&cgroup.dir);
     }
 }
 

@@ -54,3 +54,24 @@ fn pid_cgroup_dir_handles_host_without_unified_cgroups() {
     #[cfg(not(target_os = "linux"))]
     assert!(pid_cgroup_dir(std::process::id()).is_none());
 }
+
+#[test]
+fn leaf_layout_counts_nested_members_and_attributes_oom_locally() {
+    let tmp = tempfile::tempdir().expect("tmp");
+    let group = tmp.path().join("malvin-nested-1-0");
+    std::fs::create_dir_all(group.join("agent")).expect("leaf");
+    std::fs::create_dir_all(group.join("malvin-nested-2-0/agent")).expect("child");
+    std::fs::write(group.join("agent/cgroup.procs"), "10\n").expect("procs");
+    std::fs::write(group.join("malvin-nested-2-0/agent/cgroup.procs"), "11\n").expect("procs");
+    std::fs::write(group.join("memory.events"), "oom 9\noom_kill 9\n").expect("events");
+    let cgroup = AgentCgroup::with_leaf(10, group.clone(), true);
+    assert_eq!(cgroup.member_pids(), HashSet::from([10, 11]));
+    assert_eq!(cgroup.oom_kill_count(), 0);
+    std::fs::write(group.join("memory.events.local"), "oom 1\noom_kill 0\n").expect("local");
+    std::fs::write(group.join("agent/memory.events.local"), "oom 0\noom_kill 2\n").expect("leaf");
+    assert_eq!(cgroup.oom_kill_count(), 3);
+    assert_eq!(AgentCgroup::new(10, group.clone()).oom_kill_count(), 9);
+    set_active_agent_cgroup(Some(cgroup));
+    release_active_agent_cgroup();
+    assert!(group.exists());
+}
