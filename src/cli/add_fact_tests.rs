@@ -16,16 +16,16 @@ fn parses_fields_in_any_order_with_repeated_symptoms() {
     assert_eq!(a.fact_id, "my-id");
     assert_eq!(a.fact, "Body text = ok");
     assert_eq!(a.symptoms, vec!["s1", "s2"]);
-    assert_eq!(a.description, "Body text = ok");
+    assert_eq!(a.description.as_deref(), Some("Body text = ok"));
     let b = parse_args(&args(&[
         "fact_id=x",
         "fact=a b c d e f g h i",
         "description=Short one",
     ]))
     .expect("parse");
-    assert_eq!(b.description, "Short one");
+    assert_eq!(b.description.as_deref(), Some("Short one"));
     let c = parse_args(&args(&["fact_id=x", "fact=a b c d e f g h i"])).expect("parse");
-    assert_eq!(c.description, "a b c d e f g");
+    assert_eq!(c.description.as_deref(), Some("a b c d e f g"));
     assert!(
         parse_args(&args(&[
             "fact_id=x",

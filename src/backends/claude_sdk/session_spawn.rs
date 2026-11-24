@@ -19,9 +19,9 @@ pub(crate) async fn claude_spawn_bridge(
 
 fn open_session(
     args: &BridgeSpawnArgs<'_>,
-    ticket: crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
+    mut ticket: crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
 ) -> Result<BridgeSession, AgentError> {
-    let mut child = spawn_bridge_process(args)?;
+    let mut child = spawn_bridge_process(args, &mut ticket)?;
     let (stdin, stdout, stderr) = take_stdio(&mut child)?;
     crate::backends::cursor_sdk::bridge_stderr::start_filtered_forward(stderr);
     let pgid = child.id();
@@ -83,10 +83,13 @@ fn register_sandbox(
     .map_err(AgentError)
 }
 
-fn spawn_bridge_process(args: &BridgeSpawnArgs<'_>) -> Result<tokio::process::Child, AgentError> {
+fn spawn_bridge_process(
+    args: &BridgeSpawnArgs<'_>,
+    ticket: &mut crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
+) -> Result<tokio::process::Child, AgentError> {
     let bridge = resolve_bridge_js().map_err(AgentError)?;
     let node = crate::backends::cursor_sdk::node_resolve::resolve_node_bin().map_err(AgentError)?;
-    let mut command = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, args.cwd);
+    let mut command = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, args.cwd, ticket);
     crate::backends::cursor_sdk::node_resolve::apply_quiet_node_cli(&mut command);
     command
         .arg(bridge)

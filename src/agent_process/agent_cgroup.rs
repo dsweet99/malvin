@@ -137,6 +137,15 @@ pub fn kill_active_agent_cgroup(process_group_id: Option<u32>) {
     }
 }
 
+pub(crate) fn without_stalling_runtime<T>(f: impl FnOnce() -> T) -> T {
+    match tokio::runtime::Handle::try_current() {
+        Ok(handle) if handle.runtime_flavor() == tokio::runtime::RuntimeFlavor::MultiThread => {
+            tokio::task::block_in_place(f)
+        }
+        _ => f(),
+    }
+}
+
 pub fn release_active_agent_cgroup() {
     let Some(cgroup) = active_slot().take() else {
         return;

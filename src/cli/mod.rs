@@ -13,6 +13,7 @@ pub(crate) mod entrypoint;
 mod entrypoint_checks;
 pub(crate) mod error_run_log;
 pub(crate) mod exit;
+mod fact_record;
 mod facts_cmd;
 mod facts_view;
 pub(crate) mod init_flow;

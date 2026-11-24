@@ -83,7 +83,7 @@ pub fn uploadable_binary() -> Option<PathBuf> {
         target_arch = "x86_64",
         target_env = "gnu"
     )) {
-        std::env::current_exe().ok()
+        crate::self_exe::self_exe().ok()
     } else {
         None
     }

@@ -30,7 +30,7 @@ pub(super) fn spawn_linger(socket_path: &Path, pane_id: &str) -> bool {
     if !linger_enabled() {
         return false;
     }
-    let Some(exe) = worker_exe() else {
+    let Ok(exe) = crate::self_exe::self_exe() else {
         return false;
     };
     let mut cmd = std::process::Command::new(exe);
@@ -46,11 +46,6 @@ pub(super) fn spawn_linger(socket_path: &Path, pane_id: &str) -> bool {
     cmd.spawn().is_ok()
 }
 
-fn worker_exe() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    let stripped = exe.to_str()?.strip_suffix(" (deleted)").map(PathBuf::from);
-    Some(stripped.unwrap_or(exe))
-}
 
 #[must_use]
 pub fn run_if_worker() -> Option<crate::Exit> {
@@ -58,55 +53,73 @@ pub fn run_if_worker() -> Option<crate::Exit> {
     if args.next()? != WORKER_ARG {
         return None;
     }
+    match worker_args(args) {
+        (Some(socket), Some(pane), Some(pid)) => {
+            watch(&socket, &pane, pid);
+            Some(crate::Exit::Success)
+        }
+        (Some(socket), Some(pane), None) => {
+            release(&socket, &pane);
+            Some(crate::Exit::Failure)
+        }
+        _ => Some(crate::Exit::Failure),
+    }
+}
+
+fn worker_args(
+    mut args: impl Iterator<Item = std::ffi::OsString>,
+) -> (Option<PathBuf>, Option<String>, Option<u32>) {
     let socket = args.next().map(PathBuf::from);
     let pane = args.next().and_then(|a| a.into_string().ok());
     let pid = args
         .next()
         .and_then(|a| a.into_string().ok())
         .and_then(|a| a.parse::<u32>().ok());
-    if let (Some(socket), Some(pane), Some(pid)) = (socket, pane, pid) {
-        watch(&socket, &pane, pid);
-        Some(crate::Exit::Success)
-    } else {
-        Some(crate::Exit::Failure)
-    }
+    (socket, pane, pid)
 }
 
 fn watch(socket: &Path, pane: &str, parent_pid: u32) {
     wait_for_parent_exit(parent_pid);
     std::thread::sleep(Duration::from_secs(1));
+    if linger_ending(socket, pane, POLL, MAX_LINGER) == Verdict::Release {
+        release(socket, pane);
+    }
+}
+
+fn release(socket: &Path, pane: &str) {
+    let _ = send_request_reply(socket, &release_agent(pane, next_seq()));
+}
+
+fn linger_ending(socket: &Path, pane: &str, poll: Duration, max_linger: Duration) -> Verdict {
     let Some(baseline) = read_visible(socket, pane) else {
-        return;
+        return Verdict::Release;
     };
-    let deadline = Instant::now() + MAX_LINGER;
+    let deadline = Instant::now() + max_linger;
     let mut errors = 0_u32;
     while Instant::now() < deadline {
-        std::thread::sleep(POLL);
+        std::thread::sleep(poll);
         match poll_pane(socket, pane, &baseline) {
             Ok(Verdict::Wait) => errors = 0,
-            Ok(Verdict::Release) => {
-                let _ = send_request_reply(socket, &release_agent(pane, next_seq()));
-                return;
-            }
-            Ok(Verdict::Leave) => return,
+            Ok(ending) => return ending,
             Err(()) => {
                 errors += 1;
                 if errors >= MAX_CONSECUTIVE_ERRORS {
-                    return;
+                    return Verdict::Release;
                 }
             }
         }
     }
+    Verdict::Release
 }
 
 fn wait_for_parent_exit(pid: u32) {
-    let proc_dir = PathBuf::from(format!("/proc/{pid}"));
     let deadline = Instant::now() + PARENT_EXIT_WAIT;
-    while proc_dir.exists() && Instant::now() < deadline {
+    while crate::agent_process::pid_alive(pid) && Instant::now() < deadline {
         std::thread::sleep(POLL);
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum Verdict {
     Wait,
     Release,
@@ -155,9 +168,19 @@ mod tests {
     use std::os::unix::net::UnixListener;
 
     fn serve(sock: &std::path::Path, focused: bool, status: &'static str, text: &'static str) {
+        serve_n(sock, 4, focused, status, text);
+    }
+
+    fn serve_n(
+        sock: &std::path::Path,
+        n: usize,
+        focused: bool,
+        status: &'static str,
+        text: &'static str,
+    ) {
         let listener = UnixListener::bind(sock).unwrap();
         std::thread::spawn(move || {
-            for conn in listener.incoming().take(4) {
+            for conn in listener.incoming().take(n) {
                 let mut conn = conn.unwrap();
                 let mut line = String::new();
                 BufReader::new(&conn).read_line(&mut line).unwrap();
@@ -184,11 +207,37 @@ mod tests {
         }
     }
 
+    fn ending(sock: &std::path::Path, max_linger_ms: u64) -> &'static str {
+        let poll = std::time::Duration::from_millis(1);
+        let max = std::time::Duration::from_millis(max_linger_ms);
+        match super::linger_ending(sock, "p", poll, max) {
+            Verdict::Wait => "wait",
+            Verdict::Release => "release",
+            Verdict::Leave => "leave",
+        }
+    }
+
+    fn worker_releases_on_failed_baseline_error_limit_and_timeout() {
+        let dir = tempfile::tempdir().unwrap();
+        let absent = dir.path().join("absent.sock");
+        assert_eq!(ending(&absent, 1000), "release");
+        let sock = dir.path().join("h.sock");
+        serve_n(&sock, 1, false, "idle", "base");
+        assert_eq!(ending(&sock, 4000), "release");
+        let sock = dir.path().join("w.sock");
+        serve_n(&sock, 10_000, false, "idle", "base");
+        assert_eq!(ending(&sock, 50), "release");
+        let sock = dir.path().join("l.sock");
+        serve_n(&sock, 2, false, "working", "base");
+        assert_eq!(ending(&sock, 1000), "leave");
+    }
+
     #[test]
     fn releases_only_when_focused_and_screen_changed_and_not_taken_over() {
         assert_eq!(verdict(false, "idle", "new"), "wait");
         assert_eq!(verdict(true, "idle", "base"), "wait");
         assert_eq!(verdict(true, "idle", "new"), "release");
         assert_eq!(verdict(true, "working", "new"), "leave");
+        worker_releases_on_failed_baseline_error_limit_and_timeout();
     }
 }

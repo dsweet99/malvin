@@ -1,7 +1,6 @@
-use super::{WORKER_ARG, fact_trace_path, strip_deleted_suffix, worker_args, worker_command};
+use super::{WORKER_ARG, fact_trace_path, worker_args, worker_command};
 use crate::artifacts::RunArtifacts;
 use std::ffi::OsString;
-use std::path::PathBuf;
 
 fn os(args: &[&str]) -> impl Iterator<Item = OsString> {
     args.iter()
@@ -35,12 +34,8 @@ fn worker_args_parse_and_command_round_trip() {
     let trace = fact_trace_path(&artifacts).unwrap();
     assert_eq!(trace, dir.path().join("fact/trace.jsonl"));
     assert!(dir.path().join("fact").is_dir());
-    assert_eq!(
-        strip_deleted_suffix(PathBuf::from("/a/malvin (deleted)")),
-        PathBuf::from("/a/malvin")
-    );
-    assert_eq!(
-        strip_deleted_suffix(PathBuf::from("/a/malvin")),
-        PathBuf::from("/a/malvin")
-    );
+    let strip = crate::self_exe::strip_deleted_suffix;
+    assert_eq!(strip("/a/malvin (deleted)".into()), std::path::PathBuf::from("/a/malvin"));
+    assert_eq!(strip("/a/malvin".into()), std::path::PathBuf::from("/a/malvin"));
+    assert!(crate::self_exe::self_exe().unwrap().exists());
 }

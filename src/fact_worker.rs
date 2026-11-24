@@ -55,17 +55,8 @@ fn worker_command(
     Ok(command)
 }
 
-fn strip_deleted_suffix(exe: PathBuf) -> PathBuf {
-    exe.to_str()
-        .and_then(|s| s.strip_suffix(" (deleted)"))
-        .map(PathBuf::from)
-        .unwrap_or(exe)
-}
-
 fn worker_exe() -> Result<PathBuf, String> {
-    std::env::current_exe()
-        .map(strip_deleted_suffix)
-        .map_err(|e| e.to_string())
+    crate::self_exe::self_exe().map_err(|e| e.to_string())
 }
 
 fn spawn_context(artifacts: &RunArtifacts) -> String {

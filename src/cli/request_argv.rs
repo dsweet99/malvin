@@ -115,6 +115,8 @@ mod tests {
             vec![Some(true), Some(true)]
         );
         assert_eq!(gates(&["malvin", "a.md"]), vec![None]);
+        assert_eq!(gates(&["malvin", "a.md", "-g"]), vec![None]);
+        assert_eq!(gates(&["malvin", "a.md", "b.md", "--gates"]), vec![None, None]);
         assert!(Cli::try_parse_from(["malvin", "--ml=2", "--ml=3", "a.md"]).is_err());
     }
 

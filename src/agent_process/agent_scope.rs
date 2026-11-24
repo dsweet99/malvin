@@ -1,12 +1,15 @@
 use std::ffi::OsStr;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use tracing::{info, warn};
 
-use super::agent_cgroup::{AgentCgroup, pid_cgroup_dir, set_active_agent_cgroup};
+use super::agent_cgroup::{
+    AgentCgroup, pid_cgroup_dir, set_active_agent_cgroup, without_stalling_runtime,
+};
+use super::malvin_sandbox::SandboxSpawnTicket;
 
 pub const NO_CGROUP_ENV: &str = "MALVIN_NO_CGROUP";
 const SYSTEMD_RUN: &str = "systemd-run";
@@ -15,7 +18,6 @@ const ATTACH_POLL: Duration = Duration::from_millis(10);
 
 static SCOPE_PROBE: OnceLock<bool> = OnceLock::new();
 static NEXT_SCOPE_SERIAL: AtomicU64 = AtomicU64::new(0);
-static PENDING_SCOPE_UNIT: Mutex<Option<String>> = Mutex::new(None);
 
 #[must_use]
 pub(crate) fn scope_args(unit: &str, mem_limit_bytes: u64) -> Vec<String> {
@@ -71,26 +73,21 @@ fn next_scope_unit() -> String {
     format!("malvin-agent-{}-{serial}", std::process::id())
 }
 
-fn pending_slot() -> std::sync::MutexGuard<'static, Option<String>> {
-    PENDING_SCOPE_UNIT
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
 #[must_use]
 pub fn malvin_agent_tokio_command(
     program: impl AsRef<OsStr>,
     work_dir: &Path,
+    ticket: &mut SandboxSpawnTicket,
 ) -> tokio::process::Command {
     if !agent_cgroups_enabled() {
-        *pending_slot() = None;
+        ticket.set_scope_unit(None);
         return super::malvin_sandbox::malvin_tokio_command(program);
     }
     let unit = next_scope_unit();
     let limit = crate::config::mem_limit_config::load_mem_limit_bytes(work_dir);
     let mut cmd = super::malvin_sandbox::malvin_std_command(SYSTEMD_RUN);
     cmd.args(scope_args(&unit, limit)).arg(program);
-    *pending_slot() = Some(unit);
+    ticket.set_scope_unit(Some(unit));
     tokio::process::Command::from(cmd)
 }
 
@@ -116,13 +113,12 @@ fn wait_for_scope_cgroup(pid: u32, unit: &str) -> Option<AgentCgroup> {
     }
 }
 
-pub fn attach_pending_agent_scope(agent_pid: Option<u32>) {
-    let unit = pending_slot().take();
+pub(crate) fn attach_agent_scope(unit: Option<String>, agent_pid: Option<u32>) {
     let (Some(unit), Some(pid)) = (unit, agent_pid) else {
         set_active_agent_cgroup(None);
         return;
     };
-    let cgroup = wait_for_scope_cgroup(pid, &unit);
+    let cgroup = without_stalling_runtime(|| wait_for_scope_cgroup(pid, &unit));
     if cgroup.is_none() {
         warn!(
             unit,

@@ -27,7 +27,20 @@ struct ActiveSandboxSession {
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
 
 #[derive(Debug)]
-pub struct SandboxSpawnTicket(());
+pub struct SandboxSpawnTicket {
+    scope_unit: Option<String>,
+}
+
+impl SandboxSpawnTicket {
+    pub(crate) fn set_scope_unit(&mut self, unit: Option<String>) {
+        self.scope_unit = unit;
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn for_test() -> Self {
+        Self { scope_unit: None }
+    }
+}
 
 pub fn init_malvin_spawn_baseline() {
     #[cfg(unix)]
@@ -76,7 +89,7 @@ pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Comma
 #[must_use = "pass the ticket to note_active_sandbox_session after spawn"]
 pub fn take_sandbox_spawn_ticket() -> Result<SandboxSpawnTicket, String> {
     assert_dead_before_next_spawn()?;
-    Ok(SandboxSpawnTicket(()))
+    Ok(SandboxSpawnTicket { scope_unit: None })
 }
 
 pub fn assert_dead_before_next_spawn() -> Result<(), String> {
@@ -98,14 +111,14 @@ pub fn assert_dead_before_next_spawn() -> Result<(), String> {
 }
 
 pub fn note_active_sandbox_session(
-    _ticket: SandboxSpawnTicket,
+    ticket: SandboxSpawnTicket,
     pgid: Option<u32>,
     baseline: HashSet<u32>,
     work_dir: &Path,
 ) -> Result<(), String> {
     let acp_lock_slot = crate::agent_process::acp_spawn_lock::active_acp_lock_slot();
     acquire_acp_spawn_lock(work_dir)?;
-    crate::agent_process::agent_scope::attach_pending_agent_scope(pgid);
+    crate::agent_process::agent_scope::attach_agent_scope(ticket.scope_unit, pgid);
     *ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ActiveSandboxSession {
@@ -122,7 +135,9 @@ pub fn clear_active_sandbox_session() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .take();
-    crate::agent_process::agent_cgroup::release_active_agent_cgroup();
+    crate::agent_process::agent_cgroup::without_stalling_runtime(
+        crate::agent_process::agent_cgroup::release_active_agent_cgroup,
+    );
     if let Some(session) = session {
         release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);
     }

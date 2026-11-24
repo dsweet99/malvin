@@ -79,6 +79,7 @@ pub use workspace::workspace_paths::{
 pub mod terminal_palette;
 pub use workspace::run_id::{RunDirOptions, build_identifier, create_run_dir};
 pub mod fact_worker;
+pub mod self_exe;
 pub mod herdr;
 pub(crate) mod holidays;
 pub mod session_dotfile_backup;

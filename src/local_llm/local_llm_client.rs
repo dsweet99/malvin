@@ -103,7 +103,7 @@ fn connect(sock: &Path, io: Duration) -> Result<UnixStream, String> {
 }
 
 fn spawn_manager() -> Result<(), String> {
-    let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
+    let exe = crate::self_exe::self_exe().map_err(|e| format!("current_exe: {e}"))?;
     let mut cmd = Command::new(exe);
     cmd.arg(INTERNAL_MANAGER_FLAG)
         .stdin(Stdio::null())

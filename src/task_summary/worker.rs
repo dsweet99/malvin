@@ -14,7 +14,7 @@ pub(super) fn spawn(artifacts: &RunArtifacts) -> Result<tokio::process::Child, S
 }
 
 fn worker_command(artifacts: &RunArtifacts) -> Result<tokio::process::Command, String> {
-    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let exe = crate::self_exe::self_exe().map_err(|e| e.to_string())?;
     let log = std::fs::File::create(artifacts.run_dir.join("request_summary.log"))
         .map_err(|e| e.to_string())?;
     let mut command = tokio::process::Command::new(exe);

@@ -95,8 +95,11 @@ fn tag_per_request_models(
         Vec::new()
     };
     let mut tagged = tag_requests_with_models(&cli.requests, models);
-    for (job, gates) in tagged.iter_mut().zip(seg.gates_at(&indices)) {
-        job.gates = Some(gates);
+    let gates = seg.gates_at(&indices);
+    if gates.contains(&true) {
+        for (job, on) in tagged.iter_mut().zip(gates) {
+            job.gates = Some(on);
+        }
     }
     Ok(tagged)
 }

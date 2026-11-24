@@ -3,23 +3,15 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use super::fact_record::{FIELDS, FactRecord, facts_path, parse_facts};
 use super::tag_list::limit_words;
 use crate::desc_limit::MAX_DESC_WORDS;
 
-const FIELDS: &str = "fact_id, description, fact, symptoms";
 const ID_MAX: usize = 64;
 const FACT_MAX: usize = 4000;
 const SYMPTOM_MAX: usize = 500;
 const SYMPTOMS_MAX: usize = 20;
 const LOCK_WAIT: Duration = Duration::from_secs(2);
-
-#[derive(Debug, PartialEq, Eq, serde::Serialize)]
-struct NewFact {
-    fact_id: String,
-    description: String,
-    fact: String,
-    symptoms: Vec<String>,
-}
 
 fn is_invisible(c: char) -> bool {
     c.is_control()
@@ -67,7 +59,7 @@ fn clean_description(raw: &str) -> Result<String, String> {
     Ok(value)
 }
 
-fn parse_args(args: &[String]) -> Result<NewFact, String> {
+fn parse_args(args: &[String]) -> Result<FactRecord, String> {
     let (mut id, mut fact, mut description, mut symptoms) = (None, None, None, Vec::new());
     for arg in args {
         let (key, value) = arg.split_once('=').ok_or_else(|| {
@@ -97,9 +89,9 @@ fn parse_args(args: &[String]) -> Result<NewFact, String> {
         Some(raw) => clean_description(raw)?,
         None => limit_words(&fact),
     };
-    Ok(NewFact {
+    Ok(FactRecord {
         fact_id: clean_id(id)?,
-        description,
+        description: Some(description),
         fact,
         symptoms,
     })
@@ -135,9 +127,7 @@ impl Drop for LockGuard {
 }
 
 fn id_exists(text: &str, id: &str) -> bool {
-    text.lines()
-        .filter_map(|l| serde_json::from_str::<serde_json::Value>(l).ok())
-        .any(|v| v.get("fact_id").and_then(serde_json::Value::as_str) == Some(id))
+    parse_facts(text).any(|f| f.fact_id == id)
 }
 
 fn read_existing(path: &Path) -> Result<String, String> {
@@ -148,7 +138,7 @@ fn read_existing(path: &Path) -> Result<String, String> {
     }
 }
 
-fn write_line(path: &Path, existing: &str, new: &NewFact) -> Result<(), String> {
+fn write_line(path: &Path, existing: &str, new: &FactRecord) -> Result<(), String> {
     let value = serde_json::to_string(new).map_err(|e| format!("cannot encode fact: {e}"))?;
     let lead = if existing.is_empty() || existing.ends_with('\n') {
         ""
@@ -170,7 +160,7 @@ fn replace_atomically(path: &Path, text: &str) -> Result<(), String> {
     std::fs::rename(&tmp, path).map_err(|e| format!("cannot replace {}: {e}", path.display()))
 }
 
-fn append_fact_at(path: &Path, new: &NewFact) -> Result<(), String> {
+fn append_fact_at(path: &Path, new: &FactRecord) -> Result<(), String> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)
             .map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
@@ -191,7 +181,7 @@ fn append_fact_at(path: &Path, new: &NewFact) -> Result<(), String> {
 
 pub(crate) fn add_fact(args: &[String]) -> Result<String, String> {
     let new = parse_args(args)?;
-    let path = super::facts_view::facts_path();
+    let path = facts_path();
     append_fact_at(&path, &new)?;
     Ok(format!(
         "added fact `{}` to {}",
@@ -205,9 +195,7 @@ fn without_fact(text: &str, id: &str) -> Option<String> {
     let kept: String = text
         .split_inclusive('\n')
         .filter(|line| {
-            let matches = serde_json::from_str::<serde_json::Value>(line)
-                .ok()
-                .is_some_and(|v| v.get("fact_id").and_then(serde_json::Value::as_str) == Some(id));
+            let matches = FactRecord::from_line(line).is_some_and(|f| f.fact_id == id);
             found |= matches;
             !matches
         })
@@ -230,7 +218,7 @@ fn remove_fact_at(path: &Path, id: &str) -> Result<(), String> {
 
 pub(crate) fn remove_fact(fact_id: &str) -> Result<String, String> {
     let id = clean_id(fact_id)?;
-    let path = super::facts_view::facts_path();
+    let path = facts_path();
     remove_fact_at(&path, &id)?;
     Ok(format!("removed fact `{id}` from {}", path.display()))
 }

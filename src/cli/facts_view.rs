@@ -1,49 +1,12 @@
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+use super::fact_record::{FactRecord, facts_path, parse_facts};
 use super::tag_list::{limit_words, list_line, write_body, write_list};
 
-const FACTS_FILE: &str = "facts.jsonl";
 const NO_FACTS_MESSAGE: &str = "No facts saved yet.";
 
-pub(crate) fn facts_path() -> PathBuf {
-    crate::malvin_user_home_root().join(FACTS_FILE)
-}
-
-struct FactRecord {
-    id: String,
-    fact: String,
-    description: Option<String>,
-    symptoms: Vec<String>,
-}
-
 impl FactRecord {
-    fn from_line(line: &str) -> Option<Self> {
-        let value: serde_json::Value = serde_json::from_str(line).ok()?;
-        let text = |key: &str| {
-            value
-                .get(key)
-                .and_then(serde_json::Value::as_str)
-                .map(str::to_string)
-        };
-        let symptoms = value
-            .get("symptoms")
-            .and_then(serde_json::Value::as_array)
-            .map(|items| {
-                items
-                    .iter()
-                    .filter_map(|s| s.as_str().map(str::to_string))
-                    .collect()
-            })
-            .unwrap_or_default();
-        Some(Self {
-            id: text("fact_id")?,
-            fact: text("fact")?,
-            description: text("description"),
-            symptoms,
-        })
-    }
-
     fn short_description(&self) -> String {
         limit_words(self.description.as_deref().unwrap_or(&self.fact))
     }
@@ -68,14 +31,14 @@ fn read_facts_at(path: &Path) -> Result<Vec<FactRecord>, String> {
         Err(e) if e.kind() == io::ErrorKind::NotFound => String::new(),
         Err(e) => return Err(format!("cannot read {}: {e}", path.display())),
     };
-    Ok(text.lines().filter_map(FactRecord::from_line).collect())
+    Ok(parse_facts(&text).collect())
 }
 
 fn write_facts_list_at(path: &Path, out: impl Write) -> Result<(), String> {
     let facts = read_facts_at(path)?;
     let mut lines: Vec<String> = facts
         .iter()
-        .map(|f| list_line(&f.id, &f.short_description()))
+        .map(|f| list_line(&f.fact_id, &f.short_description()))
         .collect();
     if lines.is_empty() {
         lines.push(NO_FACTS_MESSAGE.to_string());
@@ -85,8 +48,8 @@ fn write_facts_list_at(path: &Path, out: impl Write) -> Result<(), String> {
 
 fn write_fact_at(path: &Path, tag: &str, out: impl Write) -> Result<(), String> {
     let facts = read_facts_at(path)?;
-    let Some(fact) = facts.iter().find(|f| f.id == tag) else {
-        let known: Vec<&str> = facts.iter().map(|f| f.id.as_str()).collect();
+    let Some(fact) = facts.iter().find(|f| f.fact_id == tag) else {
+        let known: Vec<&str> = facts.iter().map(|f| f.fact_id.as_str()).collect();
         let known = if known.is_empty() {
             NO_FACTS_MESSAGE.trim_end_matches('.').to_lowercase()
         } else {
@@ -117,9 +80,9 @@ pub(crate) fn print_fact(tag: &str) -> Result<(), String> {
 mod tests {
     use super::*;
 
-    fn temp_facts(content: &[u8]) -> (tempfile::TempDir, PathBuf) {
+    fn temp_facts(content: &[u8]) -> (tempfile::TempDir, std::path::PathBuf) {
         let dir = tempfile::tempdir().expect("tempdir");
-        let path = dir.path().join(FACTS_FILE);
+        let path = dir.path().join("facts.jsonl");
         std::fs::write(&path, content).expect("write facts");
         (dir, path)
     }
@@ -161,5 +124,25 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let err = render(dir.path(), None).expect_err("directory");
         assert!(err.contains("cannot read"), "{err}");
+        record_round_trips_and_skips_malformed_lines();
+    }
+
+    fn record_round_trips_and_skips_malformed_lines() {
+        use super::super::fact_record::FIELDS;
+        let fact = FactRecord {
+            fact_id: "a".into(),
+            description: Some("d".into()),
+            fact: "f".into(),
+            symptoms: vec!["s".into()],
+        };
+        let line = serde_json::to_string(&fact).unwrap();
+        let text = format!("{line}\nnot json\n{{\"fact_id\":\"b\",\"fact\":7}}\n{{\"fact_id\":\"c\",\"fact\":\"x\"}}\n");
+        let ids: Vec<String> = parse_facts(&text).map(|f| f.fact_id).collect();
+        assert_eq!(ids, ["a", "c"]);
+        assert_eq!(FactRecord::from_line(&line), Some(fact));
+        for field in ["fact_id", "description", "fact", "symptoms"] {
+            assert!(line.contains(&format!("\"{field}\"")));
+            assert!(FIELDS.contains(field));
+        }
     }
 }
