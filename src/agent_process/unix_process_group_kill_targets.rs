@@ -6,7 +6,7 @@ pub(crate) use super::session_spawn_affiliation;
 mod session_spawn_affiliation_tests;
 use super::unix_process_group_ps::{
     INIT_PID, ProcRow, host_protected_pids, is_safe_kill_target, list_proc_rows,
-    process_group_member_pids,
+    process_group_member_pids, read_proc_cmdline,
 };
 #[cfg(any(test, debug_assertions))]
 pub(crate) use session_spawn_affiliation::note_session_affiliated_pid;
@@ -31,6 +31,19 @@ pub(crate) fn descendant_pids(roots: &HashSet<u32>, rows: &[ProcRow]) -> HashSet
         }
     }
     seen
+}
+
+pub(crate) fn malvin_worker_subtree_pids(rows: &[ProcRow]) -> HashSet<u32> {
+    let malvin_pid = std::process::id();
+    let workers: HashSet<u32> = descendant_pids(&HashSet::from([malvin_pid]), rows)
+        .into_iter()
+        .filter(|&pid| {
+            pid != malvin_pid
+                && read_proc_cmdline(pid)
+                    .is_some_and(|cmdline| crate::self_worker::is_worker_cmdline(&cmdline))
+        })
+        .collect();
+    descendant_pids(&workers, rows)
 }
 
 pub(crate) fn reparented_init_orphans(baseline: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {
@@ -133,6 +146,9 @@ pub(crate) fn kill_targets_for_teardown(
         targets.extend(affiliated_session_pids(&HashSet::new(), &rows));
     }
     if let Some(pid) = crate::local_llm::local_llm_manager_pid() {
+        targets.remove(&pid);
+    }
+    for pid in malvin_worker_subtree_pids(&rows) {
         targets.remove(&pid);
     }
     targets

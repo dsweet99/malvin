@@ -87,23 +87,32 @@ fn append_creates_file_enforces_unique_id_and_fixes_missing_newline() {
     assert_eq!(lines[0]["fact"], "First \"quoted\"");
     assert_eq!(lines[0]["symptoms"], serde_json::json!([]));
     assert_eq!(lines[1]["symptoms"], serde_json::json!(["s"]));
-    assert!(!dir.path().join("sub").join("facts.jsonl.lock").exists());
     assert!(!dir.path().join("sub").join("facts.jsonl.tmp").exists());
     std::fs::write(&path, "").expect("empty");
     let link = dir.path().join("sub").join("hard.jsonl");
     std::fs::hard_link(&path, &link).expect("hard link");
     append_fact_at(&path, &first).expect("append replaces file");
-    assert!(std::fs::read_to_string(&link).expect("old inode").is_empty());
+    assert!(
+        std::fs::read_to_string(&link)
+            .expect("old inode")
+            .is_empty()
+    );
 }
 
 #[test]
-fn stale_lock_times_out_with_clear_error() {
+fn leftover_lock_file_does_not_block_but_a_held_lock_times_out() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("facts.jsonl");
-    std::fs::write(dir.path().join("facts.jsonl.lock"), "").expect("lock");
-    let new = parse_args(&args(&["fact_id=one", "fact=x"])).expect("parse");
-    let err = append_fact_at(&path, &new).expect_err("locked");
+    std::fs::write(dir.path().join("facts.jsonl.lock"), "").expect("leftover lock file");
+    let first = parse_args(&args(&["fact_id=one", "fact=x"])).expect("parse");
+    append_fact_at(&path, &first).expect("a lock file left by a killed process must not block");
+    let held =
+        crate::cli::atomic_file::lock_beside(&path, std::time::Duration::ZERO).expect("hold");
+    let second = parse_args(&args(&["fact_id=two", "fact=x"])).expect("parse");
+    let err = append_fact_at(&path, &second).expect_err("locked");
     assert!(err.contains("locked"), "{err}");
+    drop(held);
+    remove_fact_at(&path, "one").expect("lock released when its holder goes away");
 }
 
 #[test]
@@ -124,7 +133,6 @@ fn remove_deletes_only_matching_fact_and_reports_missing() {
     assert!(err.contains("not found"), "{err}");
     let err = remove_fact_at(&dir.path().join("none.jsonl"), "one").expect_err("no file");
     assert!(err.contains("no facts file"), "{err}");
-    assert!(!dir.path().join("facts.jsonl.lock").exists());
 }
 
 #[test]

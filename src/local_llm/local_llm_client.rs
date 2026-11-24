@@ -1,7 +1,6 @@
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::Path;
-use std::process::Command;
 use std::time::{Duration, Instant};
 
 use super::local_llm_ollama::SERVE_WAIT;
@@ -102,29 +101,8 @@ fn connect(sock: &Path, io: Duration) -> Result<UnixStream, String> {
 
 fn spawn_manager() -> Result<(), String> {
     let no_args: [&str; 0] = [];
-    let mut cmd =
-        crate::self_worker::detached_command(crate::self_worker::Worker::LocalLlmManager, no_args)?;
-    forward_manager_env(&mut cmd);
-    let child = cmd
-        .spawn()
-        .map_err(|e| format!("spawn local llm manager: {e}"))?;
-    std::mem::forget(child);
-    Ok(())
-}
-
-fn forward_manager_env(cmd: &mut Command) {
-    for key in [
-        "MALVIN_LOCAL_LLM_MANAGER_SOCK",
-        "MALVIN_LOCAL_LLM_MANAGER_LOCK",
-        "MALVIN_TIME_SINCE_LAST_CALL_SECONDS",
-        "MALVIN_OLLAMA",
-        "MALVIN_HOME",
-        "HOME",
-    ] {
-        if let Ok(v) = std::env::var(key) {
-            cmd.env(key, v);
-        }
-    }
+    crate::self_worker::spawn_detached(crate::self_worker::Worker::LocalLlmManager, no_args)
+        .map(|_| ())
 }
 
 fn wait_for_socket(sock: &Path) -> Result<(), String> {

@@ -53,6 +53,11 @@ async fn watch_session_memory_with_rss_sampler(
         ) {
             return;
         }
+        if kernel_enforces_memory_limit(&handles) {
+            consecutive_rss_failures = 0;
+            tokio::time::sleep(POLL_INTERVAL).await;
+            continue;
+        }
         let rss = sample_rss(handles.pgid, &handles.spawn_pid_baseline);
         let allow_fail_closed = !handles
             .reader_dead
@@ -68,6 +73,11 @@ async fn watch_session_memory_with_rss_sampler(
         }
         tokio::time::sleep(POLL_INTERVAL).await;
     }
+}
+
+#[cfg(unix)]
+fn kernel_enforces_memory_limit(handles: &MemWatchHandles) -> bool {
+    crate::agent_process::agent_cgroup::active_agent_cgroup_for(handles.pgid).is_some()
 }
 
 #[cfg(unix)]
@@ -198,3 +208,7 @@ mod process_group_mem_watch_tests;
 #[cfg(test)]
 #[path = "process_group_mem_watch_oom_marker_tests.rs"]
 mod process_group_mem_watch_oom_marker_tests;
+
+#[cfg(all(test, unix))]
+#[path = "process_group_mem_watch_cgroup_tests.rs"]
+mod process_group_mem_watch_cgroup_tests;

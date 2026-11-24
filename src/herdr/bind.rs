@@ -14,8 +14,8 @@ use super::trace::log_herdr_failure;
 pub fn emit_bind_reports(env: &HerdrEnv, session_id: Option<&str>, run_dir: Option<&Path>) {
     for (phase, req) in bind_requests(env.pane_id.as_str(), session_id, run_dir) {
         if let Err(detail) = send_request_with_retry(&env.socket_path, &req) {
-            log_herdr_failure(run_dir, phase, &detail);
-            if phase == "rename" && detail.starts_with("agent_not_found:") {
+            log_herdr_failure(run_dir, phase, &detail.to_string());
+            if phase == "rename" && detail.has_code("agent_not_found") {
                 explain_missing_agent(env, run_dir);
             }
         }

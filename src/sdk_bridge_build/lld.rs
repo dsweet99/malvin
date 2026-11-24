@@ -7,7 +7,7 @@ pub(super) fn emit_fast_bin_linker_args() {
     if !target_is_linux() {
         return;
     }
-    if env::var_os("MALVIN_DISABLE_LLD").is_some() {
+    if super::env_flag::env_flag("MALVIN_DISABLE_LLD") {
         return;
     }
     if emit_mold_bin_linker_args() {
@@ -27,7 +27,7 @@ pub(super) fn target_is_linux_for(target: &str) -> bool {
 }
 
 pub(super) fn emit_dev_dynamic_rpaths() {
-    if env::var_os("MALVIN_DISABLE_DYNAMIC_RPATH").is_some() {
+    if super::env_flag::env_flag("MALVIN_DISABLE_DYNAMIC_RPATH") {
         return;
     }
     println!("cargo:rerun-if-env-changed=MALVIN_DISABLE_DYNAMIC_RPATH");

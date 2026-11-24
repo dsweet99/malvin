@@ -1,4 +1,7 @@
-use super::{Worker, attached_command, detached_command, invocation, parent_disconnected, usage};
+use super::{
+    Worker, attached_command, detached_command, invocation, is_worker_cmdline, parent_disconnected,
+    spawn_detached, usage,
+};
 use std::ffi::{OsStr, OsString};
 
 fn os(args: &[&str]) -> std::vec::IntoIter<OsString> {
@@ -43,6 +46,14 @@ fn workers_share_markers_dispatch_and_isolation() {
     let log = tempfile::tempfile().unwrap();
     assert!(attached_command(Worker::LocalLlmManager, ["x"], log).is_err());
     let _ = parent_disconnected;
+    detached_workers_leave_no_zombie_child();
+    assert!(is_worker_cmdline(
+        b"/usr/bin/malvin\0__fact-agent-worker\0x\0"
+    ));
+    assert!(!is_worker_cmdline(
+        b"/usr/bin/malvin\0admin\0__fact-agent-worker\0"
+    ));
+    assert!(!is_worker_cmdline(b""));
     summary_worker_round_trips_through_the_shared_marker();
 }
 
@@ -66,4 +77,19 @@ fn summary_worker_round_trips_through_the_shared_marker() {
             .contains("usage")
     );
     assert!(summary_worker_request(vec!["a".into(), "b".into()]).is_err());
+}
+
+fn detached_workers_leave_no_zombie_child() {
+    for worker in [Worker::LocalLlmManager, Worker::HerdrLinger] {
+        let pid = spawn_detached(worker, ["--exact", "no_such_test"]).unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        while std::path::Path::new(&format!("/proc/{pid}")).exists() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "{} child {pid} was never reaped",
+                worker.marker()
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
 }

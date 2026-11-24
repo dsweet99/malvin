@@ -77,6 +77,14 @@ pub fn run_if_worker() -> Option<crate::Exit> {
     })
 }
 
+#[must_use]
+pub(crate) fn is_worker_cmdline(cmdline: &[u8]) -> bool {
+    cmdline
+        .split(|&b| b == 0)
+        .nth(1)
+        .is_some_and(|arg| Worker::ALL.iter().any(|w| arg == w.marker().as_bytes()))
+}
+
 pub(crate) fn usage(worker: Worker, operands: &str) -> String {
     format!("usage: malvin {} {operands}", worker.marker())
 }
@@ -119,10 +127,29 @@ where
     Ok(command)
 }
 
-pub(crate) fn detached_command<I, S>(
-    worker: Worker,
-    args: I,
-) -> Result<std::process::Command, String>
+pub(crate) fn spawn_detached<I, S>(worker: Worker, args: I) -> Result<u32, String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let mut child = detached_command(worker, args)?
+        .spawn()
+        .map_err(|e| format!("spawn {}: {e}", worker.label()))?;
+    let pid = child.id();
+    match worker.lifetime() {
+        Lifetime::Daemon => {
+            child
+                .wait()
+                .map_err(|e| format!("wait for {} launcher: {e}", worker.label()))?;
+        }
+        Lifetime::Attached | Lifetime::ProcessGroup => {
+            std::thread::spawn(move || child.wait());
+        }
+    }
+    Ok(pid)
+}
+
+fn detached_command<I, S>(worker: Worker, args: I) -> Result<std::process::Command, String>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,

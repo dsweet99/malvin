@@ -19,7 +19,7 @@ fn linger_enabled() -> bool {
     }
     #[cfg(not(test))]
     {
-        std::env::var_os("MALVIN_NO_HERDR_LINGER").is_none()
+        !crate::env_flag::env_flag("MALVIN_NO_HERDR_LINGER")
     }
 }
 
@@ -33,8 +33,7 @@ pub(super) fn spawn_linger(socket_path: &Path, pane_id: &str) -> bool {
         OsStr::new(pane_id),
         OsStr::new(&pid),
     ];
-    crate::self_worker::detached_command(Worker::HerdrLinger, args)
-        .is_ok_and(|mut command| command.spawn().is_ok())
+    crate::self_worker::spawn_detached(Worker::HerdrLinger, args).is_ok()
 }
 
 pub fn run_worker(args: Vec<OsString>) -> Result<(), String> {
@@ -116,7 +115,7 @@ enum Verdict {
 fn poll_pane(socket: &Path, pane: &str, baseline: &str) -> Result<Verdict, ()> {
     let reply = match send_request_reply(socket, &pane_get(pane)) {
         Ok(v) => v,
-        Err(e) if e.starts_with("pane_not_found") => return Ok(Verdict::Leave),
+        Err(e) if e.has_code("pane_not_found") => return Ok(Verdict::Leave),
         Err(_) => return Err(()),
     };
     let info = &reply["pane"];

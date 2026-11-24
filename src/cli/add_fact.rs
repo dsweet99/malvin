@@ -1,8 +1,7 @@
-use std::fs::OpenOptions;
-use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::path::Path;
+use std::time::Duration;
 
-use super::atomic_file::replace_atomically;
+use super::atomic_file::{lock_beside, replace_atomically};
 use super::fact_record::{FIELDS, FactRecord, facts_path, parse_facts};
 use super::tag_list::limit_words;
 use crate::desc_limit::MAX_DESC_WORDS;
@@ -97,35 +96,6 @@ fn parse_args(args: &[String]) -> Result<FactRecord, String> {
     })
 }
 
-struct LockGuard(PathBuf);
-
-impl LockGuard {
-    fn acquire(path: PathBuf) -> Result<Self, String> {
-        let start = Instant::now();
-        loop {
-            match OpenOptions::new().write(true).create_new(true).open(&path) {
-                Ok(_) => return Ok(Self(path)),
-                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                    if start.elapsed() > LOCK_WAIT {
-                        return Err(format!(
-                            "facts file is locked by {}; remove it if no other admin facts command is running",
-                            path.display()
-                        ));
-                    }
-                    std::thread::sleep(Duration::from_millis(50));
-                }
-                Err(e) => return Err(format!("cannot create {}: {e}", path.display())),
-            }
-        }
-    }
-}
-
-impl Drop for LockGuard {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
-    }
-}
-
 fn id_exists(text: &str, id: &str) -> bool {
     parse_facts(text).any(|f| f.fact_id == id)
 }
@@ -153,9 +123,7 @@ fn append_fact_at(path: &Path, new: &FactRecord) -> Result<(), String> {
         std::fs::create_dir_all(dir)
             .map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
     }
-    let mut lock_name = path.as_os_str().to_owned();
-    lock_name.push(".lock");
-    let _lock = LockGuard::acquire(PathBuf::from(lock_name))?;
+    let _lock = lock_beside(path, LOCK_WAIT)?;
     let existing = read_existing(path)?;
     if id_exists(&existing, &new.fact_id) {
         return Err(format!(
@@ -192,12 +160,10 @@ fn without_fact(text: &str, id: &str) -> Option<String> {
 }
 
 fn remove_fact_at(path: &Path, id: &str) -> Result<(), String> {
-    let mut lock_name = path.as_os_str().to_owned();
-    lock_name.push(".lock");
     if !path.exists() {
         return Err(format!("no facts file at {}", path.display()));
     }
-    let _lock = LockGuard::acquire(PathBuf::from(lock_name))?;
+    let _lock = lock_beside(path, LOCK_WAIT)?;
     let existing = read_existing(path)?;
     let kept = without_fact(&existing, id)
         .ok_or_else(|| format!("fact_id `{id}` not found in {}", path.display()))?;

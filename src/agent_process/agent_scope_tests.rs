@@ -8,9 +8,7 @@ fn agent_scope_args_env_switch_and_unit_matching() {
     assert!(args.contains(&"--unit=malvin-agent-1-0".to_string()));
     assert!(args.contains(&"--property=MemoryMax=4096".to_string()));
     assert_eq!(args.last().map(String::as_str), Some("--"));
-    assert!(cgroup_disabled_by_env(Some(OsStr::new("1"))));
-    assert!(!cgroup_disabled_by_env(Some(OsStr::new("0"))));
-    assert!(!cgroup_disabled_by_env(None));
+    crate::env_flag_tests::flags_are_on_only_for_non_empty_values_other_than_zero();
     let dir = Path::new("/sys/fs/cgroup/u/app.slice/malvin-agent-1-0.scope");
     assert!(cgroup_dir_is_unit_scope(dir, "malvin-agent-1-0"));
     assert!(!cgroup_dir_is_unit_scope(dir, "malvin-agent-1-1"));

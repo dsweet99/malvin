@@ -1,3 +1,5 @@
+#[path = "../env_flag.rs"]
+mod env_flag;
 mod lld;
 
 use lld::{emit_dev_dynamic_rpaths, emit_fast_bin_linker_args};

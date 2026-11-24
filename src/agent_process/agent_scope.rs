@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use tracing::{info, warn};
@@ -33,11 +33,6 @@ pub(crate) fn scope_args(unit: &str, mem_limit_bytes: u64) -> Vec<String> {
     ]
 }
 
-#[must_use]
-pub(crate) fn cgroup_disabled_by_env(value: Option<&OsStr>) -> bool {
-    value.is_some_and(|v| !v.is_empty() && v != "0")
-}
-
 fn probe_systemd_scope() -> bool {
     let unit = next_scope_unit();
     let ok = std::process::Command::new(SYSTEMD_RUN)
@@ -60,7 +55,7 @@ fn probe_systemd_scope() -> bool {
 pub fn agent_cgroups_enabled() -> bool {
     if cfg!(test)
         || !cfg!(target_os = "linux")
-        || cgroup_disabled_by_env(std::env::var_os(NO_CGROUP_ENV).as_deref())
+        || crate::env_flag::env_flag(NO_CGROUP_ENV)
         || crate::agent_process::test_no_real_agent_enabled()
     {
         return false;

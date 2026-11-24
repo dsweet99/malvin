@@ -5,7 +5,7 @@ use super::AgentError;
 pub(crate) const MALVIN_TEST_NO_REAL_AGENT_ENV: &str = "MALVIN_TEST_NO_REAL_AGENT";
 
 pub fn test_no_real_agent_enabled() -> bool {
-    std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV).is_some_and(|v| !v.is_empty() && v != "0")
+    crate::env_flag::env_flag(MALVIN_TEST_NO_REAL_AGENT_ENV)
 }
 
 pub(crate) fn has_api_key() -> bool {

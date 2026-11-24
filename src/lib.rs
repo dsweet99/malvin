@@ -34,6 +34,10 @@
 )]
 extern crate self as malvin;
 pub mod clock;
+pub mod env_flag;
+#[cfg(test)]
+#[path = "env_flag_tests.rs"]
+mod env_flag_tests;
 pub use config::workflow_name_aliases::{
     WORKSPACE_CONFIG_PATHS, canonical_workflow_name, resolve_session_log_path,
     resolve_workspace_malvin_config_path,

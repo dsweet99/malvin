@@ -7,9 +7,7 @@ pub fn stdout_is_interactive() -> bool {
 
 #[must_use]
 pub fn force_stdout_tee_from_env() -> bool {
-    std::env::var("MALVIN_FORCE_STDOUT_TEE")
-        .ok()
-        .is_some_and(|v| v == "1")
+    crate::env_flag::env_flag("MALVIN_FORCE_STDOUT_TEE")
 }
 
 #[must_use]
