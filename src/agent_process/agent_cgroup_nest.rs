@@ -134,22 +134,31 @@ fn shim_group(arg: &OsStr) -> Option<PathBuf> {
     dir.starts_with(super::agent_cgroup::CGROUP_ROOT).then_some(dir)
 }
 
+pub type ShimArgs = (OsString, OsString, Vec<OsString>);
+
 #[must_use]
 pub fn leaf_shim_invocation(
     mut args: impl Iterator<Item = OsString>,
-) -> Option<(OsString, OsString, Vec<OsString>)> {
+) -> Option<Result<ShimArgs, ShimUsageError>> {
     if args.next()? != LEAF_SHIM_MARKER {
         return None;
     }
-    let group = args.next()?;
-    let program = args.next()?;
-    Some((group, program, args.collect()))
+    let (Some(group), Some(program)) = (args.next(), args.next()) else {
+        return Some(Err(ShimUsageError));
+    };
+    Some(Ok((group, program, args.collect())))
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ShimUsageError;
 
 #[must_use]
 pub fn run_if_leaf_shim() -> Option<crate::Exit> {
     use std::os::unix::process::CommandExt;
-    let (group, program, args) = leaf_shim_invocation(std::env::args_os().skip(1))?;
+    let Ok((group, program, args)) = leaf_shim_invocation(std::env::args_os().skip(1))? else {
+        eprintln!("malvin: usage: malvin {LEAF_SHIM_MARKER} <GROUP> <PROGRAM> [ARGS...] (internal launcher)");
+        return Some(crate::Exit::Failure);
+    };
     let entered = shim_group(&group).map_or_else(
         || Err(std::io::Error::other("no cgroup v2 directory to enter")),
         |dir| enter_leaf(&dir),

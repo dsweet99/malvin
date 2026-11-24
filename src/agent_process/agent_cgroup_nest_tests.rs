@@ -96,9 +96,11 @@ fn leaf_shim_arguments_and_group_paths() {
     let parsed = leaf_shim_invocation(args(&[LEAF_SHIM_MARKER, ".", "node", "a", "b"]));
     assert_eq!(
         parsed,
-        Some((".".into(), "node".into(), vec!["a".into(), "b".into()]))
+        Some(Ok((".".into(), "node".into(), vec!["a".into(), "b".into()])))
     );
-    assert!(leaf_shim_invocation(args(&[LEAF_SHIM_MARKER, "."])).is_none());
+    for bad in [&[LEAF_SHIM_MARKER, "."][..], &[LEAF_SHIM_MARKER], &[LEAF_SHIM_MARKER, "--"]] {
+        assert_eq!(leaf_shim_invocation(args(bad)), Some(Err(ShimUsageError)));
+    }
     assert!(leaf_shim_invocation(args(&["__summary-worker", ".", "x"])).is_none());
     assert!(leaf_shim_invocation(args(&[])).is_none());
     assert!(shim_group(OsStr::new("/tmp")).is_none());
