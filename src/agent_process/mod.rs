@@ -3,6 +3,10 @@
 pub(crate) mod acp_spawn_lock;
 pub mod acp_spawn_sweep;
 pub(crate) mod active_agent_heartbeat;
+pub mod agent_cgroup;
+pub mod agent_cgroup_nest;
+pub mod agent_scope;
+pub mod agent_scope_attach;
 pub(crate) mod child_health;
 pub mod malvin_sandbox;
 #[cfg(test)]

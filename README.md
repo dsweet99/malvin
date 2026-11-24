@@ -137,6 +137,14 @@ until the task summary is ready and either a prompt has been sent or the first
 scheduled summary has run. Summary errors are recorded in the run directory's
 `request_summary.log`; delivery errors are recorded in `herdr.log`.
 
+When a run ends, malvin reports the pane as idle, so Herdr shows it as done, and
+it does not release the agent immediately. A small detached watcher process keeps
+the pane listed until you return: it releases the agent once the pane is focused
+and its visible text has changed (for example, after you press Enter in the
+shell). The watcher leaves without releasing if another run starts in the pane or
+the pane closes, and it gives up after 12 hours. Set `MALVIN_NO_HERDR_LINGER=1`
+to release the agent at run end instead.
+
 `--model=claude:sonnet` uses only that model. A comma-separated override, such as
 `--model=claude:sonnet,cursor:auto`, replaces the entire configured list. Commas
 inside bracket parameters remain part of the model, for example

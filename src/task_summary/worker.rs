@@ -1,44 +1,34 @@
-use std::io::Read;
-use std::process::Stdio;
 use std::time::Instant;
 
 use crate::artifacts::RunArtifacts;
 use crate::config::model_list::ModelList;
 
-const WORKER_REQUEST: &str = "MALVIN_SUMMARY_WORKER_REQUEST";
+use crate::self_worker::Worker;
 
 pub(super) fn spawn(artifacts: &RunArtifacts) -> Result<tokio::process::Child, String> {
-    let mut command = worker_command(artifacts)?;
-    command.kill_on_drop(true);
-    command.spawn().map_err(|e| e.to_string())
+    worker_command(artifacts)?
+        .spawn()
+        .map_err(|e| e.to_string())
 }
 
-fn worker_command(artifacts: &RunArtifacts) -> Result<tokio::process::Command, String> {
-    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+pub(crate) fn worker_command(artifacts: &RunArtifacts) -> Result<tokio::process::Command, String> {
     let log = std::fs::File::create(artifacts.run_dir.join("request_summary.log"))
         .map_err(|e| e.to_string())?;
-    let mut command = tokio::process::Command::new(exe);
-    command
-        .current_dir(&artifacts.work_dir)
-        .env(WORKER_REQUEST, &artifacts.plan_path)
-        .env("MALVIN_NO_HERDR", "1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(log);
-    crate::herdr::strip_herdr_env_tokio(&mut command);
+    let mut command =
+        crate::self_worker::attached_command(Worker::Summary, [&artifacts.plan_path], log)?;
+    command.current_dir(&artifacts.work_dir);
     Ok(command)
 }
 
-pub fn run_if_worker() -> Option<crate::Exit> {
-    let request = std::env::var_os(WORKER_REQUEST)?;
-    let result = run(std::path::PathBuf::from(request));
-    Some(match result {
-        Ok(()) => crate::Exit::Success,
-        Err(error) => {
-            eprintln!("{error}");
-            crate::Exit::Failure
-        }
-    })
+pub fn run_worker(args: Vec<std::ffi::OsString>) -> Result<(), String> {
+    run(worker_request(args)?)
+}
+
+pub(crate) fn worker_request(args: Vec<std::ffi::OsString>) -> Result<std::path::PathBuf, String> {
+    match <[std::ffi::OsString; 1]>::try_from(args) {
+        Ok([plan_path]) => Ok(std::path::PathBuf::from(plan_path)),
+        Err(_) => Err(crate::self_worker::usage(Worker::Summary, "REQUEST_PATH")),
+    }
 }
 
 fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
@@ -54,11 +44,7 @@ fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
         plan_path,
         work_dir,
     };
-    let (closed, disconnected) = tokio::sync::oneshot::channel();
-    std::thread::spawn(move || {
-        let _ = std::io::stdin().read_to_end(&mut Vec::new());
-        let _ = closed.send(());
-    });
+    let disconnected = crate::self_worker::parent_disconnected();
     let runtime = worker_runtime()?;
     runtime.block_on(session(&artifacts, models.as_ref(), disconnected))
 }

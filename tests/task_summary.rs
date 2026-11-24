@@ -156,7 +156,7 @@ async fn status_schedule_is_measured_from_worker_start_without_skipping() {
             "MALVIN_SUMMARY_WORKER_REQUEST",
             dir.path().join("request.md"),
         )
-        .env("MALVIN_TEST_STATUS_SCHEDULE_MS", "300,300")
+        .env("MALVIN_TEST_STATUS_SCHEDULE_MS", "300,2000")
         .spawn()
         .unwrap();
     let stdin = child.stdin.take();
@@ -180,14 +180,16 @@ async fn status_schedule_is_measured_from_worker_start_without_skipping() {
         .lines()
         .map(|line| line.parse().unwrap())
         .collect();
-    // Offsets are 300ms and 600ms from the worker start. The 400ms task summary
+    // Offsets are 300ms and 2300ms from the worker start. The 1000ms task summary
     // overruns the first, so that status run happens right after it (not
-    // skipped); the second still lands at 600ms, i.e. under one period after
-    // the first run, proving it is not measured from the previous run.
+    // skipped to the 2300ms slot). Each status run starts a new bridge process,
+    // so "right after" must allow for process start-up; the margins are sized
+    // well above it. The second still lands at 2300ms, i.e. under one period
+    // after the first run, proving it is not measured from the previous run.
     assert!(stamps[0] >= task_done, "{task_done} {stamps:?}");
-    assert!(stamps[0] < task_done + 150, "{task_done} {stamps:?}");
+    assert!(stamps[0] < task_done + 700, "{task_done} {stamps:?}");
     assert!(stamps[1] > stamps[0], "{stamps:?}");
-    assert!(stamps[1] < stamps[0] + 290, "{stamps:?}");
+    assert!(stamps[1] < stamps[0] + 1990, "{stamps:?}");
     assert_eq!(
         std::fs::read_to_string(dir.path().join("status_summary.txt")).unwrap(),
         "Editing the parser"

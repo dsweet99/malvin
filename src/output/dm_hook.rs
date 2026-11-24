@@ -86,7 +86,7 @@ fn in_modal_sandbox() -> bool {
     if FORCE_MODAL.with(Cell::get) {
         return true;
     }
-    std::env::var("MALVIN_MODAL_REMOTE").ok().as_deref() == Some("1")
+    crate::env_flag::env_flag("MALVIN_MODAL_REMOTE")
 }
 
 #[cfg(test)]

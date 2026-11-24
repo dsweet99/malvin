@@ -1,13 +1,10 @@
-#![allow(unsafe_code)]
-
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::Path;
-use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use super::local_llm_ollama::SERVE_WAIT;
-use super::local_llm_paths::{INTERNAL_MANAGER_FLAG, manager_sock_path};
+use super::local_llm_paths::manager_sock_path;
 use super::local_llm_protocol::{ManagerRequest, ManagerResponse};
 
 const CONNECT_WAIT: Duration = Duration::from_secs(10);
@@ -103,57 +100,10 @@ fn connect(sock: &Path, io: Duration) -> Result<UnixStream, String> {
 }
 
 fn spawn_manager() -> Result<(), String> {
-    let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
-    let mut cmd = Command::new(exe);
-    cmd.arg(INTERNAL_MANAGER_FLAG)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
-    detach_session(&mut cmd);
-    forward_manager_env(&mut cmd);
-    let child = cmd
-        .spawn()
-        .map_err(|e| format!("spawn local llm manager: {e}"))?;
-    std::mem::forget(child);
-    Ok(())
+    let no_args: [&str; 0] = [];
+    crate::self_worker::spawn_detached(crate::self_worker::Worker::LocalLlmManager, no_args)
+        .map(|_| ())
 }
-
-fn forward_manager_env(cmd: &mut Command) {
-    for key in [
-        "MALVIN_LOCAL_LLM_MANAGER_SOCK",
-        "MALVIN_LOCAL_LLM_MANAGER_LOCK",
-        "MALVIN_TIME_SINCE_LAST_CALL_SECONDS",
-        "MALVIN_OLLAMA",
-        "MALVIN_HOME",
-        "HOME",
-    ] {
-        if let Ok(v) = std::env::var(key) {
-            cmd.env(key, v);
-        }
-    }
-}
-
-#[cfg(unix)]
-fn detach_session(cmd: &mut Command) {
-    use std::os::unix::process::CommandExt;
-    unsafe {
-        cmd.pre_exec(|| {
-            if libc::setsid() == -1 {
-                return Err(std::io::Error::last_os_error());
-            }
-            match libc::fork() {
-                -1 => Err(std::io::Error::last_os_error()),
-                0 => Ok(()),
-                _ => {
-                    libc::_exit(0);
-                }
-            }
-        });
-    }
-}
-
-#[cfg(not(unix))]
-fn detach_session(_cmd: &mut Command) {}
 
 fn wait_for_socket(sock: &Path) -> Result<(), String> {
     let deadline = Instant::now() + CONNECT_WAIT;

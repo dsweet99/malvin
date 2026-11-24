@@ -46,7 +46,7 @@ dependency_depth = 3
 cycle_size = 0
 
 [rust]
-max_num_tests = 1200
+max_num_tests = 2000
 num_jobs_nextest = 4
 statements_per_function = 26
 arguments = 4

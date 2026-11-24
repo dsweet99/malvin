@@ -3,9 +3,10 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::desc_limit::MAX_DESC_WORDS;
+
 const ADVICE_DIR: &str = "assets/prompts/advice";
 const MAX_TAG_LEN: usize = 32;
-const MAX_DESC_WORDS: usize = 7;
 
 pub fn generate() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));

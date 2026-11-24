@@ -124,6 +124,16 @@ pub fn release_agent(pane_id: &str, seq: u64) -> Value {
     )
 }
 
+#[must_use]
+pub fn pane_get(pane_id: &str) -> Value {
+    envelope("pane.get", json!({ "pane_id": pane_id }))
+}
+
+#[must_use]
+pub fn pane_read(pane_id: &str, source: &str) -> Value {
+    envelope("pane.read", json!({ "pane_id": pane_id, "source": source }))
+}
+
 fn envelope(method: &str, params: Value) -> Value {
     json!({
         "id": next_request_id(),
@@ -135,8 +145,8 @@ fn envelope(method: &str, params: Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        AGENT, SOURCE, clear_agent_authority, clear_metadata_teardown, release_agent, rename_agent,
-        report_agent, report_agent_session, report_metadata_sparse,
+        AGENT, SOURCE, clear_agent_authority, clear_metadata_teardown, pane_get, pane_read,
+        release_agent, rename_agent, report_agent, report_agent_session, report_metadata_sparse,
     };
 
     #[test]
@@ -180,6 +190,18 @@ mod tests {
         assert_eq!(rename["method"], "agent.rename");
         assert_eq!(rename["params"]["target"], "p1");
         assert_eq!(rename["params"]["name"], "m4gk60f1m");
+
+        let get = pane_get("p1");
+        assert_eq!(get["method"], "pane.get");
+        assert_eq!(get["params"], serde_json::json!({ "pane_id": "p1" }));
+        assert!(get["id"].is_string());
+
+        let read = pane_read("p1", "visible");
+        assert_eq!(read["method"], "pane.read");
+        assert_eq!(
+            read["params"],
+            serde_json::json!({ "pane_id": "p1", "source": "visible" })
+        );
     }
 
     #[test]

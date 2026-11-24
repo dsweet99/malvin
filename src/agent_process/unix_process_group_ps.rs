@@ -169,9 +169,17 @@ pub(crate) fn pid_alive(pid: u32) -> bool {
     };
     let rc = unsafe { libc::kill(pid_i, 0) };
     if rc == 0 {
-        return true;
+        return !is_zombie(pid);
     }
     std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
+}
+
+#[cfg(unix)]
+fn is_zombie(pid: u32) -> bool {
+    std::fs::read_to_string(format!("/proc/{pid}/stat")).is_ok_and(|stat| {
+        stat.rsplit_once(") ")
+            .is_some_and(|(_, fields)| fields.starts_with('Z'))
+    })
 }
 
 #[cfg(unix)]

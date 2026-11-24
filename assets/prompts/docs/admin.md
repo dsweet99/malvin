@@ -52,11 +52,13 @@ Release the current herdr pane's malvin agent so the agents-list entry goes away
 
 Requires a herdr-hosted environment: `HERDR_ENV=1`, `HERDR_SOCKET_PATH`, and `HERDR_PANE_ID`. Useful when a prior malvin process exited without tearing down and the pane still shows `working` or a leftover idle circle.
 
+`reset-herdr` cannot help when the pane holds a saved session from another agent, such as an interactive Codex session that has since exited. Herdr keeps that session and ignores malvin's status reports in that pane, and its API offers malvin no way to clear it. While malvin runs, Herdr also cannot see the saved session's process exit, so malvin cannot clear it either. When malvin detects this at startup, it prints a warning once and writes it to `herdr.log` in the run directory. To free the pane, start that agent (for example `codex`) in the pane from the shell and quit it; Herdr drops the saved session when the agent exits back to the shell. Alternatively, run malvin in another tab. Tabs in the same workspace can each host a malvin.
+
 ### `facts add`
 
 `malvin admin facts add field_name=value [field_name=value ...]` appends one fact to `~/.malvinconf/facts.jsonl` and exits (no agent, no run logs). It is meant for LLM agents: fields may come in any order, and bad input is rejected with an error and exit status 1.
 
-- Fields: `fact_id` (required; lowercase letters, digits, `-`, `_`; starts with a letter; at most 64 characters; must not already exist in the file), `fact` (required; at most 4000 characters), and `symptoms` (optional; repeat the field once per symptom; at most 20, each at most 500 characters).
+- Fields: `fact_id` (required; lowercase letters, digits, `-`, `_`; starts with a letter; at most 64 characters; must not already exist in the file), `description` (optional; at most 7 words; defaults to the first 7 words of `fact`), `fact` (required; at most 4000 characters), and `symptoms` (optional; repeat the field once per symptom; at most 20, each at most 500 characters).
 - Values are trimmed, must be non-empty, and must be a single line without control or invisible formatting characters. Unknown or repeated `fact_id`/`fact` fields are errors. Quote values that contain spaces.
 - The file and its directory are created if missing. A lock file `facts.jsonl.lock` guards the uniqueness check; remove it if a crashed run left it behind.
 - Example: `malvin admin facts add fact_id=tectonic-path fact="Only Tectonic is installed." symptoms="pdflatex not found"`

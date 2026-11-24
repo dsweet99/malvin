@@ -41,73 +41,128 @@ async fn watch_session_memory_with_rss_sampler(
     handles: MemWatchHandles,
     sample_rss: fn(Option<u32>, &HashSet<u32>) -> Option<u64>,
 ) {
-    let MemWatchHandles {
-        reader_dead,
-        pgid: watch_pgid,
-        limit_bytes,
-        spawn_pid_baseline,
-        run_dir,
-    } = handles;
     let mut consecutive_rss_failures = 0u32;
     loop {
+        if let Some(facts) = cgroup_oom_kill_facts(&handles) {
+            terminate_for_memory(&handles, facts).await;
+            return;
+        }
         if !crate::agent_process::malvin_sandbox::sandbox_still_alive(
-            watch_pgid,
-            &spawn_pid_baseline,
+            handles.pgid,
+            &handles.spawn_pid_baseline,
         ) {
             return;
         }
-        let rss = sample_rss(watch_pgid, &spawn_pid_baseline);
-        let allow_fail_closed = !reader_dead.load(std::sync::atomic::Ordering::SeqCst);
+        if kernel_enforces_memory_limit(&handles) {
+            consecutive_rss_failures = 0;
+            tokio::time::sleep(POLL_INTERVAL).await;
+            continue;
+        }
+        let rss = sample_rss(handles.pgid, &handles.spawn_pid_baseline);
+        let allow_fail_closed = !handles
+            .reader_dead
+            .load(std::sync::atomic::Ordering::SeqCst);
         if memory_watch_should_terminate(
             rss,
-            limit_bytes,
+            handles.limit_bytes,
             &mut consecutive_rss_failures,
             allow_fail_closed,
         ) {
-            let (reason, rss_bytes) = rss.map_or_else(
-                || {
-                    warn!(
-                        limit_bytes,
-                        pgid = watch_pgid,
-                        consecutive_failures = consecutive_rss_failures,
-                        "malvin sandbox cannot measure memory; terminating (fail-closed)"
-                    );
-                    (
-                        crate::agent_process::sandbox_oom::OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-                        None,
-                    )
-                },
-                |rss_bytes| {
-                    warn!(
-                        rss_bytes,
-                        limit_bytes,
-                        pgid = watch_pgid,
-                        "malvin sandbox exceeded memory limit; terminating"
-                    );
-                    (
-                        crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
-                        Some(rss_bytes),
-                    )
-                },
-            );
-            record_sandbox_oom_marker(
-                run_dir.as_deref(),
-                crate::agent_process::sandbox_oom::SandboxOomKillFacts {
-                    reason,
-                    rss_bytes,
-                    limit_bytes,
-                    pgid: watch_pgid.unwrap_or(0),
-                },
-            );
-            crate::agent_process::unix_process_group_teardown::terminate_agent_process_group(
-                watch_pgid,
-                &spawn_pid_baseline,
-            )
-            .await;
+            terminate_for_memory(&handles, rss_kill_facts(&handles, rss)).await;
             return;
         }
         tokio::time::sleep(POLL_INTERVAL).await;
     }
+}
+
+#[cfg(unix)]
+fn kernel_enforces_memory_limit(handles: &MemWatchHandles) -> bool {
+    crate::agent_process::agent_cgroup::active_agent_cgroup_for(handles.pgid).is_some()
+}
+
+#[cfg(unix)]
+fn cgroup_oom_kill_facts(
+    handles: &MemWatchHandles,
+) -> Option<crate::agent_process::sandbox_oom::SandboxOomKillFacts<'static>> {
+    let cgroup = crate::agent_process::agent_cgroup::active_agent_cgroup_for(handles.pgid)?;
+    let oom_kills = cgroup.oom_kill_count();
+    if oom_kills == 0 {
+        return None;
+    }
+    warn!(
+        oom_kills,
+        limit_bytes = handles.limit_bytes,
+        pgid = handles.pgid,
+        "kernel OOM-killed a process in the malvin agent cgroup; terminating"
+    );
+    Some(oom_facts(
+        handles,
+        crate::agent_process::sandbox_oom::OOM_REASON_CGROUP_OOM_KILL,
+        None,
+    ))
+}
+
+#[cfg(unix)]
+fn rss_kill_facts(
+    handles: &MemWatchHandles,
+    rss: Option<u64>,
+) -> crate::agent_process::sandbox_oom::SandboxOomKillFacts<'static> {
+    let limit_bytes = handles.limit_bytes;
+    let pgid = handles.pgid;
+    rss.map_or_else(
+        || {
+            warn!(
+                limit_bytes,
+                pgid, "malvin sandbox cannot measure memory; terminating (fail-closed)"
+            );
+            oom_facts(
+                handles,
+                crate::agent_process::sandbox_oom::OOM_REASON_MEASUREMENT_FAIL_CLOSED,
+                None,
+            )
+        },
+        |rss_bytes| {
+            warn!(
+                rss_bytes,
+                limit_bytes, pgid, "malvin sandbox exceeded memory limit; terminating"
+            );
+            oom_facts(
+                handles,
+                crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
+                Some(rss_bytes),
+            )
+        },
+    )
+}
+
+#[cfg(unix)]
+const fn oom_facts(
+    handles: &MemWatchHandles,
+    reason: &'static str,
+    rss_bytes: Option<u64>,
+) -> crate::agent_process::sandbox_oom::SandboxOomKillFacts<'static> {
+    crate::agent_process::sandbox_oom::SandboxOomKillFacts {
+        reason,
+        rss_bytes,
+        limit_bytes: handles.limit_bytes,
+        pgid: match handles.pgid {
+            Some(pgid) => pgid,
+            None => 0,
+        },
+    }
+}
+
+#[cfg(unix)]
+async fn terminate_for_memory(
+    handles: &MemWatchHandles,
+    facts: crate::agent_process::sandbox_oom::SandboxOomKillFacts<'_>,
+) {
+    record_sandbox_oom_marker(handles.run_dir.as_deref(), facts);
+    crate::agent_process::unix_process_group_teardown::terminate_agent_process_group(
+        handles.pgid,
+        &handles.spawn_pid_baseline,
+    )
+    .await;
 }
 
 #[cfg(unix)]
@@ -153,3 +208,7 @@ mod process_group_mem_watch_tests;
 #[cfg(test)]
 #[path = "process_group_mem_watch_oom_marker_tests.rs"]
 mod process_group_mem_watch_oom_marker_tests;
+
+#[cfg(all(test, unix))]
+#[path = "process_group_mem_watch_cgroup_tests.rs"]
+mod process_group_mem_watch_cgroup_tests;

@@ -15,7 +15,9 @@ pub(super) fn status_offset(index: usize) -> Duration {
 }
 
 fn test_delays() -> Option<(Duration, Duration)> {
-    std::env::var_os("MALVIN_TEST_NO_REAL_AGENT")?;
+    if !crate::agent_process::test_no_real_agent_enabled() {
+        return None;
+    }
     let spec = std::env::var("MALVIN_TEST_STATUS_SCHEDULE_MS").ok()?;
     parse_schedule_ms(&spec)
 }
@@ -49,5 +51,15 @@ mod tests {
         assert_eq!(parse_schedule_ms("0,120"), None);
         assert_eq!(parse_schedule_ms("80,0"), None);
         assert_eq!(parse_schedule_ms("80"), None);
+        use crate::agent_process::with_env;
+        let _lock = crate::test_support::test_utils::test_env_lock();
+        with_env("MALVIN_TEST_STATUS_SCHEDULE_MS", Some("80,120"), || {
+            with_env("MALVIN_TEST_NO_REAL_AGENT", Some("0"), || {
+                assert_eq!(test_delays(), None);
+            });
+            with_env("MALVIN_TEST_NO_REAL_AGENT", Some("1"), || {
+                assert!(test_delays().is_some());
+            });
+        });
     }
 }

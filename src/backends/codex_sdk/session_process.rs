@@ -10,9 +10,9 @@ pub(super) type CodexProcess = crate::backends::bridge_sdk::SpawnedStdio;
 pub(super) fn spawn_codex_session(
     args: &BridgeSpawnArgs<'_>,
     service: Option<&str>,
-    ticket: SandboxSpawnTicket,
+    mut ticket: SandboxSpawnTicket,
 ) -> Result<CodexSession, AgentError> {
-    let mut process = spawn_codex_process(args)?;
+    let mut process = spawn_codex_process(args, &mut ticket)?;
     process.baseline_pids = crate::agent_process::malvin_sandbox::malvin_spawn_baseline();
     crate::agent_process::malvin_sandbox::note_active_sandbox_session(
         ticket,
@@ -62,8 +62,9 @@ fn configure_codex_sandbox(cmd: &mut tokio::process::Command, outer_sandbox: boo
 pub(super) fn configured_codex_command(
     bin: std::path::PathBuf,
     cwd: &std::path::Path,
+    ticket: &mut SandboxSpawnTicket,
 ) -> tokio::process::Command {
-    let mut cmd = crate::agent_process::malvin_sandbox::malvin_tokio_command(bin);
+    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(bin, cwd, ticket);
     configure_codex_sandbox(&mut cmd, codex_uses_outer_sandbox());
     cmd.arg("app-server")
         .arg("--stdio")
@@ -74,9 +75,12 @@ pub(super) fn configured_codex_command(
     cmd
 }
 
-pub(super) fn spawn_codex_process(args: &BridgeSpawnArgs<'_>) -> Result<CodexProcess, AgentError> {
+pub(super) fn spawn_codex_process(
+    args: &BridgeSpawnArgs<'_>,
+    ticket: &mut SandboxSpawnTicket,
+) -> Result<CodexProcess, AgentError> {
     let bin = resolve_codex_bin().map_err(AgentError)?;
-    let mut cmd = configured_codex_command(bin, args.cwd);
+    let mut cmd = configured_codex_command(bin, args.cwd, ticket);
     let mut child = cmd
         .spawn()
         .map_err(|e| AgentError(format!("spawn codex app-server: {e}")))?;
@@ -90,7 +94,7 @@ pub(super) fn spawn_codex_process(args: &BridgeSpawnArgs<'_>) -> Result<CodexPro
 #[cfg(test)]
 mod tests {
     use super::{
-        CodexProcess, codex_uses_outer_sandbox_value, configure_codex_sandbox,
+        CodexProcess, SandboxSpawnTicket, codex_uses_outer_sandbox_value, configure_codex_sandbox,
         configured_codex_command,
     };
     #[test]
@@ -103,6 +107,7 @@ mod tests {
             let cmd = configured_codex_command(
                 std::path::PathBuf::from("codex"),
                 std::path::Path::new("/work"),
+                &mut SandboxSpawnTicket::for_test(),
             );
             let args: Vec<_> = cmd
                 .as_std()
@@ -145,10 +150,6 @@ mod tests {
                 ]
             );
         }
-    }
-
-    #[test]
-    fn configure_codex_sandbox_sets_mode_without_outer_bypass() {
         let mut cmd = tokio::process::Command::new("codex");
         configure_codex_sandbox(&mut cmd, false);
         let args: Vec<_> = cmd

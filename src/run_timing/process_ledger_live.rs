@@ -105,7 +105,7 @@ mod tests {
         let (tokens_before, cost_before) = {
             let mut guard = timing.lock().expect("lock");
             guard.token_cost_rates = TokenCostRates {
-                usd_per_microtoken_in: 1_000.0,
+                usd_per_megatoken_in: 1_000.0,
                 ..TokenCostRates::default()
             };
             guard.tokens_in = Some(1_000_000);

@@ -57,7 +57,7 @@ pub(super) fn probe_existing_acp_spawn_lock(path: &Path, slot: &str, self_pid: u
     if contents.trim().is_empty() {
         return LockProbe::InProgress;
     }
-    let Ok(holder_pid) = contents.trim().parse::<u32>() else {
+    let Some(holder_pid) = crate::session_name::parse_holder_pid(&contents) else {
         return LockProbe::Stale;
     };
     if holder_pid == self_pid {

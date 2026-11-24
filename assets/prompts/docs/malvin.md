@@ -17,14 +17,13 @@ malvin [OPTION]... [REQUEST]...
 
 These forms are mutually exclusive: pass request(s) **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, optional `router_b`, then `router_c` when `router_b` ran, then `router_summarize`). Without `--gates` that sequence runs once when `router_a_2` or `router_c` emits `__MALVIN_DONE__`. If `router_c` omits the marker, another full iteration starts while `DEFAULT_MAX_LOOPS` (3) remains. With `--gates`, a gate failure starts another full iteration until that budget is spent. A lone-line `__MALVIN_DONE__` in the `router_a_2` reply skips `router_b` and `router_c`. Gates run only after that marker, or after the same marker in the `router_c` reply. `router_a_2.md` asks for that marker only on an impasse. Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, its own router run, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--creative[=PROB]` applies only to the `REQUEST` that immediately follows it (repeatable; other `REQUEST` args stay non-creative). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0.
+Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, optional `router_b`, then `router_c` when `router_b` ran, then `router_summarize`). Without `--gates` that sequence runs once when `router_a_2` or `router_c` emits `__MALVIN_DONE__`. If `router_c` omits the marker, another full iteration starts while the `--max-loops` budget (default 999) remains. With `--gates`, a gate failure starts another full iteration until that budget is spent. A lone-line `__MALVIN_DONE__` in the `router_a_2` reply skips `router_b` and `router_c`. Gates run only after that marker, or after the same marker in the `router_c` reply. `router_a_2.md` asks for that marker only on an impasse. Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, its own router run, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` and `router_c` on that agent; exit `router_summarize` on the iteration that ends the run. A `router_c` reply that omits `__MALVIN_DONE__` starts another iteration while the budget remains. There is no `--max-loops` flag (`DEFAULT_MAX_LOOPS` is 3) |
-| `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
+| *(default)* | `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` + `router_a`, then `router_a_2`, then optional `router_b` and `router_c` on that agent; exit `router_summarize` on the iteration that ends the run. A `router_c` reply that omits `__MALVIN_DONE__` starts another iteration while the budget remains. The budget is `--max-loops N` (default `DEFAULT_MAX_LOOPS`, 999) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
 | `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`, `facts add`, `facts remove`) |
 
@@ -34,7 +33,7 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `assets/promp
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`--model`, `--gates`, `-q`, `--creative[=PROB]`, `--max-acp-retries`, `--ml=N`, …) apply to `malvin REQUEST` and `malvin -g`. The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`--model`, `--gates`, `-q`, `--max-acp-retries`, `--ml=N`, …) apply to `malvin REQUEST` and `malvin -g`. The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 ### `--remote=PROVIDER:SERVICE[KEY=VALUE,...]`
 
@@ -53,29 +52,27 @@ On the default router (`malvin REQUEST` and `malvin -g`), suppress all process s
 
 Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` in `~/.malvinconf/config.toml`). Prefixes: `cursor:` for the Cursor SDK backend; `pi:<provider>/<model>` for the official TypeScript/npm Pi agent (RPC; uses env keys or credentials already stored by Pi; keyless locals are `pi:local/<provider>/<model>`); `codex:<model>` for a local Codex app-server. An unprefixed name is looked up in `[aliases.models]` in the home config. Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `pi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:`, `mini:`, and `rpi:` ids are rejected.
 
+### `--no-emit`
+
+Disable delivery of direct messages (DM fences) through the configured `[dm].on_emit` command in `~/.malvinconf/config.toml` for this invocation. Direct messages still appear in the normal output and logs.
+
 ### `--no-auto-costs`
 
 Skip the in-process cost-setup workflow for this invocation. When `auto_setup_costs` is enabled and the selected model has no per-token rates, `malvin REQUEST` otherwise renders `set_costs.md` and runs that request on the default router, with harness gates off, before init bootstrap and before the request. The workflow runs inside the current process and edits `~/.malvinconf/config.toml` only. If it fails, malvin warns and continues with the configured rates.
 
 ### Outer router iteration
 
-Bare `malvin REQUEST` and `malvin -g` use an outer-loop budget of 3 (`DEFAULT_MAX_LOOPS`). Without `--gates` the router stops after one iteration when `router_a_2` or `router_c` emits `__MALVIN_DONE__`. If `router_c` omits that marker, another full iteration starts while the budget remains; the last iteration stops after summarize. With `--gates`, gates run after that marker, and a gate failure starts another full iteration until that budget is spent. Passing `--max-loops` is an unexpected-argument error.
+Bare `malvin REQUEST` and `malvin -g` use an outer-loop budget set by `--max-loops N` (a positive integer; default `DEFAULT_MAX_LOOPS`, 999). Without `--gates` the router stops after one iteration when `router_a_2` or `router_c` emits `__MALVIN_DONE__`. If `router_c` omits that marker, another full iteration starts while the budget remains; the last iteration stops after summarize. With `--gates`, gates run after that marker, and a gate failure starts another full iteration until that budget is spent. `--max-loops` applies to `malvin REQUEST` and `malvin -g`; `malvin admin` subcommands reject it. A value that is not a positive integer is an error.
 
 ### `-g` / `--gates`
 
-Inject workspace check command text into agent prompts and run workspace gates after `router_a_2` emits `__MALVIN_DONE__` or after `router_c` emits `__MALVIN_DONE__`. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` runs workspace `.malvin/gates` at those points. A pass ends the run successfully after `router_summarize` and does not start another iteration. A failure starts another full router iteration while the outer loop count is below `max_loops`, and on the last iteration ends the run with a workspace gate error after `router_summarize`. `DEFAULT_MAX_LOOPS` is 3, so a default run retries after a gate failure until three iterations have run. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
+Inject workspace check command text into agent prompts and run workspace gates after `router_a_2` emits `__MALVIN_DONE__` or after `router_c` emits `__MALVIN_DONE__`. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. `-g` / `--gates` may appear several times among multiple REQUESTs; like `--model`, it applies to the REQUESTs listed after it (REQUESTs before the first `-g` run without gates). For example, `malvin --ml=3 --model=opus a.md b.md --model=sol -g c.md` runs `a.md` and `b.md` with opus and no gates, and `c.md` with sol and gates, on every meta-loop pass. A `-g` bundled in a short-flag cluster such as `-qg` counts the same as a standalone `-g`: it applies to the REQUESTs after it. If no REQUEST follows any `-g` (for example, `malvin a.md -g`), the flag applies to every REQUEST, as if it had been written first. On bare `malvin REQUEST`, `-g` / `--gates` runs workspace `.malvin/gates` at those points. A pass ends the run successfully after `router_summarize` and does not start another iteration. A failure starts another full router iteration while the outer loop count is below `max_loops`, and on the last iteration ends the run with a workspace gate error after `router_summarize`. With the default `--max-loops` of 999, a run retries after a gate failure until the budget is spent. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
 
 
 
 ### `--max-acp-retries <N>` (default: 3)
 
-Stop after N consecutive identical backend errors (spawn, header, or prompt), with 1s / 3s backoff between tries. When the flag is omitted, `[agent].max_acp_retries` from `~/.malvinconf/config.toml` is used. Distinct errors reset the consecutive counter, and so does a gap of more than 60 seconds since the previous error, so a rare error that recurs over a long job does not end it. Among successes, only a successful prompt turn clears it; a successful respawn or header delivery does not. For keyless local providers (`pi:local`, `pi:ollama`, and similar), malvin also stops after 10 backend errors or 5 minutes without a successful turn, even when the errors differ. Fail-fast classes (billing, usage limit, invalid model, and similar) still exit immediately.
-
-### `--creative[=PROB]`
-
-On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mode is sampled for an outer iteration: include `mbc2.md` in the aggregated initial prompt (after the header), and fill `{{ creative_lead }}` in `router_b.md` for the optional work turn. `{{ satisfy_line }}` stays `router_b_satisfy.md` on every work turn. Both creative changes share one Bernoulli draw per outer iteration. `--creative` alone uses probability `1.0`; `--creative=0.6` uses `0.6`. Off by default.
-
-Each `--creative` applies only to the `REQUEST` that immediately follows it and may be repeated (at most once per `REQUEST`). Example: `malvin "plain" --creative "spark" "plain2" --creative=0.4 "spark2"`. Intervening global flags (for example `--quiet`) may appear between `--creative` and its `REQUEST`. A trailing `--creative` after other requests, or two `--creative` flags with no REQUEST between them, is an error. For `malvin -g` with no positional request, `--creative` still enables creative sampling for that gates-only run.
+Stop after N consecutive identical backend errors (spawn, header, or prompt), with 1s / 3s backoff between tries. When the flag is omitted, `[agent].max_acp_retries` from `~/.malvinconf/config.toml` is used. Distinct errors reset the consecutive counter, and so does a gap of more than 60 seconds since the previous error, so a rare error that recurs over a long job does not end it. Among successes, only a successful prompt turn clears it; a successful respawn or header delivery does not. For keyless local providers (`pi:local`, `pi:ollama`, and similar), malvin also stops after 10 backend errors or 5 minutes without a successful turn, even when the errors differ. Fail-fast classes (billing, usage limit or session limit, invalid model, and similar) still exit immediately.
 
 ### `--ml=N`
 
@@ -109,13 +106,21 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 Print an embedded advice document for `TAG` to stdout and exit, or list available tags when `TAG` is omitted. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`.
 
 - `malvin --advice` — prints how to open a full document (`malvin --advice TAG`), then a `TAG: Description` heading line, then one `<tag>: <description>` line per TAG (description at most 7 words).
-- The list ends with `facts: Time-saving facts you've discovered [n facts]`, where `n` is the number of lines in `~/.malvinconf/facts.jsonl`, counted each time the list prints (0 when the file is missing).
 - `malvin --advice TAG` — body of the matching file under `assets/prompts/advice/*.md`.
-- `malvin --advice facts` — prints `~/.malvinconf/facts.jsonl` as is; exits 1 with an error naming the path when the file cannot be read.
 - Each document’s TAG is the filename without `.md`: lowercase letters, digits, and underscores, starting with a letter, at most 32 characters (examples: `doc_design` for `doc_design.md`; `scholar` for `scholar.md`; `report` for `report.md`). Every `.md` file in that directory is listed; rebuild absorbs added or renamed files.
 - The first line of each advice file must be `description: ...` (value at most 7 words). The build fails if that line is missing or malformed; the listed description is the value after `description:`.
 
 Other subcommand arguments are not required when `--advice` is set.
+
+### `--facts`
+
+Print saved facts from `~/.malvinconf/facts.jsonl`, or list them when `TAG` is omitted. Does not spawn an agent or create a run directory. It shares its list and body printing code with `--advice`, so the two look alike.
+
+- `malvin --facts` — prints how to open a full fact (`malvin --facts TAG`), a `TAG: Description` heading line, then one `<fact_id>: <description>` line per fact. Descriptions are cut to at most 7 words (the same `MAX_DESC_WORDS` constant, in `src/desc_limit.rs`, that bounds advice descriptions).
+- `malvin --facts TAG` — prints the fact whose `fact_id` is `TAG`: its description, the fact text, then its symptoms. An unknown TAG exits 1 and lists the known ids.
+- A missing, empty, or blank-only file is not an error: the list prints `No facts saved yet.` Lines that are not valid JSON objects with `fact_id` and `fact` strings are skipped. A file that exists but cannot be read exits 1 with an error naming the path.
+- A fact without a `description` field shows its first 7 words. `malvin admin facts add` stores `description=...` (at most 7 words) when given, otherwise the first 7 words of the fact.
+- `malvin admin facts add` and `malvin admin facts remove` hold `facts.jsonl.lock`, write the whole new file to `facts.jsonl.tmp`, sync it, and rename it over `facts.jsonl`, so an interrupted command never leaves a half-written file.
 
 ### `--credits`
 
@@ -148,6 +153,7 @@ Every agent-backed command creates `~/.malvinconf/logs/<hash>/<timestamp>_<token
 | `stdout.log` | Tee of agent stdout — **narrative** channel |
 | `trace.jsonl` | Audit record (sdk-shaped JSONL; Pi and Codex events are mapped into the same shapes) — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only) |
+| `fact_agent_prompt.md`, `fact_agent.log`, `fact/trace.jsonl` | Background fact agent (started when a task runs past 5 minutes, at most once an hour; `new_fact.md` or `tidy_facts.md`, 50/50): its prompt, its stderr and final reply, and its own audit trace, kept apart from the lite summarizer's `lite/trace.jsonl` |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
 | `run_timing.json` | Wall/LLM timing, token/step aggregates, and optional cost |
 | `_run/exp_log_*.md` | Experiment / gate-loop logs (`exp_log_<run>.md` scaffold; `exp_log_<run>_g<n>.md` for outer iteration n — kept, never truncated) |
@@ -167,11 +173,11 @@ Durations on the `TIMING` line are seconds. A span of 0 ms prints as `0.0s`. A s
 - **`steps`:** Approximate count of agent steps. Cursor SDK counts SDK `onStep` boundaries; the other backends (`pi:`, `codex:`) derive steps from assistant replies and tool-call batches (one batch of parallel tool calls counts as one step). Raw tool-call counts are not printed as `steps`.
 - **`tokens_in` / `tokens_out`:** Numeric when the backend reports usage. Cursor SDK folds one `result.usage` (`TokenUsage`) per `send` into these fields (cache read/write counted in `tokens_in`). When usage is absent, fields stay `n/a`.
 - **`cache_read` / `cache_write`:** Separate cache token totals from the same usage objects when reported (`cacheReadTokens` / `cacheWriteTokens`). Still included in `tokens_in`. When absent, fields stay `n/a`.
-- **`cost_in` / `cost_out` / `cost_read` / `cost_write` / `cost_tot`:** Estimated USD from per-model rates in `~/.malvinconf/config.toml` × token counts / 1e6. Rates are dollars per million tokens (`usd_per_microtoken_*`) under `[agent.<provider>.<name>]` for the run model (e.g. `[agent.cursor.auto]` for `cursor:auto`):
-  - `cost_in = usd_per_microtoken_in ×` non-cache input tokens `/ 1_000_000` (stored `tokens_in` minus `cache_read` / `cache_write`)
-  - `cost_out = usd_per_microtoken_out × tokens_out / 1_000_000`
-  - `cost_read = usd_per_microtoken_cache_read × cache_read / 1_000_000`
-  - `cost_write = usd_per_microtoken_cache_write × cache_write / 1_000_000`
+- **`cost_in` / `cost_out` / `cost_read` / `cost_write` / `cost_tot`:** Estimated USD from per-model rates in `~/.malvinconf/config.toml` × token counts / 1e6. Rates are dollars per million tokens (`usd_per_megatoken_*`) under `[agent.<provider>.<name>]` for the run model (e.g. `[agent.cursor.auto]` for `cursor:auto`):
+  - `cost_in = usd_per_megatoken_in ×` non-cache input tokens `/ 1_000_000` (stored `tokens_in` minus `cache_read` / `cache_write`)
+  - `cost_out = usd_per_megatoken_out × tokens_out / 1_000_000`
+  - `cost_read = usd_per_megatoken_cache_read × cache_read / 1_000_000`
+  - `cost_write = usd_per_megatoken_cache_write × cache_write / 1_000_000`
   - `cost_tot` = sum of the four components
   All rates default to `0`, so with unset rates the estimate is `0` (shown as `0.0000`), not `n/a`. Set rates for a non-zero estimate. When usage was never observed, cost fields stay `n/a`.
 
@@ -202,11 +208,33 @@ The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "hear
 
 **Limitation:** work backgrounded outside the bridge sandbox process group (for example a nested Docker `malvin` after the outer shell tool call has already completed) is not visible to child-health sampling. That case relies on the outer SDK run staying open so automatic `progress` heartbeats (or other bridge events) keep arriving inside the idle budget. Once `run_done` fires, progress stops; further silence still hits idle.
 
+## Agent containment and memory limit (`mem_limit_gb`)
+
+On Linux, malvin runs each agent session in its own cgroup v2. It does this by launching the agent through `systemd-run --user --scope` in a transient unit named `malvin-agent-<malvin pid>-<n>.scope`, with `MemoryMax` set to `mem_limit_gb`, `OOMPolicy=continue`, and `Delegate=yes`. A small shim (`malvin __agent-cgroup-leaf`) first moves the agent into the scope's `agent` sub-cgroup and then runs it, so the scope itself holds no processes and can give sub-cgroups their own memory limits. Every process the agent starts stays in the scope, including one that calls `setsid()` or is reparented to init. When the session ends normally, on an error, or on SIGTERM, malvin writes `cgroup.kill` so that no descendant outlives it. The kernel enforces the memory limit. When the scope's own limit triggers an OOM kill, or the kernel OOM-kills one of the session's own agent processes for any reason, malvin ends the whole session and records reason `cgroup_oom_kill` in the run's sandbox OOM marker. (malvin reads `memory.events.local` for this, so a nested session that hits its own, smaller limit does not end the outer session.) While the cgroup is active, the kernel's `MemoryMax` is the only memory limit; malvin's 500 ms watcher only looks for those OOM kills and for the session's exit.
+
+**Nested malvin.** When an agent runs malvin, the inner malvin sees that it is inside a malvin `agent` sub-cgroup. Instead of starting a new systemd scope, which systemd would place beside the outer one, it creates `malvin-nested-<inner pid>-<n>/` inside the outer scope, with `memory.max` set to its own `mem_limit_gb`, and runs its agent in that directory's `agent` sub-cgroup. Nesting can go deeper in the same way. As a result:
+
+- the inner session's memory counts against the outer limit as well as its own, so the smaller limit wins;
+- ending the inner session kills only the inner session, and malvin then removes its directory;
+- ending the outer session kills every nested session too.
+
+If the inner malvin cannot create its directory, or the outer malvin is an older release that runs agents at the scope's top level, the inner malvin uses process-group containment inside the outer cgroup. It never starts a separate scope while it is inside a malvin cgroup. `MALVIN_NO_CGROUP=1` has the same effect for the inner malvin alone.
+
+**If malvin itself is killed with SIGKILL**, it cannot write `cgroup.kill`. The agent's leader process receives SIGKILL from its parent-death signal, but the rest of the scope keeps running. The next malvin session started by the same user removes such leftovers: when it starts an agent, it kills every sibling `malvin-agent-<pid>-<n>.scope` whose malvin process no longer exists and that still holds processes. A nested malvin does the same for `malvin-nested-*` directories of inner malvin processes that no longer exist.
+
+**Limits of this containment.** It contains ordinary programs, not an agent that deliberately escapes. The agent runs as the operator's user, who owns these cgroups. It can raise `memory.max` on its own cgroup, move a process into another cgroup it creates, or start `systemd-run --user` (as a scope or a service) to put work outside the session. Those processes are not limited and are not killed when the session ends. Files in a tmpfs such as `/dev/shm`, or in `/tmp` when it is a tmpfs, count against the memory limit of the cgroup that wrote them and keep counting after that session ends, until they are deleted. In process-group containment, by contrast, malvin counts only the memory of processes.
+
+malvin checks once per process whether systemd user scopes work. They do not work on macOS, without a running systemd user manager (`systemctl --user` reports "Failed to connect to user scope bus"), when `MALVIN_NO_CGROUP=1`, or in test mode. In those cases malvin falls back to process-group containment: process group, descendant scan, and session affiliation. Under process-group containment, a descendant that starts its own session and is reparented can survive teardown, and malvin enforces the memory limit itself: every 500 ms it sums the USS of the agent's processes (the agent's process group, its descendants, and processes affiliated with the session; not malvin itself and not malvin's own workers, such as the request summary worker and the fact agent) and ends the session when the sum exceeds `mem_limit_gb` (reason `memory_limit`), or when the sum cannot be measured three times in a row (reason `measurement_fail_closed`).
+
+## On/off environment variables
+
+Every `MALVIN_*` variable that switches something on or off follows one rule: the switch is on when the variable is set to a non-empty value other than `0`. So `MALVIN_NO_HERDR=1` turns Herdr off, while `MALVIN_NO_HERDR=0`, `MALVIN_NO_HERDR=` and an unset variable leave it on. The rule covers `MALVIN_NO_CGROUP`, `MALVIN_NO_HERDR`, `MALVIN_NO_HERDR_LINGER`, `MALVIN_FORCE_STDOUT_TEE`, the build-time `MALVIN_DISABLE_LLD` and `MALVIN_DISABLE_DYNAMIC_RPATH`, and the test-only switches.
+
 ## Home config (`~/.malvinconf/config.toml`)
 
 `~/.malvinconf/` holds malvin's per-user state: `config.toml`, `local_llms.json`, `logs/`, `names/`, and `sdk-bridges/`. If `config.toml` stops being valid TOML during a session, malvin moves it to `config.toml.invalid.<timestamp>_<id>` beside the original, prints a warning that names that file, and writes a default config in its place. Older releases used `~/.malvin_home/`. On startup, when `~/.malvin_home/` is a real directory, malvin renames it to `~/.malvinconf`, or, if `~/.malvinconf` already exists, merges its contents in (files from `~/.malvin_home/` win on conflict). It then leaves a symlink at the old path, so malvin processes still running an older build keep working.
 
-Top-level keys include `mem_limit_gb`, `theme`, and `auto_setup_costs` (default `true`). When enabled, a `malvin REQUEST` run with missing rates for its selected model renders `set_costs.md` and runs that request on the default router (harness gates off) before the main request; `--no-auto-costs` skips that workflow for one run. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[logs]`, and optional `[aliases.models]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`) and `[aliases.remotes]` (map short names to full `--remote` values, e.g. `big = "modal:sandbox[gpu=A100,mem=32]"`, so `--remote=big` means `--remote=modal:sandbox[gpu=A100,mem=32]`). An alias matches only the whole value: `--remote=big[timeout=2h]` exits 1 with a message saying so, and an alias may not be named after a built-in remote provider such as `modal` or contain `:`, `[`, `]`, `,`, or `=`; model aliases may not contain `:` either. An invalid alias entry is skipped with a warning; the other entries still work. The older `[nicknames]` table was renamed to `[aliases.models]`; malvin rejects a config that still has it, with a message saying to move its entries.
+Top-level keys include `mem_limit_gb`, `theme`, and `auto_setup_costs` (default `true`). When enabled, a `malvin REQUEST` run whose selected model has no `usd_per_megatoken_*` table (an explicit table with every rate `0`, as for self-hosted models, counts as configured) renders `set_costs.md` and runs that request on the default router (harness gates off) before the main request; `--no-auto-costs` skips that workflow for one run. Cursor cost rates `usd_per_megatoken_in`, `usd_per_megatoken_out`, `usd_per_megatoken_cache_read`, and `usd_per_megatoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). These keys were formerly named `usd_per_microtoken_*`; malvin warns about each model table that still uses the old names, with a message saying to rename them, and reads that table's `usd_per_megatoken_*` keys only. A table with an invalid rate (such as a negative one) is skipped with a warning; other models' rates still apply. Sections include `[agent]`, `[logs]`, and optional `[aliases.models]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`) and `[aliases.remotes]` (map short names to full `--remote` values, e.g. `big = "modal:sandbox[gpu=A100,mem=32]"`, so `--remote=big` means `--remote=modal:sandbox[gpu=A100,mem=32]`). An alias matches only the whole value: `--remote=big[timeout=2h]` exits 1 with a message saying so, and an alias may not be named after a built-in remote provider such as `modal` or contain `:`, `[`, `]`, `,`, or `=`; model aliases may not contain `:` either. An invalid alias entry is skipped with a warning; the other entries still work. The older `[nicknames]` table was renamed to `[aliases.models]`; malvin rejects a config that still has it, with a message saying to move its entries.
 
 ## Local LLMs (`~/.malvinconf/local_llms.json`)
 
@@ -264,7 +292,7 @@ After most agent-backed commands create a new run directory and emit the startup
 
 ## Request syntax
 
-Several commands accept positional request arguments. Each `<REQUEST>` is **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request. Multiple `REQUEST` arguments each run independently (new log directory, one router pass, summarize). Each `--creative[=PROB]` tags only the next `REQUEST` for creative sampling; other `REQUEST` args stay non-creative. You can interleave them, for example `malvin "plain" --creative "spark"`.
+Several commands accept positional request arguments. Each `<REQUEST>` is **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request. Multiple `REQUEST` arguments each run independently (new log directory, one router pass, summarize). You can interleave them, for example `malvin "plain" --creative "spark"`.
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
@@ -276,8 +304,8 @@ Examples:
 malvin "fix the typo"
 malvin "Hello" "Research the topic"
 malvin "Write a function" "What time is it?" "Find a bug" "Summarize in report.md"
-malvin --creative "explore API boundaries"
-malvin "plain task" --creative "spark ideas" "another plain" --creative=0.4 "biased spark"
+malvin "explore API boundaries"
+malvin "plain task" "another plain"
 malvin request_1.md request_2.md
 ```
 
@@ -308,7 +336,7 @@ See the default-route section of `malvin --doc`.
 - **Resources**: `--remote=modal:sandbox[gpu=...,ncpu=...,mem=...,timeout=...]` sets the Sandbox's resources for one run. Each suboption is optional, they may appear in any order, and an omitted one falls back to the `[modal]` setting of the same name in `~/.malvinconf/config.toml`, then to the built-in default. `malvin admin remotes` prints this list as a table.
   - `gpu`: `none` (default), a Modal GPU type such as `T4` or `A100` (`malvin admin remotes` lists the current types), or `TYPE:COUNT` for several GPUs (for example `T4:2`).
   - `ncpu`: number of CPU cores reserved for the Sandbox, a positive whole number (default 1).
-  - `mem`: the Sandbox's memory in GiB, a positive whole number with an optional `G`, `GB`, or `GiB` suffix (default 8; for example `mem=16` or `mem=16G`). The remote malvin's `mem_limit_gb` is 2 less than this, or this machine's `mem_limit_gb` if that is smaller.
+  - `mem`: the Sandbox's memory in GiB, a positive whole number, at most 1048576, with an optional `G`, `GB`, or `GiB` suffix (default 8; for example `mem=16` or `mem=16G`). The remote malvin's `mem_limit_gb` is 2 less than this, or this machine's `mem_limit_gb` if that is smaller.
   - `timeout`: the Sandbox's hard lifetime (default 30 minutes, at most 24 hours). A bare number means minutes (`timeout=45`); the suffixes `s`, `m`, and `h` select seconds, minutes, and hours (`90s`, `45m`, `2h`).
 
   The brackets are shell glob characters, so quote the flag (`'--remote=modal:sandbox[gpu=T4]'`) if your shell complains or a file name could match it. malvin prints the resources it chose when the Sandbox starts, for example `Sandbox sb-… started (T4, 2 CPU, 8 GiB, timeout 10 min)`.

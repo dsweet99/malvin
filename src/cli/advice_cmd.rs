@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use super::advice_facts::{FACTS_TAG, facts_list_line, write_facts};
+use super::tag_list::{list_line, write_body, write_list};
 
 struct AdviceEntry {
     tag: &'static str,
@@ -32,7 +32,6 @@ fn advice_entry(tag: &str) -> Result<&'static AdviceEntry, String> {
         .ok_or_else(|| {
             let mut known: Vec<&str> = ADVICE_ENTRIES.iter().map(|e| e.tag).collect();
             known.extend(LEGACY_ADVICE_ALIASES.iter().map(|(legacy, _)| *legacy));
-            known.push(FACTS_TAG);
             known.sort_unstable();
             format!("unknown --advice TAG `{tag}` (known: {})", known.join(", "))
         })
@@ -58,45 +57,20 @@ fn word_count(s: &str) -> usize {
     s.split_whitespace().count()
 }
 
-fn format_advice_list_line(entry: &AdviceEntry) -> String {
-    format!("{}: {}", entry.tag, entry.description)
-}
-
-const ADVICE_LIST_USAGE: &str = "\
-Type `malvin --advice TAG` to see a full document.
-
-TAG: Description";
-
-pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), String> {
-    out.write_all(ADVICE_LIST_USAGE.as_bytes())
-        .map_err(|e| format!("stdout: {e}"))?;
-    out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
-    for entry in ADVICE_ENTRIES {
-        let line = format_advice_list_line(entry);
-        out.write_all(line.as_bytes())
-            .map_err(|e| format!("stdout: {e}"))?;
-        out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
-    }
-    writeln!(out, "{}", facts_list_line()).map_err(|e| format!("stdout: {e}"))?;
-    out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
-    Ok(())
+pub(crate) fn print_advice_list_to_writer(out: impl Write) -> Result<(), String> {
+    let lines: Vec<String> = ADVICE_ENTRIES
+        .iter()
+        .map(|e| list_line(e.tag, e.description))
+        .collect();
+    write_list(out, "--advice", &lines)
 }
 
 pub(crate) fn print_advice_list() -> Result<(), String> {
     print_advice_list_to_writer(io::stdout().lock())
 }
 
-pub(crate) fn print_advice_to_writer(tag: &str, mut out: impl Write) -> Result<(), String> {
-    if tag == FACTS_TAG {
-        return write_facts(out);
-    }
-    let text = advice_text(tag)?;
-    out.write_all(text.as_bytes())
-        .map_err(|e| format!("stdout: {e}"))?;
-    if !text.ends_with('\n') {
-        out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
-    }
-    Ok(())
+pub(crate) fn print_advice_to_writer(tag: &str, out: impl Write) -> Result<(), String> {
+    write_body(out, advice_text(tag)?)
 }
 
 pub(crate) fn print_advice(tag: &str) -> Result<(), String> {
@@ -140,7 +114,7 @@ mod tests {
         assert!(err.contains("doc_design"), "{err}");
         assert!(err.contains("report"), "{err}");
         assert!(err.contains("scholar"), "{err}");
-        assert!(err.contains("facts"), "{err}");
+        assert!(!err.contains("facts"), "{err}");
     }
 
     fn invalid_tag_shape_errors() {
@@ -176,24 +150,18 @@ mod tests {
             .iter()
             .map(|e| format!("{}: {}", e.tag, e.description))
             .collect();
-        assert_eq!(lines[3..lines.len() - 2], expected[..], "{s}");
-        let facts = lines[lines.len() - 2];
-        assert!(
-            facts.starts_with("facts: Time-saving facts you've discovered [")
-                && facts.ends_with(" facts]"),
-            "{s}"
-        );
+        assert_eq!(lines[3..lines.len() - 1], expected[..], "{s}");
         assert_eq!(lines.last(), Some(&""), "{s}");
     }
 
-    fn all_advice_descriptions_are_at_most_seven_words() {
+    fn all_advice_descriptions_are_within_word_limit() {
         for entry in ADVICE_ENTRIES {
             let Some((base, _)) = entry.description.split_once(" [") else {
                 panic!("{} missing size suffix", entry.tag);
             };
             let n = word_count(base);
             assert!(
-                n <= 7,
+                n <= crate::desc_limit::MAX_DESC_WORDS,
                 "tag `{}` description has {n} words: {base}",
                 entry.tag
             );
@@ -265,7 +233,7 @@ mod tests {
         invalid_tag_shape_errors();
         valid_tag_shape_accepted_for_lookup();
         advice_list_prints_tag_colon_description_lines();
-        all_advice_descriptions_are_at_most_seven_words();
+        all_advice_descriptions_are_within_word_limit();
         advice_descriptions_come_from_first_line_without_prefix();
         every_advice_md_stem_is_registered_as_tag();
     }

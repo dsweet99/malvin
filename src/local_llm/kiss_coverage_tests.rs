@@ -34,7 +34,6 @@ fn kiss_cov_local_llm() {
     let _ = stringify!(LocalLlmEntry);
     let _ = stringify!(LocalLlmsConfig);
     let _ = stringify!(configured_allowlist);
-    let _ = stringify!(INTERNAL_MANAGER_FLAG);
     let _ = stringify!(time_since_last_call_seconds);
     let _ = stringify!(DEFAULT_IDLE_SECS);
     let _ = stringify!(ManagerRequest);

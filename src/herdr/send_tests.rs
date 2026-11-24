@@ -69,10 +69,10 @@ fn delayed_reply_is_a_timeout_not_an_empty_body() {
     let err = send_request_checked(&sock, &json!({"id":"t","method":"ping","params":{}}))
         .expect_err("slow peer");
     assert!(
-        err.contains("timed out"),
+        err.message.contains("timed out"),
         "timeout must not be labeled an empty reply: {err}"
     );
-    assert!(!err.contains("reply empty"), "{err}");
+    assert!(!err.message.contains("reply empty"), "{err}");
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn peer_close_without_bytes_is_an_empty_reply() {
     });
     let err = send_request_checked(&sock, &json!({"id":"t","method":"ping","params":{}}))
         .expect_err("closed peer");
-    assert!(err.contains("reply empty"), "{err}");
+    assert!(err.message.contains("reply empty"), "{err}");
 }
 
 #[test]
@@ -118,6 +118,21 @@ fn classify_reply_detects_herdr_error_json() {
     assert!(classify_reply(b"").is_err());
     assert!(classify_reply(b"HTTP/1.1 500").is_err());
     assert!(classify_reply(br#"{"id":"1"}"#).is_err());
+    let err = classify_reply(br#"{"id":"1","error":{"code":"pane_not_found","message":"gone"}}"#)
+        .expect_err("herdr error reply");
+    assert!(err.has_code("pane_not_found"), "{err:?}");
+    assert_eq!(err.to_string(), "pane_not_found: gone");
+    let err = classify_reply(br#"{"error":{"code":"pane_not_found_in_tab","message":"m"}}"#)
+        .expect_err("herdr error reply");
+    assert!(
+        !err.has_code("pane_not_found"),
+        "a longer code must not match"
+    );
+    let err = classify_reply(b"").expect_err("transport-level failure");
+    assert_eq!(
+        (err.code, err.message.as_str()),
+        (None, "herdr reply empty")
+    );
 }
 
 #[cfg(target_os = "linux")]
@@ -168,7 +183,7 @@ fn connect_budget() -> Duration {
 }
 
 #[cfg(target_os = "linux")]
-fn assert_connect_times_out(send: impl FnOnce() -> Result<(), String>) {
+fn assert_connect_times_out(send: impl FnOnce() -> Result<(), super::HerdrError>) {
     let start = Instant::now();
     let err = send().expect_err("wedged accept must not succeed");
     assert!(
@@ -178,7 +193,7 @@ fn assert_connect_times_out(send: impl FnOnce() -> Result<(), String>) {
         start.elapsed()
     );
     assert!(
-        err.contains("timed out"),
+        err.message.contains("timed out"),
         "expected connect timeout, got: {err}"
     );
 }

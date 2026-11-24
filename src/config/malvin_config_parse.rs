@@ -13,11 +13,7 @@ use super::{
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
     let (mem_limit_gb, context_size, theme, auto_setup_costs) = parse_top_level_keys(text);
     let (model_aliases, remote_aliases) = parse_aliases_lenient(text);
-    let token_cost_rates = parse_or_warn(
-        parse_model_token_cost_rates(text),
-        "[agent.*.*] usd_per_microtoken_*",
-        BTreeMap::new(),
-    );
+    let token_cost_rates = parse_token_cost_rates(text);
     let (logs, agent) = parse_config_sections(text, &model_aliases);
     MalvinConfig {
         mem_limit_gb,
@@ -31,6 +27,20 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         agent,
         dm_on_emit: parse_dm_on_emit(text),
     }
+}
+
+fn parse_token_cost_rates(text: &str) -> BTreeMap<String, super::TokenCostRates> {
+    let Some(parsed) = parse_or_warn(
+        parse_model_token_cost_rates(text).map(Some),
+        "[agent.*.*] usd_per_megatoken_*",
+        None,
+    ) else {
+        return BTreeMap::new();
+    };
+    for error in &parsed.table_errors {
+        warn_config_once(&format!("could not parse token costs: {error}"));
+    }
+    parsed.rates
 }
 
 fn parse_dm_on_emit(text: &str) -> Option<String> {

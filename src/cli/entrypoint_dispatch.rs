@@ -20,12 +20,14 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
     let router = router.clone();
     run_async_cli(move || async move {
         crate::cli::auto_costs::maybe_run_cost_setup(&shared, &router).await;
+        let mut bootstrap = router.clone();
+        bootstrap.gates = jobs.iter().any(|j| j.gates.unwrap_or(router.gates));
         crate::cli::init_flow::maybe_run_init_bootstrap(
             crate::cli::init_flow::InitWorkflowOpts {
                 max_loops: router.max_loops,
             },
             &shared,
-            &router,
+            &bootstrap,
         )
         .await?;
         ml_loop::run_meta_loop(ml, || {
@@ -35,6 +37,8 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
             async move {
                 for job in jobs {
                     let mut shared = shared.clone();
+                    let mut router = router.clone();
+                    router.gates = job.gates.unwrap_or(router.gates);
                     if let Some(model) = job.model {
                         shared.model = model;
                     }

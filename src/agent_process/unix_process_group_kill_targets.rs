@@ -6,7 +6,7 @@ pub(crate) use super::session_spawn_affiliation;
 mod session_spawn_affiliation_tests;
 use super::unix_process_group_ps::{
     INIT_PID, ProcRow, host_protected_pids, is_safe_kill_target, list_proc_rows,
-    process_group_member_pids,
+    process_group_member_pids, read_proc_cmdline,
 };
 #[cfg(any(test, debug_assertions))]
 pub(crate) use session_spawn_affiliation::note_session_affiliated_pid;
@@ -31,6 +31,19 @@ pub(crate) fn descendant_pids(roots: &HashSet<u32>, rows: &[ProcRow]) -> HashSet
         }
     }
     seen
+}
+
+pub(crate) fn malvin_worker_subtree_pids(rows: &[ProcRow]) -> HashSet<u32> {
+    let malvin_pid = std::process::id();
+    let workers: HashSet<u32> = descendant_pids(&HashSet::from([malvin_pid]), rows)
+        .into_iter()
+        .filter(|&pid| {
+            pid != malvin_pid
+                && read_proc_cmdline(pid)
+                    .is_some_and(|cmdline| crate::self_worker::is_worker_cmdline(&cmdline))
+        })
+        .collect();
+    descendant_pids(&workers, rows)
 }
 
 pub(crate) fn reparented_init_orphans(baseline: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {
@@ -105,6 +118,16 @@ fn extend_baseline_teardown_targets(
     targets.extend(malvin_session_spawn_pids(baseline, rows));
 }
 
+fn agent_session_member_pids(pgid: u32, rows: &[ProcRow]) -> HashSet<u32> {
+    let pg_members = process_group_member_pids(pgid);
+    let mut members = descendant_pids(&pg_members, rows);
+    members.extend(&pg_members);
+    members.extend(super::agent_cgroup::active_agent_cgroup_member_pids(Some(
+        pgid,
+    )));
+    members
+}
+
 pub(crate) fn kill_targets_for_teardown(
     process_group_id: Option<u32>,
     spawn_baseline: Option<&HashSet<u32>>,
@@ -115,9 +138,7 @@ pub(crate) fn kill_targets_for_teardown(
     let rows = list_proc_rows().unwrap_or_default();
     let mut targets = HashSet::new();
     if let Some(pgid) = process_group_id {
-        let pg_members = process_group_member_pids(pgid);
-        targets.extend(&pg_members);
-        targets.extend(descendant_pids(&pg_members, &rows));
+        targets.extend(agent_session_member_pids(pgid, &rows));
     }
     if let Some(baseline) = spawn_baseline.filter(|b| !b.is_empty()) {
         extend_baseline_teardown_targets(&mut targets, baseline, &rows);
@@ -125,6 +146,9 @@ pub(crate) fn kill_targets_for_teardown(
         targets.extend(affiliated_session_pids(&HashSet::new(), &rows));
     }
     if let Some(pid) = crate::local_llm::local_llm_manager_pid() {
+        targets.remove(&pid);
+    }
+    for pid in malvin_worker_subtree_pids(&rows) {
         targets.remove(&pid);
     }
     targets

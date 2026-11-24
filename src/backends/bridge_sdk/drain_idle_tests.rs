@@ -9,16 +9,10 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant as WallInstant};
 use tokio::time::Instant;
 
-fn set_idle_ms(ms: u64) -> Option<std::ffi::OsString> {
-    let prior = std::env::var_os("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
-    crate::sdk_drain_timeout::tests_set_idle_ms_for_test(ms);
-    prior
-}
-
 #[tokio::test]
 async fn await_next_times_out_without_health_extend() {
     let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_idle_ms(80);
+    let _idle = crate::sdk_drain_timeout::tests_set_idle_ms_for_test(80);
     let labels = DrainIdleLabels {
         prefix: "bridge timed out",
         waiting_for: "run_done",
@@ -34,13 +28,12 @@ async fn await_next_times_out_without_health_extend() {
     assert!(err.message.contains("bridge timed out"));
     assert!(err.message.contains("run_done"));
     assert!(started.elapsed() >= Duration::from_millis(80));
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
 }
 
 #[tokio::test]
 async fn await_next_delivers_when_read_completes() {
     let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_idle_ms(500);
+    let _idle = crate::sdk_drain_timeout::tests_set_idle_ms_for_test(500);
     let labels = DrainIdleLabels {
         prefix: "bridge timed out",
         waiting_for: "ok",
@@ -49,7 +42,6 @@ async fn await_next_delivers_when_read_completes() {
         .await
         .expect("value");
     assert_eq!(got, 7);
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
 }
 
 #[test]
@@ -133,7 +125,7 @@ fn aggregate_health_policy_matches_plan() {
 #[tokio::test]
 async fn event_arriving_during_health_sampling_wins_race() {
     let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_idle_ms(20);
+    let _idle = crate::sdk_drain_timeout::tests_set_idle_ms_for_test(20);
     let baseline = HashSet::new();
     let health = Some(DrainIdleHealthCtx {
         process_group_id: Some(std::process::id()),
@@ -149,7 +141,6 @@ async fn event_arriving_during_health_sampling_wins_race() {
         Ok::<_, AgentError>(42)
     };
     let result = await_next_with_idle(labels, health, read).await;
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert_eq!(result.expect("event must beat health/max timeout"), 42);
 }
 
@@ -227,5 +218,4 @@ fn kiss_cov_drain_idle_names() {
     let _ = stringify!(drain_idle_turn_reset_reopens_expired_idle_window);
     let _ = stringify!(kiss_cov_drain_idle_names);
     let _ = stringify!(tests_set_idle_ms_for_test);
-    let _ = stringify!(tests_restore_idle_ms_for_test);
 }

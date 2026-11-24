@@ -165,6 +165,31 @@ fn missing_program_and_timeout_are_reported() {
     assert!(err.iter().any(|line| line.contains("timed out")), "{err:?}");
 }
 
+#[cfg(unix)]
+#[test]
+fn timeout_kills_the_whole_hook_group_without_a_kill_program_on_path() {
+    let _lock = crate::test_support::test_utils::test_env_lock();
+    let _reset = Reset;
+    let _saved = crate::test_support::test_utils::SavedEnvVars::capture(&["PATH"]);
+    let empty = tempfile::tempdir().expect("temp");
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var("PATH", empty.path());
+    }
+    // The background sleep inherits the output pipes; only a group kill releases them.
+    let hook = vec![
+        "/bin/sh".to_string(),
+        "-c".to_string(),
+        "/bin/sleep 30 & /bin/sleep 30".to_string(),
+    ];
+    let started = Instant::now();
+    dm_hook_exec::exec_hook(&hook, None, Duration::from_millis(200));
+    assert!(
+        started.elapsed() < secs(5),
+        "grandchildren outlived the timeout"
+    );
+}
+
 fn modal_sandbox_emits_a_mark_instead_of_starting_the_program() {
     let _reset = Reset;
     let dir = tempfile::tempdir().expect("temp");

@@ -17,7 +17,7 @@ fn note_fixture_orphan_affiliation(pid: u32, agent_pgid: Option<u32>) {
 #[cfg(unix)]
 fn orphan_pid_if_ready(path: &Path, agent_pgid: Option<u32>) -> Option<u32> {
     let text = std::fs::read_to_string(path).ok()?;
-    let pid = text.trim().parse::<u32>().ok()?;
+    let pid = crate::session_name::parse_holder_pid(&text)?;
     if !process_alive(pid) {
         return None;
     }

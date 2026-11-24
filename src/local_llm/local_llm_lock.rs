@@ -31,7 +31,7 @@ pub(crate) fn reclaim_stale_lock(path: &Path) {
     let Ok(body) = fs::read_to_string(path) else {
         return;
     };
-    let Some(pid) = body.trim().parse::<u32>().ok() else {
+    let Some(pid) = crate::session_name::parse_holder_pid(&body) else {
         let _ = fs::remove_file(path);
         return;
     };
@@ -42,7 +42,7 @@ pub(crate) fn reclaim_stale_lock(path: &Path) {
 
 pub(crate) fn lock_holder_pid(path: &Path) -> Option<u32> {
     let body = fs::read_to_string(path).ok()?;
-    let pid = body.trim().parse::<u32>().ok()?;
+    let pid = crate::session_name::parse_holder_pid(&body)?;
     process_alive(pid).then_some(pid)
 }
 

@@ -22,7 +22,6 @@ pub(crate) use local_lifecycle::{
 };
 pub use local_lifecycle::{housekeep_local_llms, model_needs_local_llm};
 pub use local_llm_daemon::run_local_llm_manager;
-pub use local_llm_paths::INTERNAL_MANAGER_FLAG;
 pub use local_models_list::filter_local_listings;
 pub use provider_metadata::provider_is_keyless_local;
 pub(crate) use session_spawn_local::local_cli_args;

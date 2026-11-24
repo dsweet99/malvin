@@ -83,9 +83,12 @@ pub struct SharedOpts {
     /// Print built-in documentation and exit
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
-    /// Print full advice for TAG (`facts` prints ~/.malvinconf/facts.jsonl), or list tags if TAG is omitted (no run logs)
+    /// Print full advice for TAG, or list tags if TAG is omitted (no run logs)
     #[arg(long, value_name = "TAG", num_args = 0..=1, default_missing_value = "")]
     pub advice: Option<String>,
+    /// Print the fact with id TAG from ~/.malvinconf/facts.jsonl, or list facts if TAG is omitted (no run logs)
+    #[arg(long, value_name = "TAG", num_args = 0..=1, default_missing_value = "")]
+    pub facts: Option<String>,
     /// Print credits for ideas malvin builds on and exit (no run logs)
     #[arg(long, default_value_t = false)]
     pub credits: bool,
@@ -118,7 +121,7 @@ pub struct RouterOpts {
     /// Print nothing (`-qq` is the short form)
     #[arg(long = "very-quiet", default_value_t = false, help = VERY_QUIET_HELPTEXT)]
     pub very_quiet: bool,
-    /// Run workspace quality gates; treat failures as loop or exit criteria
+    /// Run workspace quality gates; treat failures as loop or exit criteria. May be repeated; each use applies to the prompts that follow it
     #[arg(short = 'g', long, default_value_t = false)]
     pub gates: bool,
     /// Outer-loop budget for the default route and gates-only runs
@@ -174,6 +177,7 @@ impl SharedOpts {
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             advice: None,
+            facts: None,
             credits: false,
             ml: MetaLoopCount::Times(1),
             remote: None,

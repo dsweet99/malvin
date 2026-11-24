@@ -25,12 +25,6 @@ pub fn strip_herdr_env(cmd: &mut std::process::Command) {
     }
 }
 
-pub fn strip_herdr_env_tokio(cmd: &mut tokio::process::Command) {
-    for var in HERDR_ENV_VARS {
-        cmd.env_remove(var);
-    }
-}
-
 #[must_use]
 pub fn from_values(
     herdr_env: Option<std::ffi::OsString>,
@@ -79,19 +73,14 @@ mod tests {
             let _ = HerdrEnv::from_os_env();
             let _ = OsString::new();
         }
+        assert_strip_herdr_env_removes_triad();
     }
 
-    #[test]
-    fn strip_herdr_env_removes_triad() {
+    fn assert_strip_herdr_env_removes_triad() {
         let mut std_cmd = std::process::Command::new("true");
         std_cmd.env("HERDR_ENV", "1");
         std_cmd.env("HERDR_SOCKET_PATH", "/tmp/h.sock");
         std_cmd.env("HERDR_PANE_ID", "p1");
         super::strip_herdr_env(&mut std_cmd);
-        let mut tokio_cmd = tokio::process::Command::new("true");
-        tokio_cmd.env("HERDR_ENV", "1");
-        tokio_cmd.env("HERDR_SOCKET_PATH", "/tmp/h.sock");
-        tokio_cmd.env("HERDR_PANE_ID", "p1");
-        super::strip_herdr_env_tokio(&mut tokio_cmd);
     }
 }

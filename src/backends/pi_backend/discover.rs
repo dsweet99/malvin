@@ -3,29 +3,24 @@ use std::path::PathBuf;
 pub const NPM_PI_MISSING_HINT: &str = "pi backend requires the TypeScript/npm Pi agent \
 (@earendil-works/pi-coding-agent). Set MALVIN_PI to its cli.js or rpc-entry.js, or install the package.";
 
+fn pi_override() -> Option<Result<PathBuf, String>> {
+    crate::workspace::support_paths::env_path_override(
+        "MALVIN_PI",
+        crate::workspace::support_paths::OverrideKind::File,
+        NPM_PI_MISSING_HINT,
+    )
+}
+
 pub fn resolve_npm_pi_entry() -> Result<PathBuf, String> {
-    if let Some(path) = std::env::var_os("MALVIN_PI").filter(|v| !v.is_empty()) {
-        let path = PathBuf::from(path);
-        if path.is_file() {
-            return Ok(path);
-        }
-        return Err(format!(
-            "MALVIN_PI points to a missing file ({}); {NPM_PI_MISSING_HINT}",
-            path.display()
-        ));
+    if let Some(result) = pi_override() {
+        return result;
     }
     first_entry_candidate().ok_or_else(|| NPM_PI_MISSING_HINT.to_string())
 }
 
 pub fn resolve_npm_pi_cli_entry() -> Result<PathBuf, String> {
-    if let Some(path) = std::env::var_os("MALVIN_PI").filter(|v| !v.is_empty()) {
-        let path = PathBuf::from(path);
-        if !path.is_file() {
-            return Err(format!(
-                "MALVIN_PI points to a missing file ({}); {NPM_PI_MISSING_HINT}",
-                path.display()
-            ));
-        }
+    if let Some(result) = pi_override() {
+        let path = result?;
         if path.file_name().is_some_and(|n| n == "cli.js") {
             return Ok(path);
         }
@@ -81,15 +76,13 @@ fn first_entry_candidate() -> Option<PathBuf> {
 fn candidate_package_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
     push_scoped(&mut roots, PathBuf::from("node_modules"));
-    if let Some(home) = std::env::var_os("HOME") {
-        let home = PathBuf::from(home);
-        push_scoped(
-            &mut roots,
-            home.join(crate::MALVIN_USER_HOME_DIR)
-                .join("sdk-bridges/node_modules"),
-        );
-        push_npx_cache(&mut roots, &home.join(".npm/_npx"));
-    }
+    let home = crate::workspace::user_home::user_home_dir();
+    push_scoped(
+        &mut roots,
+        home.join(crate::MALVIN_USER_HOME_DIR)
+            .join("sdk-bridges/node_modules"),
+    );
+    push_npx_cache(&mut roots, &home.join(".npm/_npx"));
     roots
 }
 
@@ -120,7 +113,10 @@ mod tests {
             let _lock = crate::test_support::test_utils::test_env_lock();
             crate::agent_process::with_env("MALVIN_PI", Some("/no/such/pi-entry.js"), || {
                 let err = resolve_npm_pi_entry().expect_err("missing");
-                assert!(err.contains("MALVIN_PI") && err.contains("missing file"));
+                assert!(
+                    err.contains("MALVIN_PI is set but not a file")
+                        && err.contains(NPM_PI_MISSING_HINT)
+                );
             });
         }
         {

@@ -44,10 +44,10 @@ pub(crate) async fn cursor_spawn_bridge(
 
 fn cursor_open_bridge_session(
     args: BridgeSpawnArgs<'_>,
-    ticket: crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
+    mut ticket: crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
 ) -> Result<BridgeSession, AgentError> {
     let (node, bridge) = cursor_resolve_node_and_bridge()?;
-    let mut child = cursor_build_bridge_command(&node, &bridge, args.cwd)
+    let mut child = cursor_build_bridge_command(&node, &bridge, args.cwd, &mut ticket)
         .spawn()
         .map_err(|e| AgentError(format!("spawn cursor-sdk-bridge: {e}")))?;
     let handles = cursor_take_stdio(&mut child)?;
@@ -131,9 +131,10 @@ fn cursor_build_bridge_command(
     node: &std::path::Path,
     bridge: &std::path::Path,
     cwd: &std::path::Path,
+    ticket: &mut crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
 ) -> tokio::process::Command {
     use std::process::Stdio;
-    let mut cmd = crate::agent_process::malvin_sandbox::malvin_tokio_command(node);
+    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, cwd, ticket);
     super::cursor_sdk::node_resolve::apply_quiet_node_cli(&mut cmd);
     cmd.arg(bridge)
         .current_dir(cwd)

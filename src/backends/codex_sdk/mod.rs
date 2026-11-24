@@ -32,16 +32,6 @@ pub(crate) use session::CodexSession;
 pub(crate) use session_spawn::codex_spawn_bridge as spawn_bridge;
 
 #[cfg(test)]
-mod discover_tests_inline {
-    use super::discover::codex_path_is_executable;
-
-    #[test]
-    fn codex_path_is_executable_witness() {
-        let _ = codex_path_is_executable;
-    }
-}
-
-#[cfg(test)]
 mod kiss_coverage_tests {
     #[test]
     fn kiss_cov_codex_map_event() {

@@ -105,8 +105,17 @@ fn resolve_npm_prefers_env_then_node_sibling() {
     crate::agent_process::with_env("MALVIN_NPM", None, || {
         assert_eq!(resolve_npm(&node).unwrap(), tmp.path().join("npm"));
     });
+    fs::create_dir_all(tmp.path().join("custom")).unwrap();
+    let custom = fake_npm(&tmp.path().join("custom"), "exit 0");
+    crate::agent_process::with_env("MALVIN_NPM", Some(custom.to_str().unwrap()), || {
+        assert_eq!(resolve_npm(&node).unwrap(), custom);
+    });
     crate::agent_process::with_env("MALVIN_NPM", Some("/x/npm"), || {
-        assert_eq!(resolve_npm(&node).unwrap(), PathBuf::from("/x/npm"));
+        let err = resolve_npm(&node).unwrap_err();
+        assert!(
+            err.starts_with("MALVIN_NPM is set but not a file: /x/npm"),
+            "{err}"
+        );
     });
 }
 

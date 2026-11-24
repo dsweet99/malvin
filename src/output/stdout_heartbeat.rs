@@ -61,6 +61,7 @@ pub(crate) fn heartbeat_rendered_if_due(
 }
 
 fn render_heartbeat_line() -> (String, String) {
+    crate::herdr::notify_working();
     let ts = timestamp_now_string();
     let payload = heartbeat_payload_now();
     stdout_heartbeat_display_and_log_line(WHO_H, &payload, Some(ts.as_str()))
@@ -87,6 +88,7 @@ pub(crate) fn maybe_emit_stdout_heartbeat() {
 
 pub(crate) fn emit_stdout_heartbeat_now() {
     if heartbeat_stdout_suppressed() {
+        crate::herdr::notify_working();
         return;
     }
     let (display, log) = render_heartbeat_line();

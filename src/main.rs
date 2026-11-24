@@ -1,10 +1,10 @@
 #![allow(clippy::multiple_crate_versions)]
 
 fn main() -> malvin::Exit {
-    if let Some(exit) = malvin::task_summary::run_if_worker() {
+    if let Some(exit) = malvin::agent_process::agent_cgroup_nest::run_if_leaf_shim() {
         return exit;
     }
-    if let Some(exit) = malvin::fact_worker::run_if_worker() {
+    if let Some(exit) = malvin::self_worker::run_if_worker() {
         return exit;
     }
     malvin::run_timing::note_process_start();

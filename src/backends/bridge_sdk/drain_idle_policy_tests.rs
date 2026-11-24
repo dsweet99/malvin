@@ -8,16 +8,10 @@ use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::Instant;
 
-fn set_policy_idle_ms(ms: u64) -> Option<std::ffi::OsString> {
-    let prior = std::env::var_os("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
-    crate::sdk_drain_timeout::tests_set_idle_ms_for_test(ms);
-    prior
-}
-
 #[tokio::test(start_paused = true)]
 async fn injected_dead_health_fails_at_first_slice() {
     let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_policy_idle_ms(120_000);
+    let _idle = crate::sdk_drain_timeout::tests_set_idle_ms_for_test(120_000);
     let started = Instant::now();
     let mut clock = DrainIdleClock::new(Duration::from_mins(2));
     let labels = DrainIdleLabels {
@@ -37,7 +31,6 @@ async fn injected_dead_health_fails_at_first_slice() {
     .await
     .expect_err("dead child must fail on the first 60s health sample");
     let elapsed = started.elapsed();
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert!(err.message.contains("bridge timed out"));
     assert_eq!(elapsed, Duration::from_mins(1));
 }
@@ -45,7 +38,7 @@ async fn injected_dead_health_fails_at_first_slice() {
 #[tokio::test(start_paused = true)]
 async fn injected_hung_health_waits_full_idle() {
     let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_policy_idle_ms(120_000);
+    let _idle = crate::sdk_drain_timeout::tests_set_idle_ms_for_test(120_000);
     let started = Instant::now();
     let mut clock = DrainIdleClock::new(Duration::from_mins(2));
     let labels = DrainIdleLabels {
@@ -65,7 +58,6 @@ async fn injected_hung_health_waits_full_idle() {
     .await
     .expect_err("hung child must fail only after the idle budget");
     let elapsed = started.elapsed();
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert!(err.message.contains("pi rpc timed out"));
     assert_eq!(elapsed, Duration::from_mins(2));
 }
@@ -73,7 +65,7 @@ async fn injected_hung_health_waits_full_idle() {
 #[tokio::test(start_paused = true)]
 async fn missing_pgid_gets_no_health_extend() {
     let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_policy_idle_ms(120_000);
+    let _idle = crate::sdk_drain_timeout::tests_set_idle_ms_for_test(120_000);
     let baseline = HashSet::new();
     let started = Instant::now();
     let err = await_next_with_idle(
@@ -91,7 +83,6 @@ async fn missing_pgid_gets_no_health_extend() {
     .await
     .expect_err("missing pgid must retain the original idle timeout");
     let elapsed = started.elapsed();
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert!(err.message.contains("bridge timed out"));
     assert!(elapsed >= Duration::from_mins(2));
     assert!(elapsed <= Duration::from_mins(2) + Duration::from_secs(1));
@@ -100,7 +91,7 @@ async fn missing_pgid_gets_no_health_extend() {
 #[tokio::test(start_paused = true)]
 async fn repeated_busy_health_waits_past_many_idle_windows() {
     let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_policy_idle_ms(120_000);
+    let _idle = crate::sdk_drain_timeout::tests_set_idle_ms_for_test(120_000);
     let started = Instant::now();
     let mut clock = DrainIdleClock::new(Duration::from_mins(2));
     let labels = DrainIdleLabels {
@@ -123,7 +114,6 @@ async fn repeated_busy_health_waits_past_many_idle_windows() {
     .await
     .expect("busy health must keep waiting with no turn cap");
     let elapsed = started.elapsed();
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert_eq!(got, 9);
     assert_eq!(elapsed, Duration::from_hours(1));
 }
@@ -131,7 +121,7 @@ async fn repeated_busy_health_waits_past_many_idle_windows() {
 #[tokio::test(start_paused = true)]
 async fn events_inside_idle_window_have_no_cumulative_cap() {
     let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_policy_idle_ms(120_000);
+    let _idle = crate::sdk_drain_timeout::tests_set_idle_ms_for_test(120_000);
     let mut turn = DrainIdleTurn::new();
     let labels = DrainIdleLabels {
         prefix: "bridge timed out",
@@ -151,7 +141,6 @@ async fn events_inside_idle_window_have_no_cumulative_cap() {
         .expect("each event inside the idle window must be delivered");
         assert_eq!(got, i);
     }
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
 }
 
 #[test]

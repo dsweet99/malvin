@@ -83,14 +83,25 @@ fn tag_per_request_models(
     let Some(seg) = segments else {
         return Ok(tag_requests(&cli.requests));
     };
-    let indices: Vec<usize> = matches
+    let clap_indices: Vec<usize> = matches
         .indices_of("requests")
         .map(Iterator::collect)
         .unwrap_or_default();
-    let models = seg
-        .models_at(&indices, &cli.shared.model)
-        .map_err(|e| usage_error(clap::error::ErrorKind::InvalidValue, &e))?;
-    Ok(tag_requests_with_models(&cli.requests, models))
+    let indices = seg.arg_positions(&clap_indices);
+    let models = if seg.has_multiple_models() {
+        seg.models_at(&indices, &cli.shared.model)
+            .map_err(|e| usage_error(clap::error::ErrorKind::InvalidValue, &e))?
+    } else {
+        Vec::new()
+    };
+    let mut tagged = tag_requests_with_models(&cli.requests, models);
+    let gates = seg.gates_at(&indices);
+    if gates.contains(&true) {
+        for (job, on) in tagged.iter_mut().zip(gates) {
+            job.gates = Some(on);
+        }
+    }
+    Ok(tagged)
 }
 
 pub fn parse_cli_with_config_defaults(

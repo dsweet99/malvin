@@ -10,15 +10,8 @@ pub fn resolve_node_bin() -> Result<PathBuf, String> {
 }
 
 fn resolve_node_bin_uncached() -> Result<PathBuf, String> {
-    if let Some(p) = std::env::var_os("MALVIN_NODE").filter(|v| !v.is_empty()) {
-        let path = PathBuf::from(p);
-        if path.is_file() {
-            return Ok(path);
-        }
-        return Err(format!(
-            "MALVIN_NODE is set but not a file: {}",
-            path.display()
-        ));
+    if let Some(result) = crate::workspace::support_paths::file_from_env_override("MALVIN_NODE") {
+        return result;
     }
     if let Some(path) = read_sticky_node_bin() {
         return Ok(path);

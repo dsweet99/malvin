@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-pub const INTERNAL_MANAGER_FLAG: &str = "--internal-local-llm-manager";
 pub(crate) const DEFAULT_IDLE_SECS: u64 = 600;
 const IDLE_ENV: &str = "MALVIN_TIME_SINCE_LAST_CALL_SECONDS";
 const SOCK_ENV: &str = "MALVIN_LOCAL_LLM_MANAGER_SOCK";

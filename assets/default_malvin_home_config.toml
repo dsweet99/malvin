@@ -23,13 +23,13 @@ model = ["cursor:auto"]
 max_acp_retries = 3
 
 # Cursor-mode USD cost rates ($ per million tokens) for model `cursor:auto`.
-# COST uses usd_per_microtoken_* × counts / 1e6 (0.0000 when all are 0).
+# COST uses usd_per_megatoken_* × counts / 1e6 (0.0000 when all are 0).
 # Add `[agent.cursor.<name>]` or `[agent.pi."<provider/model>"]` for other models.
 [agent.cursor.auto]
-usd_per_microtoken_in = 0
-usd_per_microtoken_out = 0
-usd_per_microtoken_cache_read = 0
-usd_per_microtoken_cache_write = 0
+usd_per_megatoken_in = 0
+usd_per_megatoken_out = 0
+usd_per_megatoken_cache_read = 0
+usd_per_megatoken_cache_write = 0
 
 # Run a program after each finished direct message. Words split on whitespace.
 # Quote a word to keep spaces. A word that is exactly {body} becomes the DM text.

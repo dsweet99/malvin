@@ -63,15 +63,6 @@ fn spawn_ctrl_c_teardown() {
 
 pub fn entrypoint() -> Exit {
     malvin::migrate_legacy_malvin_user_home();
-    if std::env::args().nth(1).as_deref() == Some(malvin::local_llm::INTERNAL_MANAGER_FLAG) {
-        return match malvin::local_llm::run_local_llm_manager() {
-            Ok(()) => Exit::Success,
-            Err(e) => {
-                eprintln!("local llm manager: {e}");
-                Exit::Failure
-            }
-        };
-    }
     entrypoint_from(std::env::args_os())
 }
 

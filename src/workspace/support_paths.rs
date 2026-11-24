@@ -19,6 +19,44 @@ fn is_executable_file(candidate: &Path) -> bool {
     candidate.is_file()
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OverrideKind {
+    File,
+    Executable,
+}
+
+pub fn env_path_override(
+    key: &str,
+    kind: OverrideKind,
+    hint: &str,
+) -> Option<Result<PathBuf, String>> {
+    let value = std::env::var_os(key).filter(|v| !v.is_empty())?;
+    let path = PathBuf::from(value);
+    let problem = if !path.is_file() {
+        Some("not a file")
+    } else if kind == OverrideKind::Executable && !is_executable_file(&path) {
+        Some("not executable")
+    } else {
+        None
+    };
+    let suffix = if hint.is_empty() {
+        String::new()
+    } else {
+        format!("; {hint}")
+    };
+    Some(match problem {
+        None => Ok(path),
+        Some(problem) => Err(format!(
+            "{key} is set but {problem}: {}{suffix}",
+            path.display()
+        )),
+    })
+}
+
+pub fn file_from_env_override(key: &str) -> Option<Result<PathBuf, String>> {
+    env_path_override(key, OverrideKind::File, "")
+}
+
 #[must_use]
 pub fn lookup_bin_on_path(bin: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
@@ -60,21 +98,10 @@ pub const DEFAULT_ACP_RPC_TIMEOUT_SECS: u64 = 600;
 
 #[must_use]
 pub fn acp_rpc_timeout_secs_from_env() -> u64 {
-    std::env::var("MALVIN_ACP_RPC_TIMEOUT_SECS")
-        .ok()
-        .map_or(DEFAULT_ACP_RPC_TIMEOUT_SECS, |s| {
-            s.parse::<u64>().map_or_else(
-                |_| {
-                    tracing::warn!(
-                        target: "malvin::workspace::support_paths",
-                        value = %s,
-                        "MALVIN_ACP_RPC_TIMEOUT_SECS is not a positive integer; using default"
-                    );
-                    DEFAULT_ACP_RPC_TIMEOUT_SECS
-                },
-                |n| n.max(1),
-            )
-        })
+    crate::command_output_timeout::positive_u64_from_env(
+        "MALVIN_ACP_RPC_TIMEOUT_SECS",
+        DEFAULT_ACP_RPC_TIMEOUT_SECS,
+    )
 }
 
 #[allow(clippy::missing_errors_doc)]
@@ -242,5 +269,49 @@ mod log_paths_tests {
         let p = tmp.path().join("nope").join("run");
         let err = format_logs_dir(&p).unwrap_err();
         assert!(!err.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod env_override_tests {
+    use crate::test_support::test_utils::test_env_lock;
+
+    use super::file_from_env_override;
+
+    #[test]
+    #[allow(unsafe_code)]
+    fn file_override_unset_empty_missing_and_present() {
+        let _g = test_env_lock();
+        let key = "MALVIN_TEST_FILE_OVERRIDE_KEY";
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("f");
+        std::fs::write(&file, "x").unwrap();
+        unsafe { std::env::remove_var(key) };
+        assert!(file_from_env_override(key).is_none());
+        unsafe { std::env::set_var(key, "") };
+        assert!(file_from_env_override(key).is_none());
+        unsafe { std::env::set_var(key, dir.path().join("nope")) };
+        let err = file_from_env_override(key).unwrap().unwrap_err();
+        assert!(err.starts_with(&format!("{key} is set but not a file: ")));
+        unsafe { std::env::set_var(key, &file) };
+        assert_eq!(file_from_env_override(key).unwrap(), Ok(file.clone()));
+        #[cfg(unix)]
+        {
+            use super::{OverrideKind, env_path_override};
+            let err = env_path_override(key, OverrideKind::Executable, "hint")
+                .unwrap()
+                .unwrap_err();
+            assert_eq!(
+                err,
+                format!("{key} is set but not executable: {}; hint", file.display())
+            );
+            let mode = std::os::unix::fs::PermissionsExt::from_mode(0o755);
+            std::fs::set_permissions(&file, mode).unwrap();
+            assert_eq!(
+                env_path_override(key, OverrideKind::Executable, "hint").unwrap(),
+                Ok(file)
+            );
+        }
+        unsafe { std::env::remove_var(key) };
     }
 }

@@ -1,54 +1,30 @@
 use std::collections::HashSet;
 use std::fs;
-use std::io::ErrorKind;
 
 pub(crate) fn linux_pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
-    linux_pids_uss_bytes(pids).or_else(|| linux_pids_rss_bytes(pids))
+    sum_measured(pids, linux_pid_sandbox_bytes)
 }
 
-pub(crate) fn linux_pids_uss_bytes(pids: &HashSet<u32>) -> Option<u64> {
-    linux_pids_smaps_rollup_bytes(pids, parse_smaps_rollup_uss_bytes)
+pub(crate) fn linux_pid_sandbox_bytes(pid: u32) -> Option<u64> {
+    linux_pid_uss_bytes(pid).or_else(|| linux_pid_rss_bytes(pid))
 }
 
-fn linux_pids_smaps_rollup_bytes(
-    pids: &HashSet<u32>,
-    parse_rollup: fn(&str) -> Option<u64>,
-) -> Option<u64> {
-    let mut total = 0u64;
-    let mut saw = false;
-    for pid in pids {
-        let rollup_path = format!("/proc/{pid}/smaps_rollup");
-        let rollup = match fs::read_to_string(&rollup_path) {
-            Ok(s) => s,
-            Err(e) if e.kind() == ErrorKind::NotFound => continue,
-            Err(_) => continue,
-        };
-        let Some(bytes) = parse_rollup(&rollup) else {
-            continue;
-        };
-        saw = true;
-        total = total.saturating_add(bytes);
-    }
-    saw.then_some(total)
+fn sum_measured(pids: &HashSet<u32>, measure: fn(u32) -> Option<u64>) -> Option<u64> {
+    pids.iter()
+        .filter_map(|&pid| measure(pid))
+        .fold(None, |total, bytes| {
+            Some(total.unwrap_or(0).saturating_add(bytes))
+        })
 }
 
-pub(crate) fn linux_pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
-    let mut total = 0u64;
-    let mut saw = false;
-    for pid in pids {
-        let status_path = format!("/proc/{pid}/status");
-        let status = match fs::read_to_string(&status_path) {
-            Ok(s) => s,
-            Err(e) if e.kind() == ErrorKind::NotFound => continue,
-            Err(_) => continue,
-        };
-        let Some(bytes) = parse_status_vm_rss_bytes(&status) else {
-            continue;
-        };
-        saw = true;
-        total = total.saturating_add(bytes);
-    }
-    saw.then_some(total)
+pub(crate) fn linux_pid_uss_bytes(pid: u32) -> Option<u64> {
+    let rollup = fs::read_to_string(format!("/proc/{pid}/smaps_rollup")).ok()?;
+    parse_smaps_rollup_uss_bytes(&rollup)
+}
+
+pub(crate) fn linux_pid_rss_bytes(pid: u32) -> Option<u64> {
+    let status = fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
+    parse_status_vm_rss_bytes(&status)
 }
 
 pub(crate) fn parse_status_vm_rss_bytes(status: &str) -> Option<u64> {
@@ -92,10 +68,8 @@ mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = linux_pids_uss_bytes;
-        let _ = linux_pids_rss_bytes;
-        let pids = std::iter::once(std::process::id()).collect::<std::collections::HashSet<_>>();
-        let rss = linux_pids_rss_bytes(&pids).expect("rss");
+        let _ = linux_pid_uss_bytes;
+        let rss = linux_pid_rss_bytes(std::process::id()).expect("rss");
         assert!(rss > 0);
     }
 }

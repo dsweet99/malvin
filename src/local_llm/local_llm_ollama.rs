@@ -19,14 +19,14 @@ struct OllamaShowResponse {
     capabilities: Vec<String>,
 }
 
+#[cfg(unix)]
 pub(crate) fn process_alive(pid: u32) -> bool {
-    Command::new("kill")
-        .args(["-0", &pid.to_string()])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success())
+    crate::agent_process::pid_alive(pid)
+}
+
+#[cfg(not(unix))]
+pub(crate) fn process_alive(_pid: u32) -> bool {
+    false
 }
 
 pub(crate) fn stop_pid(pid: u32) {
@@ -174,6 +174,14 @@ pub(crate) fn down_non_ollama_provider() -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn process_alive_counts_foreign_owned_process_as_alive() {
+        assert!(process_alive(1));
+        assert!(process_alive(std::process::id()));
+        assert!(!process_alive(u32::MAX));
+    }
 
     #[test]
     fn ensure_non_ollama_errors_when_down() {

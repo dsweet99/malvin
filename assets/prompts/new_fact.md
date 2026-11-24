@@ -1,6 +1,6 @@
 # Find one new fact in your logs that is worth remembering
 
-`malvin --advice facts` lists time-saving facts. Find one more fact that earlier sessions kept
+`malvin --facts` lists time-saving facts. Find one more fact that earlier sessions kept
 rediscovering, support it with evidence, and add it to the list.
 
 ## Scope
@@ -66,9 +66,12 @@ sessions, quotations, measurements, and grep commands in your evidence log. Foll
 
  **Add the best fact:**
 
-       malvin admin facts add fact_id=<id> fact='<rule, then detail>' symptoms='<trigger>' symptoms='...'
+       malvin admin facts add fact_id=<id> description='<summary>' fact='<rule, then detail>' symptoms='<trigger>' symptoms='...'
 
-   `fact_id`: lowercase letters, digits, `-`, `_`; at most 64 characters. `fact`: one line of at
+   `fact_id`: lowercase letters, digits, `-`, `_`; at most 64 characters. `description`: the line
+   `malvin --facts` shows next to the id; at most 7 words, so it must stand alone as a meaningful
+   summary of the rule (e.g. `/tmp is small RAM; scratch goes elsewhere`), not the first words of
+   `fact` cut off. If omitted, the CLI truncates `fact`, which reads poorly; always supply it. `fact`: one line of at
    most 4,000 characters, starting with a one-sentence imperative rule ("Run ... with ...",
    "Do not ..."), then the scope (this machine, a named project, or malvin), a shell command that
    verifies it in seconds, and the verification date. Verify it yourself first; never add a fact

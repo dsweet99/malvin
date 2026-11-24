@@ -10,22 +10,59 @@ use serde_json::Value;
 pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 const MAX_REPLY_BYTES: usize = 64 * 1024;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct HerdrError {
+    pub code: Option<String>,
+    pub message: String,
+}
+
+impl HerdrError {
+    pub(crate) fn has_code(&self, code: &str) -> bool {
+        self.code.as_deref() == Some(code)
+    }
+}
+
+impl From<String> for HerdrError {
+    fn from(message: String) -> Self {
+        Self {
+            code: None,
+            message,
+        }
+    }
+}
+
+impl std::fmt::Display for HerdrError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.code {
+            Some(code) => write!(f, "{code}: {}", self.message),
+            None => f.write_str(&self.message),
+        }
+    }
+}
+
 #[cfg(test)]
 pub fn send_request(socket_path: &Path, request: &Value) {
     let _ = send_request_checked(socket_path, request);
 }
 
-pub(crate) fn send_request_checked(socket_path: &Path, request: &Value) -> Result<(), String> {
+pub(crate) fn send_request_checked(socket_path: &Path, request: &Value) -> Result<(), HerdrError> {
+    send_request_reply(socket_path, request).map(|_| ())
+}
+
+pub(crate) fn send_request_reply(socket_path: &Path, request: &Value) -> Result<Value, HerdrError> {
     let mut line = serde_json::to_string(request).map_err(|e| e.to_string())?;
     line.push('\n');
     let mut stream = open_timed_stream(socket_path)?;
     stream
         .write_all(line.as_bytes())
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| HerdrError::from(e.to_string()))?;
     classify_reply(&read_reply_bytes(&mut stream)?)
 }
 
-pub(crate) fn send_request_with_retry(socket_path: &Path, request: &Value) -> Result<(), String> {
+pub(crate) fn send_request_with_retry(
+    socket_path: &Path,
+    request: &Value,
+) -> Result<(), HerdrError> {
     if send_request_checked(socket_path, request).is_ok() {
         return Ok(());
     }
@@ -85,24 +122,26 @@ fn first_nonempty_line(bytes: &[u8]) -> Result<String, String> {
     }
 }
 
-fn herdr_json_error(v: &Value) -> Option<String> {
+fn herdr_json_error(v: &Value) -> Option<HerdrError> {
     let err = v.get("error")?;
     let code = err.get("code").and_then(Value::as_str).unwrap_or("error");
-    let msg = err.get("message").and_then(Value::as_str).unwrap_or("");
-    Some(format!("{code}: {msg}"))
+    let message = err.get("message").and_then(Value::as_str).unwrap_or("");
+    Some(HerdrError {
+        code: Some(code.to_string()),
+        message: message.to_string(),
+    })
 }
 
-fn classify_reply(bytes: &[u8]) -> Result<(), String> {
+fn classify_reply(bytes: &[u8]) -> Result<Value, HerdrError> {
     let line = first_nonempty_line(bytes)?;
     let v =
         serde_json::from_str::<Value>(&line).map_err(|e| format!("herdr reply not json: {e}"))?;
-    if let Some(msg) = herdr_json_error(&v) {
-        return Err(msg);
+    if let Some(error) = herdr_json_error(&v) {
+        return Err(error);
     }
-    if v.get("result").is_none() {
-        return Err("herdr reply missing result".into());
-    }
-    Ok(())
+    v.get("result")
+        .cloned()
+        .ok_or_else(|| HerdrError::from("herdr reply missing result".to_string()))
 }
 
 fn open_timed_stream(socket_path: &Path) -> Result<UnixStream, String> {

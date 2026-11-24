@@ -27,7 +27,23 @@ struct ActiveSandboxSession {
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
 
 #[derive(Debug)]
-pub struct SandboxSpawnTicket(());
+pub struct SandboxSpawnTicket {
+    scope_unit: Option<crate::agent_process::agent_scope::ScopeTarget>,
+}
+
+impl SandboxSpawnTicket {
+    pub(crate) fn set_scope_unit(
+        &mut self,
+        unit: Option<crate::agent_process::agent_scope::ScopeTarget>,
+    ) {
+        self.scope_unit = unit;
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn for_test() -> Self {
+        Self { scope_unit: None }
+    }
+}
 
 pub fn init_malvin_spawn_baseline() {
     #[cfg(unix)]
@@ -54,20 +70,7 @@ pub fn isolate_child_process_group(cmd: &mut std::process::Command) {
 #[cfg(not(unix))]
 pub fn isolate_child_process_group(_: &mut std::process::Command) {}
 
-#[cfg(unix)]
-pub fn isolate_tokio_child_process_group(cmd: &mut tokio::process::Command) {
-    use std::os::unix::process::CommandExt;
-    cmd.as_std_mut().process_group(0);
-}
-
-#[cfg(not(unix))]
-pub fn isolate_tokio_child_process_group(_: &mut tokio::process::Command) {}
-
 fn apply_sandbox_resource_limits(cmd: &mut std::process::Command) {
-    cmd.env("MALLOC_ARENA_MAX", "2");
-}
-
-fn apply_sandbox_resource_limits_tokio(cmd: &mut tokio::process::Command) {
     cmd.env("MALLOC_ARENA_MAX", "2");
 }
 
@@ -83,18 +86,13 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
 
 #[must_use]
 pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Command {
-    let mut cmd = tokio::process::Command::new(program);
-    isolate_tokio_child_process_group(&mut cmd);
-    install_tokio_parent_death_signal(&mut cmd);
-    apply_sandbox_resource_limits_tokio(&mut cmd);
-    crate::herdr::strip_herdr_env_tokio(&mut cmd);
-    cmd
+    tokio::process::Command::from(malvin_std_command(program))
 }
 
 #[must_use = "pass the ticket to note_active_sandbox_session after spawn"]
 pub fn take_sandbox_spawn_ticket() -> Result<SandboxSpawnTicket, String> {
     assert_dead_before_next_spawn()?;
-    Ok(SandboxSpawnTicket(()))
+    Ok(SandboxSpawnTicket { scope_unit: None })
 }
 
 pub fn assert_dead_before_next_spawn() -> Result<(), String> {
@@ -116,13 +114,14 @@ pub fn assert_dead_before_next_spawn() -> Result<(), String> {
 }
 
 pub fn note_active_sandbox_session(
-    _ticket: SandboxSpawnTicket,
+    ticket: SandboxSpawnTicket,
     pgid: Option<u32>,
     baseline: HashSet<u32>,
     work_dir: &Path,
 ) -> Result<(), String> {
     let acp_lock_slot = crate::agent_process::acp_spawn_lock::active_acp_lock_slot();
     acquire_acp_spawn_lock(work_dir)?;
+    crate::agent_process::agent_scope_attach::attach_agent_scope(ticket.scope_unit, pgid);
     *ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ActiveSandboxSession {
@@ -139,6 +138,9 @@ pub fn clear_active_sandbox_session() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .take();
+    crate::agent_process::agent_cgroup::without_stalling_runtime(
+        crate::agent_process::agent_cgroup::release_active_agent_cgroup,
+    );
     if let Some(session) = session {
         release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);
     }
@@ -165,6 +167,7 @@ pub fn teardown_active_sandbox_for_interrupt() {
         );
         crate::agent_process::clear_session_spawn_affiliation();
     }
+    crate::agent_process::agent_cgroup::release_active_agent_cgroup();
     release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);
 }
 
@@ -215,7 +218,6 @@ mod tests {
         let _ = super::init_malvin_spawn_baseline;
         let _ = super::malvin_spawn_baseline;
         let _ = super::isolate_child_process_group;
-        let _ = super::isolate_tokio_child_process_group;
         let _ = super::install_parent_death_signal;
         let _ = super::install_tokio_parent_death_signal;
         let _ = super::sandbox_still_alive;

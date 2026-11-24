@@ -8,16 +8,19 @@ pub(super) type NpmPiProcess = crate::backends::bridge_sdk::SpawnedStdio;
 
 pub(super) fn spawn_npm_pi_session(
     args: &BridgeSpawnArgs<'_>,
-    ticket: crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
+    mut ticket: crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
 ) -> Result<NpmPiSession, AgentError> {
-    let process = spawn_npm_pi_process(args)?;
+    let process = spawn_npm_pi_process(args, &mut ticket)?;
     build_npm_pi_session(args, process, ticket)
 }
 
-pub(super) fn spawn_npm_pi_process(args: &BridgeSpawnArgs<'_>) -> Result<NpmPiProcess, AgentError> {
+pub(super) fn spawn_npm_pi_process(
+    args: &BridgeSpawnArgs<'_>,
+    ticket: &mut crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
+) -> Result<NpmPiProcess, AgentError> {
     let entry = resolve_npm_pi_entry().map_err(AgentError)?;
     let node = crate::backends::cursor_sdk::node_resolve::resolve_node_bin().map_err(AgentError)?;
-    let mut cmd = configured_npm_pi_command(node, entry, args)?;
+    let mut cmd = configured_npm_pi_command(node, entry, args, ticket)?;
     let mut child = cmd
         .spawn()
         .map_err(|e| AgentError(format!("spawn npm pi rpc: {e}")))?;
@@ -32,6 +35,7 @@ fn configured_npm_pi_command(
     node: std::path::PathBuf,
     entry: std::path::PathBuf,
     args: &BridgeSpawnArgs<'_>,
+    ticket: &mut crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
 ) -> Result<tokio::process::Command, AgentError> {
     let (provider, model) = args.model.pi_provider_and_model().ok_or_else(|| {
         AgentError(format!(
@@ -40,7 +44,7 @@ fn configured_npm_pi_command(
         ))
     })?;
     crate::local_llm::prepare_local_llm(args.cwd, provider, model).map_err(AgentError)?;
-    let mut cmd = crate::agent_process::malvin_sandbox::malvin_tokio_command(node);
+    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, args.cwd, ticket);
     cmd.arg(&entry);
     if !entry_is_rpc_entry(&entry) {
         cmd.arg("--mode").arg("rpc");

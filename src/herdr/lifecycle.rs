@@ -26,18 +26,18 @@ fn session_mutex() -> &'static Mutex<Session> {
 pub(super) fn live_io_allowed() -> bool {
     #[cfg(test)]
     {
-        std::env::var_os("MALVIN_TEST_HERDR_IO").is_some()
+        crate::env_flag::env_flag("MALVIN_TEST_HERDR_IO")
     }
     #[cfg(not(test))]
     {
-        if std::env::var_os("MALVIN_NO_HERDR").is_some() {
+        if crate::env_flag::env_flag("MALVIN_NO_HERDR") {
             return false;
         }
-        if std::env::var_os("MALVIN_TEST_NO_REAL_AGENT").is_some()
+        if crate::agent_process::test_no_real_agent_enabled()
             || std::env::var_os("NEXTEST").is_some()
         {
-            return std::env::var_os("MALVIN_LIVE_HERDR").is_some()
-                || std::env::var_os("MALVIN_TEST_HERDR_IO").is_some();
+            return crate::env_flag::env_flag("MALVIN_LIVE_HERDR")
+                || crate::env_flag::env_flag("MALVIN_TEST_HERDR_IO");
         }
         true
     }
@@ -121,7 +121,7 @@ pub(super) fn report_active_state(state: &str) {
         next_seq(),
     );
     if let Err(detail) = send_request_with_retry(&snap.socket_path, &request) {
-        log_herdr_failure(snap.run_dir.as_deref(), state, &detail);
+        log_herdr_failure(snap.run_dir.as_deref(), state, &detail.to_string());
     }
 }
 
@@ -134,7 +134,7 @@ pub fn notify_summary_ready(run_dir: &Path) {
     };
     let req = super::request::report_metadata_sparse(&snap.pane_id, None, next_seq());
     if let Err(detail) = send_request_with_retry(&snap.socket_path, &req) {
-        log_herdr_failure(Some(run_dir), "summary", &detail);
+        log_herdr_failure(Some(run_dir), "summary", &detail.to_string());
     }
 }
 
@@ -156,8 +156,6 @@ fn notify_run_end_inner() {
         snap.agent_session_id.as_deref(),
         next_seq(),
     );
-    let clear_meta = clear_metadata_teardown(&snap.pane_id, next_seq());
-    let release = release_agent(&snap.pane_id, next_seq());
     let idle_ok = send_end_retry(
         &snap.socket_path,
         snap.run_dir.as_deref(),
@@ -168,14 +166,16 @@ fn notify_run_end_inner() {
         &snap.socket_path,
         snap.run_dir.as_deref(),
         "end-clear",
-        &clear_meta,
+        &clear_metadata_teardown(&snap.pane_id, next_seq()),
     );
-    let release_ok = send_end_retry(
-        &snap.socket_path,
-        snap.run_dir.as_deref(),
-        "end-release",
-        &release,
-    );
+    let release_ok =
+        (idle_ok && clear_ok && super::linger::spawn_linger(&snap.socket_path, &snap.pane_id))
+            || send_end_retry(
+                &snap.socket_path,
+                snap.run_dir.as_deref(),
+                "end-release",
+                &release_agent(&snap.pane_id, next_seq()),
+            );
     if idle_ok && clear_ok && release_ok {
         clear_session();
     }
@@ -185,7 +185,7 @@ fn send_end_retry(sock: &Path, run_dir: Option<&Path>, phase: &str, request: &Va
     match send_request_with_retry(sock, request) {
         Ok(()) => true,
         Err(detail) => {
-            log_herdr_failure(run_dir, phase, &detail);
+            log_herdr_failure(run_dir, phase, &detail.to_string());
             false
         }
     }

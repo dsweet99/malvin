@@ -85,6 +85,14 @@ fn hit_usage_limit_tries_backup() {
 }
 
 #[test]
+fn hit_session_limit_tries_backup() {
+    check_model_switch(
+        "You've hit your session limit · resets 7:10pm (America/New_York)",
+        true,
+    );
+}
+
+#[test]
 fn billing_hard_limit_tries_backup() {
     check_model_switch("Billing hard limit has been reached", true);
 }

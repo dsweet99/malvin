@@ -190,6 +190,28 @@ fn pid_alive_reports_self_alive_and_reaped_child_dead() {
         !super::unix_process_group_ps::pid_alive(child_pid),
         "reaped child pid must be dead; kill(2) must not depend on a `kill` binary on PATH"
     );
+
+    let mut zombie = std::process::Command::new("true")
+        .spawn()
+        .expect("spawn child left unreaped");
+    let zombie_pid = zombie.id();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+    while !std::fs::read_to_string(format!("/proc/{zombie_pid}/stat")).is_ok_and(|stat| {
+        stat.rsplit_once(") ")
+            .is_some_and(|(_, rest)| rest.starts_with('Z'))
+    }) {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "child never became a zombie"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    let zombie_alive = super::unix_process_group_ps::pid_alive(zombie_pid);
+    let _ = zombie.wait();
+    assert!(
+        !zombie_alive,
+        "an exited, unreaped child (zombie) is not alive"
+    );
 }
 
 fn signal_pid_kill_round_trip_without_kill_binary() {
@@ -237,4 +259,7 @@ fn kiss_bundled_acp_unix_process_group_ps_tests() {
     signal_pid_is_noop_for_invalid_pid();
     pid_alive_reports_self_alive_and_reaped_child_dead();
     signal_pid_kill_round_trip_without_kill_binary();
+    #[cfg(target_os = "linux")]
+    super::unix_sandbox_monitor::tests::sandbox_monitor_excludes_malvin_workers_and_their_children(
+    );
 }

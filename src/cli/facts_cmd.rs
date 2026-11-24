@@ -25,7 +25,11 @@ pub struct RemoveFactArgs {
 
 #[derive(Args, Debug, Clone)]
 pub struct AddFactArgs {
-    /// Fields as `field_name=value` (`fact_id`, `fact`, `symptoms`; symptoms may repeat)
-    #[arg(value_name = "FIELD=VALUE", required = true, num_args = 1..)]
+    #[arg(
+        value_name = "FIELD=VALUE",
+        required = true,
+        num_args = 1..,
+        help = format!("Fields as `field_name=value` ({}; symptoms may repeat)", super::fact_record::FIELDS)
+    )]
     pub fields: Vec<String>,
 }

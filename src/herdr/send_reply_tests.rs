@@ -28,7 +28,8 @@ fn request_with_reply(reply: Vec<u8>, chunk_size: usize) -> Result<(), String> {
         // Keep the connection open: a newline must complete the reply without EOF.
         let _ = conn.read_to_end(&mut Vec::new());
     });
-    let result = send_request_checked(&sock, &json!({"id":"t","method":"ping","params":{}}));
+    let result = send_request_checked(&sock, &json!({"id":"t","method":"ping","params":{}}))
+        .map_err(|e| e.to_string());
     server.join().expect("server");
     result
 }

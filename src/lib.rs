@@ -34,6 +34,10 @@
 )]
 extern crate self as malvin;
 pub mod clock;
+pub mod env_flag;
+#[cfg(test)]
+#[path = "env_flag_tests.rs"]
+mod env_flag_tests;
 pub use config::workflow_name_aliases::{
     WORKSPACE_CONFIG_PATHS, canonical_workflow_name, resolve_session_log_path,
     resolve_workspace_malvin_config_path,
@@ -81,6 +85,8 @@ pub use workspace::run_id::{RunDirOptions, build_identifier, create_run_dir};
 pub mod fact_worker;
 pub mod herdr;
 pub(crate) mod holidays;
+pub mod self_exe;
+pub mod self_worker;
 pub mod session_dotfile_backup;
 pub mod slow_task_watch;
 pub mod task_summary;
@@ -94,6 +100,7 @@ pub use workspace::user_home::user_home_dir;
 mod advice_registry_build;
 pub mod agent_process;
 pub mod ansi_strip;
+pub(crate) mod desc_limit;
 pub(crate) mod http_fetch;
 pub mod local_llm;
 pub mod modal_run;

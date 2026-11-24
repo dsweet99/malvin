@@ -1,7 +1,7 @@
 mod add_fact;
+mod atomic_file;
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
-mod advice_facts;
 pub(crate) mod args;
 mod auto_costs;
 pub(crate) mod cli_request;
@@ -14,7 +14,9 @@ pub(crate) mod entrypoint;
 mod entrypoint_checks;
 pub(crate) mod error_run_log;
 pub(crate) mod exit;
+mod fact_record;
 mod facts_cmd;
+mod facts_view;
 pub(crate) mod init_flow;
 pub(crate) mod malvin_workflow;
 pub(crate) mod ml_loop;
@@ -28,6 +30,7 @@ pub(crate) mod router_flow;
 mod router_flow_fallback;
 pub(crate) mod run_emit;
 pub(crate) mod shared_opts;
+mod tag_list;
 pub(crate) mod tidy_flow;
 
 mod code_flow_a;
@@ -138,6 +141,8 @@ pub(crate) mod router_flow_acp;
 pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 pub(super) mod router_flow_coder_prompts;
+#[path = "fact_agent_throttle.rs"]
+pub(crate) mod fact_agent_throttle;
 #[path = "router_flow_fact_agent.rs"]
 pub(crate) mod router_flow_fact_agent;
 #[path = "router_flow_loop.rs"]
