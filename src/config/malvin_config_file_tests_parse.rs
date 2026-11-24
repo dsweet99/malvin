@@ -63,7 +63,9 @@ fn load_malvin_config_ignores_legacy_mpc_key() {
 #[allow(clippy::float_cmp)]
 fn parse_model_token_cost_rates_defaults_and_rejects_negative() {
     use super::{parse_malvin_config, parse_model_token_cost_rates};
-    let missing = parse_model_token_cost_rates("mem_limit_gb = 4\n").expect("defaults");
+    let missing = parse_model_token_cost_rates("mem_limit_gb = 4\n")
+        .expect("defaults")
+        .rates;
     assert!(missing.is_empty());
     let cfg = parse_malvin_config(
         "[agent.cursor.auto]\nusd_per_megatoken_in = 3.0\nusd_per_megatoken_out = 15.0\nusd_per_megatoken_cache_read = 0.3\nusd_per_megatoken_cache_write = 3.75\n",
@@ -96,12 +98,16 @@ fn parse_model_token_cost_rates_defaults_and_rejects_negative() {
             .abs()
             < f64::EPSILON
     );
+    let negative =
+        parse_model_token_cost_rates("[agent.cursor.auto]\nusd_per_megatoken_in = -1\n").unwrap();
+    assert!(negative.rates.is_empty() && negative.table_errors.len() == 1);
+    let legacy =
+        parse_model_token_cost_rates("[agent.cursor.auto]\nusd_per_microtoken_in = 3.0\n").unwrap();
+    assert!(legacy.rates.is_empty());
     assert!(
-        parse_model_token_cost_rates("[agent.cursor.auto]\nusd_per_megatoken_in = -1\n").is_err()
+        legacy.table_errors[0].contains("usd_per_megatoken_*")
+            && legacy.table_errors[0].contains("[agent.cursor.auto]")
     );
-    let legacy = parse_model_token_cost_rates("[agent.cursor.auto]\nusd_per_microtoken_in = 3.0\n")
-        .unwrap_err();
-    assert!(legacy.contains("usd_per_megatoken_*") && legacy.contains("[agent.cursor.auto]"));
     assert_eq!(
         cfg.token_cost_rates_for("auto"),
         super::TokenCostRates::default()
@@ -123,12 +129,28 @@ fn parse_model_token_cost_rates_defaults_and_rejects_negative() {
             .abs()
             < f64::EPSILON
     );
-    let nested = parse_model_token_cost_rates(
-        "[agent.pi.openai.gpt-4o-mini]\nusd_per_megatoken_in = 9.0\n",
+    let nested =
+        parse_model_token_cost_rates("[agent.pi.openai.gpt-4o-mini]\nusd_per_megatoken_in = 9.0\n")
+            .expect("parse");
+    assert!(!nested.rates.contains_key("pi:openai/gpt-4o-mini"));
+    let parsed = parse_model_token_cost_rates(
+        "[agent.cursor.auto]\nusd_per_megatoken_in = 3.0\n\
+         [agent.cursor.old]\nusd_per_microtoken_in = 1.0\n\
+         [agent.cursor.neg]\nusd_per_megatoken_in = -1\n",
     )
-    .expect("parse");
-    assert!(!nested.contains_key("pi:openai/gpt-4o-mini"));
+    .unwrap();
+    let auto = parsed.rates.get("cursor:auto").expect("good table kept");
+    assert!((auto.usd_per_megatoken_in - 3.0).abs() < f64::EPSILON);
+    assert_eq!(parsed.rates.len(), 1);
+    assert_eq!(parsed.table_errors.len(), 2);
+    let mixed = parse_model_token_cost_rates(
+        "[agent.cursor.auto]\nusd_per_microtoken_in = 1.0\nusd_per_megatoken_in = 2.0\n",
+    )
+    .unwrap();
+    assert!(mixed.rates.contains_key("cursor:auto"));
+    assert_eq!(mixed.table_errors.len(), 1);
 }
+
 
 #[test]
 fn parse_dm_on_emit_reads_a_command_and_ignores_blank_or_missing() {
@@ -141,4 +163,3 @@ fn parse_dm_on_emit_reads_a_command_and_ignores_blank_or_missing() {
     let wrong = super::parse_malvin_config("[dm]\non_emit = 1\n");
     assert_eq!(wrong.dm_on_emit, None);
 }
-

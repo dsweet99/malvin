@@ -1,8 +1,8 @@
 use std::fs::OpenOptions;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use super::atomic_file::replace_atomically;
 use super::fact_record::{FIELDS, FactRecord, facts_path, parse_facts};
 use super::tag_list::limit_words;
 use crate::desc_limit::MAX_DESC_WORDS;
@@ -146,18 +146,6 @@ fn write_line(path: &Path, existing: &str, new: &FactRecord) -> Result<(), Strin
         "\n"
     };
     replace_atomically(path, &format!("{existing}{lead}{value}\n"))
-}
-
-fn replace_atomically(path: &Path, text: &str) -> Result<(), String> {
-    let mut tmp_name = path.as_os_str().to_owned();
-    tmp_name.push(".tmp");
-    let tmp = PathBuf::from(tmp_name);
-    let mut file = std::fs::File::create(&tmp)
-        .map_err(|e| format!("cannot create {}: {e}", tmp.display()))?;
-    file.write_all(text.as_bytes())
-        .and_then(|()| file.sync_all())
-        .map_err(|e| format!("cannot write {}: {e}", tmp.display()))?;
-    std::fs::rename(&tmp, path).map_err(|e| format!("cannot replace {}: {e}", path.display()))
 }
 
 fn append_fact_at(path: &Path, new: &FactRecord) -> Result<(), String> {

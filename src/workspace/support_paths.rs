@@ -19,14 +19,42 @@ fn is_executable_file(candidate: &Path) -> bool {
     candidate.is_file()
 }
 
-pub fn file_from_env_override(key: &str) -> Option<Result<PathBuf, String>> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OverrideKind {
+    File,
+    Executable,
+}
+
+pub fn env_path_override(
+    key: &str,
+    kind: OverrideKind,
+    hint: &str,
+) -> Option<Result<PathBuf, String>> {
     let value = std::env::var_os(key).filter(|v| !v.is_empty())?;
     let path = PathBuf::from(value);
-    Some(if path.is_file() {
-        Ok(path)
+    let problem = if !path.is_file() {
+        Some("not a file")
+    } else if kind == OverrideKind::Executable && !is_executable_file(&path) {
+        Some("not executable")
     } else {
-        Err(format!("{key} is set but not a file: {}", path.display()))
+        None
+    };
+    let suffix = if hint.is_empty() {
+        String::new()
+    } else {
+        format!("; {hint}")
+    };
+    Some(match problem {
+        None => Ok(path),
+        Some(problem) => Err(format!(
+            "{key} is set but {problem}: {}{suffix}",
+            path.display()
+        )),
     })
+}
+
+pub fn file_from_env_override(key: &str) -> Option<Result<PathBuf, String>> {
+    env_path_override(key, OverrideKind::File, "")
 }
 
 #[must_use]
@@ -266,7 +294,24 @@ mod env_override_tests {
         let err = file_from_env_override(key).unwrap().unwrap_err();
         assert!(err.starts_with(&format!("{key} is set but not a file: ")));
         unsafe { std::env::set_var(key, &file) };
-        assert_eq!(file_from_env_override(key).unwrap(), Ok(file));
+        assert_eq!(file_from_env_override(key).unwrap(), Ok(file.clone()));
+        #[cfg(unix)]
+        {
+            use super::{OverrideKind, env_path_override};
+            let err = env_path_override(key, OverrideKind::Executable, "hint")
+                .unwrap()
+                .unwrap_err();
+            assert_eq!(
+                err,
+                format!("{key} is set but not executable: {}; hint", file.display())
+            );
+            let mode = std::os::unix::fs::PermissionsExt::from_mode(0o755);
+            std::fs::set_permissions(&file, mode).unwrap();
+            assert_eq!(
+                env_path_override(key, OverrideKind::Executable, "hint").unwrap(),
+                Ok(file)
+            );
+        }
         unsafe { std::env::remove_var(key) };
     }
 }

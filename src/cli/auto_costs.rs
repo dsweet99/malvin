@@ -3,14 +3,14 @@ use std::path::Path;
 
 use crate::cli::router_flow::{RouterArgs, run_router};
 use crate::cli::{RouterOpts, SharedOpts};
-use crate::config::malvin_config_file::{MalvinConfig, TokenCostRates, load_malvin_config};
+use crate::config::malvin_config_file::{MalvinConfig, load_malvin_config};
 use crate::config::model_id::ParsedModel;
 use malvin::prompts::{PromptError, PromptStore};
 
 const SET_COSTS_PROMPT: &str = "set_costs.md";
 
-fn rates_are_unset(rates: TokenCostRates) -> bool {
-    rates == TokenCostRates::default()
+fn rates_are_unset(config: &MalvinConfig, model: &ParsedModel) -> bool {
+    !config.token_cost_rates.contains_key(&model.canonical())
 }
 
 fn model_has_live_costs(model: &ParsedModel) -> bool {
@@ -23,7 +23,7 @@ fn should_setup_costs(config: &MalvinConfig, model: &ParsedModel, disabled: bool
     !disabled
         && config.auto_setup_costs
         && !model_has_live_costs(model)
-        && rates_are_unset(config.token_cost_rates_for(&model.canonical()))
+        && rates_are_unset(config, model)
 }
 
 struct CostSetupEnv<'a> {
@@ -60,7 +60,7 @@ where
     L: FnMut(&Path) -> MalvinConfig,
 {
     let refreshed = load(env.work_dir);
-    if rates_are_unset(refreshed.token_cost_rates_for(&env.model.canonical())) {
+    if rates_are_unset(&refreshed, env.model) {
         crate::output::print_log_warning("token costs remain unset after automatic setup");
     }
 }

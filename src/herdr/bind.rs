@@ -1,12 +1,12 @@
 use std::path::Path;
 
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use super::env::HerdrEnv;
 use super::identity::{display_title, herdr_live_name};
 use super::request::{
-    clear_agent_authority, next_request_id, next_seq, rename_agent, report_agent,
-    report_agent_session, report_metadata_sparse,
+    clear_agent_authority, next_seq, pane_get, rename_agent, report_agent, report_agent_session,
+    report_metadata_sparse,
 };
 use super::send::{send_request_reply, send_request_with_retry};
 use super::trace::log_herdr_failure;
@@ -56,7 +56,7 @@ fn explain_missing_agent(env: &HerdrEnv, run_dir: Option<&Path>) {
         return;
     }
     let pane = &env.pane_id;
-    let query = json!({"id": next_request_id(), "method": "pane.get", "params": {"pane_id": pane}});
+    let query = pane_get(pane);
     let Ok(result) = send_request_reply(&env.socket_path, &query) else {
         return;
     };

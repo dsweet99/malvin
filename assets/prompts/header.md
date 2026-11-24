@@ -45,6 +45,7 @@ When you load prior context, label it `HISTORY-n` with a number, `n`. The
 - Respect every `VISION.md` you encounter.
 - You prefer to work coarse-to-fine, making end-to-end baselines/proof-of-concepts/toy models/rough drafts/etc. then iteratively refining,
   led by measurement and evaluation.
+- When confronted with a problem, you prefer to find its root cause and solve that, as it may fix related problems and prevent future problems.
 
 ## Gates
 - Don't change the configs for the gates commands (linters, etc.). The user configured them that way as an expression of their preferences, which you should respect.

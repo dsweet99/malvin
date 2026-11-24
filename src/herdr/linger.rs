@@ -3,9 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 
-use serde_json::{Value, json};
-
-use super::request::{next_request_id, next_seq, release_agent};
+use super::request::{next_seq, pane_get, pane_read, release_agent};
 use super::send::send_request_reply;
 
 const WORKER_ARG: &str = "__herdr-linger";
@@ -127,7 +125,7 @@ enum Verdict {
 }
 
 fn poll_pane(socket: &Path, pane: &str, baseline: &str) -> Result<Verdict, ()> {
-    let reply = match send_request_reply(socket, &pane_request("pane.get", pane, None)) {
+    let reply = match send_request_reply(socket, &pane_get(pane)) {
         Ok(v) => v,
         Err(e) if e.starts_with("pane_not_found") => return Ok(Verdict::Leave),
         Err(_) => return Err(()),
@@ -148,17 +146,8 @@ fn poll_pane(socket: &Path, pane: &str, baseline: &str) -> Result<Verdict, ()> {
 }
 
 fn read_visible(socket: &Path, pane: &str) -> Option<String> {
-    let reply =
-        send_request_reply(socket, &pane_request("pane.read", pane, Some("visible"))).ok()?;
+    let reply = send_request_reply(socket, &pane_read(pane, "visible")).ok()?;
     reply["read"]["text"].as_str().map(str::to_string)
-}
-
-fn pane_request(method: &str, pane: &str, source: Option<&str>) -> Value {
-    let mut params = json!({ "pane_id": pane });
-    if let Some(source) = source {
-        params["source"] = json!(source);
-    }
-    json!({ "id": next_request_id(), "method": method, "params": params })
 }
 
 #[cfg(test)]

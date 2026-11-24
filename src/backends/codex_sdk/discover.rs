@@ -4,6 +4,7 @@ pub(crate) use super::codex_sdk_catalog as catalog;
 pub(crate) use super::codex_sdk_family_alias as family_alias;
 pub(crate) use super::codex_sdk_model_list as model_list;
 
+use crate::workspace::support_paths::{OverrideKind, env_path_override};
 use catalog::{CatalogChild, list_models_from_child, spawn_codex_model_server};
 
 #[derive(Debug)]
@@ -21,38 +22,13 @@ pub fn codex_missing_binary_message() -> String {
 }
 
 pub fn resolve_codex_bin() -> Result<PathBuf, String> {
-    if let Some(path) = std::env::var_os("MALVIN_CODEX").filter(|v| !v.is_empty()) {
-        let path = PathBuf::from(path);
-        if !path.is_file() {
-            return Err(format!(
-                "MALVIN_CODEX points to a missing file ({}); {CODEX_MISSING_HINT}",
-                path.display()
-            ));
-        }
-        if !codex_path_is_executable(&path) {
-            return Err(format!(
-                "MALVIN_CODEX is not executable ({}); {CODEX_MISSING_HINT}",
-                path.display()
-            ));
-        }
-        return Ok(path);
+    if let Some(result) =
+        env_path_override("MALVIN_CODEX", OverrideKind::Executable, CODEX_MISSING_HINT)
+    {
+        return result;
     }
     crate::workspace::support_paths::lookup_bin_on_path("codex")
         .ok_or_else(codex_missing_binary_message)
-}
-
-#[must_use]
-pub(crate) fn codex_path_is_executable(path: &std::path::Path) -> bool {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        path.metadata()
-            .is_ok_and(|m| m.permissions().mode() & 0o111 != 0)
-    }
-    #[cfg(not(unix))]
-    {
-        path.is_file()
-    }
 }
 
 pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {

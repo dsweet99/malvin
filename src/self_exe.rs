@@ -10,3 +10,12 @@ pub(crate) fn strip_deleted_suffix(exe: PathBuf) -> PathBuf {
         .map(PathBuf::from)
         .unwrap_or(exe)
 }
+
+pub(crate) fn parent_disconnected() -> tokio::sync::oneshot::Receiver<()> {
+    let (closed, disconnected) = tokio::sync::oneshot::channel();
+    std::thread::spawn(move || {
+        let _ = std::io::Read::read_to_end(&mut std::io::stdin(), &mut Vec::new());
+        let _ = closed.send(());
+    });
+    disconnected
+}

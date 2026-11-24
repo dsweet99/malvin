@@ -243,3 +243,21 @@ fn merged_rendered_request_names_the_model_and_forbids_repo_edits() {
     unit_tests_skip_the_real_cost_workflow();
     cost_setup_runs_in_process_router_before_init();
 }
+
+#[test]
+fn zero_rates_and_unrelated_legacy_tables_count_as_configured() {
+    let local = parse_model_id("pi:ollama/qwen3").expect("model");
+    let unset = parse_malvin_config("auto_setup_costs = true\n");
+    assert!(should_setup_costs(&unset, &local, false));
+    let zero = parse_malvin_config(
+        "auto_setup_costs = true\n[agent.pi.\"ollama/qwen3\"]\nusd_per_megatoken_in = 0\n\
+         usd_per_megatoken_out = 0\nusd_per_megatoken_cache_read = 0\n\
+         usd_per_megatoken_cache_write = 0\n",
+    );
+    assert!(!should_setup_costs(&zero, &local, false));
+    let legacy = parse_malvin_config(
+        "auto_setup_costs = true\n[agent.cursor.auto]\nusd_per_megatoken_in = 3.0\n\
+         [agent.cursor.old]\nusd_per_microtoken_in = 1.0\n",
+    );
+    assert!(!should_setup_costs(&legacy, &cursor(), false));
+}

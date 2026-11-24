@@ -76,37 +76,55 @@ pub(crate) fn parse_context_size(text: &str) -> Result<u32, String> {
     }
 }
 
-pub(crate) fn parse_model_token_cost_rates(
-    text: &str,
-) -> Result<BTreeMap<String, TokenCostRates>, String> {
+pub(crate) struct ModelTokenCostRates {
+    pub rates: BTreeMap<String, TokenCostRates>,
+    pub table_errors: Vec<String>,
+}
+
+pub(crate) fn parse_model_token_cost_rates(text: &str) -> Result<ModelTokenCostRates, String> {
     let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
-    let Some(agent) = value.get("agent").and_then(toml::Value::as_table) else {
-        return Ok(BTreeMap::new());
+    let mut out = ModelTokenCostRates {
+        rates: BTreeMap::new(),
+        table_errors: Vec::new(),
     };
-    let mut out = BTreeMap::new();
+    let Some(agent) = value.get("agent").and_then(toml::Value::as_table) else {
+        return Ok(out);
+    };
     for (provider, provider_val) in agent {
         let Some(models) = provider_val.as_table() else {
             continue;
         };
         for (model_name, model_val) in models {
-            let Some(table) = model_val.as_table() else {
-                continue;
-            };
-            if table.keys().any(|k| k.starts_with(LEGACY_RATE_PREFIX)) {
-                return Err(format!(
-                    "[agent.{provider}.{model_name}] uses {LEGACY_RATE_PREFIX}_* keys, which were \
-                     renamed to usd_per_megatoken_* (same values: USD per million tokens); \
-                     rename them"
-                ));
+            if let Some(table) = model_val.as_table() {
+                add_model_rates(&mut out, (provider, model_name), table, model_val);
             }
-            if !table.keys().any(|k| k.starts_with("usd_per_megatoken")) {
-                continue;
-            }
-            let rates = token_cost_rates_from_value(model_val)?;
-            out.insert(format!("{provider}:{model_name}"), rates);
         }
     }
     Ok(out)
+}
+
+fn add_model_rates(
+    out: &mut ModelTokenCostRates,
+    (provider, model_name): (&str, &str),
+    table: &toml::map::Map<String, toml::Value>,
+    model_val: &toml::Value,
+) {
+    let label = format!("{provider}.{model_name}");
+    if table.keys().any(|k| k.starts_with(LEGACY_RATE_PREFIX)) {
+        out.table_errors.push(format!(
+            "[agent.{label}] uses {LEGACY_RATE_PREFIX}_* keys, which were renamed to \
+             usd_per_megatoken_* (same values: USD per million tokens); rename them"
+        ));
+    }
+    if !table.keys().any(|k| k.starts_with("usd_per_megatoken")) {
+        return;
+    }
+    match token_cost_rates_from_value(model_val) {
+        Ok(rates) => {
+            out.rates.insert(format!("{provider}:{model_name}"), rates);
+        }
+        Err(e) => out.table_errors.push(format!("[agent.{label}]: {e}")),
+    }
 }
 
 pub(crate) fn token_cost_rates_from_value(value: &toml::Value) -> Result<TokenCostRates, String> {

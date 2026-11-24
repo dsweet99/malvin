@@ -17,19 +17,29 @@ pub(crate) fn is_due(path: &Path, now_secs: u64) -> bool {
         .is_none_or(|last| now_secs.saturating_sub(last) >= FACT_AGENT_INTERVAL_SECS)
 }
 
-fn save_last_run_secs(path: &Path, now_secs: u64) -> Result<(), String> {
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    let body = serde_json::json!({ "last_run_secs": now_secs }).to_string();
-    std::fs::write(path, body).map_err(|e| format!("write {}: {e}", path.display()))
+fn sibling(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = path.as_os_str().to_owned();
+    name.push(suffix);
+    PathBuf::from(name)
 }
 
 pub(crate) fn try_claim(path: &Path, now_secs: u64) -> bool {
-    if !is_due(path, now_secs) {
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let Ok(lock) = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(sibling(path, ".lock"))
+    else {
+        return false;
+    };
+    if lock.try_lock().is_err() || !is_due(path, now_secs) {
         return false;
     }
-    save_last_run_secs(path, now_secs).is_ok()
+    let body = serde_json::json!({ "last_run_secs": now_secs }).to_string();
+    super::atomic_file::replace_atomically(path, &body).is_ok()
 }
 
 #[cfg(test)]

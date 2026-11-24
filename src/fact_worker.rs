@@ -1,4 +1,3 @@
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
@@ -108,7 +107,7 @@ fn run_worker(prompt_path: PathBuf, models: &str) -> Result<(), String> {
         .map_err(|e| format!("cannot read {}: {e}", prompt_path.display()))?;
     let artifacts = worker_artifacts(prompt_path)?;
     let trace_path = fact_trace_path(&artifacts)?;
-    let disconnected = parent_disconnected();
+    let disconnected = crate::self_exe::parent_disconnected();
     crate::task_summary::worker_runtime()?.block_on(async {
         tokio::select! {
             _ = disconnected => Err("parent malvin exited".to_string()),
@@ -139,15 +138,6 @@ fn fact_trace_path(artifacts: &RunArtifacts) -> Result<PathBuf, String> {
             .map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
     }
     Ok(trace_path)
-}
-
-fn parent_disconnected() -> tokio::sync::oneshot::Receiver<()> {
-    let (closed, disconnected) = tokio::sync::oneshot::channel();
-    std::thread::spawn(move || {
-        let _ = std::io::stdin().read_to_end(&mut Vec::new());
-        let _ = closed.send(());
-    });
-    disconnected
 }
 
 #[cfg(test)]

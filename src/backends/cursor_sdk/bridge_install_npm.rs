@@ -32,8 +32,12 @@ pub(crate) fn npm_ci(dest: &Path, label: &str) -> Result<(), String> {
 }
 
 pub(crate) fn resolve_npm(node: &Path) -> Result<PathBuf, String> {
-    if let Some(p) = std::env::var_os("MALVIN_NPM").filter(|v| !v.is_empty()) {
-        return Ok(PathBuf::from(p));
+    if let Some(result) = crate::workspace::support_paths::env_path_override(
+        "MALVIN_NPM",
+        crate::workspace::support_paths::OverrideKind::Executable,
+        "",
+    ) {
+        return result;
     }
     if let Some(sibling) = node.parent().map(|d| d.join("npm")).filter(|p| p.is_file()) {
         return Ok(sibling);

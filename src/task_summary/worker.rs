@@ -1,11 +1,10 @@
-use std::io::Read;
 use std::process::Stdio;
 use std::time::Instant;
 
 use crate::artifacts::RunArtifacts;
 use crate::config::model_list::ModelList;
 
-const WORKER_REQUEST: &str = "MALVIN_SUMMARY_WORKER_REQUEST";
+const WORKER_ARG: &str = "__summary-worker";
 
 pub(super) fn spawn(artifacts: &RunArtifacts) -> Result<tokio::process::Child, String> {
     let mut command = worker_command(artifacts)?;
@@ -19,8 +18,9 @@ fn worker_command(artifacts: &RunArtifacts) -> Result<tokio::process::Command, S
         .map_err(|e| e.to_string())?;
     let mut command = tokio::process::Command::new(exe);
     command
+        .arg(WORKER_ARG)
+        .arg(&artifacts.plan_path)
         .current_dir(&artifacts.work_dir)
-        .env(WORKER_REQUEST, &artifacts.plan_path)
         .env("MALVIN_NO_HERDR", "1")
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
@@ -29,9 +29,9 @@ fn worker_command(artifacts: &RunArtifacts) -> Result<tokio::process::Command, S
     Ok(command)
 }
 
+#[must_use]
 pub fn run_if_worker() -> Option<crate::Exit> {
-    let request = std::env::var_os(WORKER_REQUEST)?;
-    let result = run(std::path::PathBuf::from(request));
+    let result = worker_request(std::env::args_os().skip(1))?.and_then(run);
     Some(match result {
         Ok(()) => crate::Exit::Success,
         Err(error) => {
@@ -39,6 +39,19 @@ pub fn run_if_worker() -> Option<crate::Exit> {
             crate::Exit::Failure
         }
     })
+}
+
+fn worker_request(
+    mut args: impl Iterator<Item = std::ffi::OsString>,
+) -> Option<Result<std::path::PathBuf, String>> {
+    if args.next()? != WORKER_ARG {
+        return None;
+    }
+    Some(
+        args.next()
+            .map(std::path::PathBuf::from)
+            .ok_or_else(|| format!("usage: malvin {WORKER_ARG} REQUEST_PATH")),
+    )
 }
 
 fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
@@ -54,11 +67,7 @@ fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
         plan_path,
         work_dir,
     };
-    let (closed, disconnected) = tokio::sync::oneshot::channel();
-    std::thread::spawn(move || {
-        let _ = std::io::stdin().read_to_end(&mut Vec::new());
-        let _ = closed.send(());
-    });
+    let disconnected = crate::self_exe::parent_disconnected();
     let runtime = worker_runtime()?;
     runtime.block_on(session(&artifacts, models.as_ref(), disconnected))
 }
@@ -120,4 +129,27 @@ pub(crate) fn worker_runtime() -> Result<tokio::runtime::Runtime, String> {
         .enable_all()
         .build()
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{WORKER_ARG, worker_request};
+    use std::ffi::OsString;
+
+    fn args(items: &[&str]) -> impl Iterator<Item = OsString> {
+        items
+            .iter()
+            .map(OsString::from)
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
+    #[test]
+    fn worker_is_selected_only_by_argv_marker() {
+        assert!(worker_request(args(&["--help"])).is_none());
+        assert!(worker_request(args(&[])).is_none());
+        let path = worker_request(args(&[WORKER_ARG, "/tmp/plan.md"])).unwrap();
+        assert_eq!(path.unwrap(), std::path::PathBuf::from("/tmp/plan.md"));
+        assert!(worker_request(args(&[WORKER_ARG])).unwrap().is_err());
+    }
 }

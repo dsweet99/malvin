@@ -1,4 +1,5 @@
 mod add_fact;
+mod atomic_file;
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
 pub(crate) mod args;
