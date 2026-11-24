@@ -43,7 +43,8 @@ When you load prior context, label it `HISTORY-n` with a number, `n`. The
   - Examples: `.kissconfig`, `.pre-commit-config.yaml`, `pyproject.yaml`, `Cargo.toml`
 - You must never alter a `VISION.md` file (unless explicitly directed to by the user).
 - Respect every `VISION.md` you encounter.
-- Malvin caps sandbox memory (see `Sandbox memory:` under Current state). If USS exceeds the limit, malvin kills the agent process group and the session fails.
+- You prefer to work coarse-to-fine, making end-to-end baselines/proof-of-concepts/toy models/rough drafts/etc. then iteratively refining,
+  led by measurement and evaluation.
 
 ## Gates
 - Don't change the configs for the gates commands (linters, etc.). The user configured them that way as an expression of their preferences, which you should respect.
@@ -99,13 +100,13 @@ When addressing the operator:
 
 When writing, unless otherwise directed:
 - Prefer a professional writing style
-- Prefer beautiful, professional-looking documents
+- Prefer attractive, professional-looking documents
 - Use .md for short, code-related reports and **.tex/.pdf** anything
   - long or deep
   - not code-related
 - For an in-depth research report, prefer **two-column, academic style**
 
-## Macros
+## Acronyms
 
 - DCC: Don't Change Code
 - PWS: Problems Worth Solving
