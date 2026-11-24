@@ -9,11 +9,11 @@ mod run_done;
 mod send;
 mod trace;
 
-pub use env::{strip_herdr_env, strip_herdr_env_tokio};
+pub use env::{HERDR_ENV_VARS, strip_herdr_env};
 pub use lifecycle::{
     notify_reclaim, notify_run_end, notify_run_start, notify_summary_ready, notify_working,
 };
-pub use linger::run_if_worker as run_if_linger_worker;
+pub use linger::run_worker as run_linger_worker;
 pub use reset::reset_to_not_working;
 pub use run_done::notify_run_done;
 
@@ -35,14 +35,13 @@ mod kiss_cov {
     #[test]
     fn kiss_cov_public_entrypoints() {
         let _ = super::strip_herdr_env;
-        let _ = super::strip_herdr_env_tokio;
         let _ = super::notify_run_start;
         let _ = super::notify_reclaim;
         let _ = super::notify_working;
         let _ = super::notify_run_done;
         let _ = super::notify_run_end;
         let _ = super::reset_to_not_working;
-        let _ = super::run_if_linger_worker;
+        let _ = super::run_linger_worker;
         let _ = crate::herdr::env::HerdrEnv::from_os_env;
         let _ = crate::herdr::env::from_values;
         let _ = crate::herdr::request::next_seq;

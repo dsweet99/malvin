@@ -1,57 +1,34 @@
-use std::process::Stdio;
 use std::time::Instant;
 
 use crate::artifacts::RunArtifacts;
 use crate::config::model_list::ModelList;
 
-const WORKER_ARG: &str = "__summary-worker";
+use crate::self_worker::Worker;
 
 pub(super) fn spawn(artifacts: &RunArtifacts) -> Result<tokio::process::Child, String> {
-    let mut command = worker_command(artifacts)?;
-    command.kill_on_drop(true);
-    command.spawn().map_err(|e| e.to_string())
+    worker_command(artifacts)?
+        .spawn()
+        .map_err(|e| e.to_string())
 }
 
-fn worker_command(artifacts: &RunArtifacts) -> Result<tokio::process::Command, String> {
-    let exe = crate::self_exe::self_exe().map_err(|e| e.to_string())?;
+pub(crate) fn worker_command(artifacts: &RunArtifacts) -> Result<tokio::process::Command, String> {
     let log = std::fs::File::create(artifacts.run_dir.join("request_summary.log"))
         .map_err(|e| e.to_string())?;
-    let mut command = tokio::process::Command::new(exe);
-    command
-        .arg(WORKER_ARG)
-        .arg(&artifacts.plan_path)
-        .current_dir(&artifacts.work_dir)
-        .env("MALVIN_NO_HERDR", "1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(log);
-    crate::herdr::strip_herdr_env_tokio(&mut command);
+    let mut command =
+        crate::self_worker::attached_command(Worker::Summary, [&artifacts.plan_path], log)?;
+    command.current_dir(&artifacts.work_dir);
     Ok(command)
 }
 
-#[must_use]
-pub fn run_if_worker() -> Option<crate::Exit> {
-    let result = worker_request(std::env::args_os().skip(1))?.and_then(run);
-    Some(match result {
-        Ok(()) => crate::Exit::Success,
-        Err(error) => {
-            eprintln!("{error}");
-            crate::Exit::Failure
-        }
-    })
+pub fn run_worker(args: Vec<std::ffi::OsString>) -> Result<(), String> {
+    run(worker_request(args)?)
 }
 
-fn worker_request(
-    mut args: impl Iterator<Item = std::ffi::OsString>,
-) -> Option<Result<std::path::PathBuf, String>> {
-    if args.next()? != WORKER_ARG {
-        return None;
+pub(crate) fn worker_request(args: Vec<std::ffi::OsString>) -> Result<std::path::PathBuf, String> {
+    match <[std::ffi::OsString; 1]>::try_from(args) {
+        Ok([plan_path]) => Ok(std::path::PathBuf::from(plan_path)),
+        Err(_) => Err(crate::self_worker::usage(Worker::Summary, "REQUEST_PATH")),
     }
-    Some(
-        args.next()
-            .map(std::path::PathBuf::from)
-            .ok_or_else(|| format!("usage: malvin {WORKER_ARG} REQUEST_PATH")),
-    )
 }
 
 fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
@@ -67,7 +44,7 @@ fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
         plan_path,
         work_dir,
     };
-    let disconnected = crate::self_exe::parent_disconnected();
+    let disconnected = crate::self_worker::parent_disconnected();
     let runtime = worker_runtime()?;
     runtime.block_on(session(&artifacts, models.as_ref(), disconnected))
 }
@@ -129,27 +106,4 @@ pub(crate) fn worker_runtime() -> Result<tokio::runtime::Runtime, String> {
         .enable_all()
         .build()
         .map_err(|e| e.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{WORKER_ARG, worker_request};
-    use std::ffi::OsString;
-
-    fn args(items: &[&str]) -> impl Iterator<Item = OsString> {
-        items
-            .iter()
-            .map(OsString::from)
-            .collect::<Vec<_>>()
-            .into_iter()
-    }
-
-    #[test]
-    fn worker_is_selected_only_by_argv_marker() {
-        assert!(worker_request(args(&["--help"])).is_none());
-        assert!(worker_request(args(&[])).is_none());
-        let path = worker_request(args(&[WORKER_ARG, "/tmp/plan.md"])).unwrap();
-        assert_eq!(path.unwrap(), std::path::PathBuf::from("/tmp/plan.md"));
-        assert!(worker_request(args(&[WORKER_ARG])).unwrap().is_err());
-    }
 }

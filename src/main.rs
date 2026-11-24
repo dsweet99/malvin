@@ -1,13 +1,7 @@
 #![allow(clippy::multiple_crate_versions)]
 
 fn main() -> malvin::Exit {
-    if let Some(exit) = malvin::task_summary::run_if_worker() {
-        return exit;
-    }
-    if let Some(exit) = malvin::fact_worker::run_if_worker() {
-        return exit;
-    }
-    if let Some(exit) = malvin::herdr::run_if_linger_worker() {
+    if let Some(exit) = malvin::self_worker::run_if_worker() {
         return exit;
     }
     malvin::run_timing::note_process_start();

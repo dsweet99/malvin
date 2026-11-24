@@ -1,12 +1,11 @@
-
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use std::time::{Duration, Instant};
 
 use super::request::{next_seq, pane_get, pane_read, release_agent};
 use super::send::send_request_reply;
+use crate::self_worker::Worker;
 
-const WORKER_ARG: &str = "__herdr-linger";
 const POLL: Duration = Duration::from_millis(500);
 const PARENT_EXIT_WAIT: Duration = Duration::from_mins(10);
 const MAX_LINGER: Duration = Duration::from_hours(12);
@@ -28,45 +27,35 @@ pub(super) fn spawn_linger(socket_path: &Path, pane_id: &str) -> bool {
     if !linger_enabled() {
         return false;
     }
-    let Ok(exe) = crate::self_exe::self_exe() else {
-        return false;
-    };
-    let mut cmd = std::process::Command::new(exe);
-    cmd.arg(WORKER_ARG)
-        .arg(socket_path)
-        .arg(pane_id)
-        .arg(std::process::id().to_string())
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
-    super::env::strip_herdr_env(&mut cmd);
-    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
-    cmd.spawn().is_ok()
+    let pid = std::process::id().to_string();
+    let args = [
+        socket_path.as_os_str(),
+        OsStr::new(pane_id),
+        OsStr::new(&pid),
+    ];
+    crate::self_worker::detached_command(Worker::HerdrLinger, args)
+        .is_ok_and(|mut command| command.spawn().is_ok())
 }
 
-
-#[must_use]
-pub fn run_if_worker() -> Option<crate::Exit> {
-    let mut args = std::env::args_os().skip(1);
-    if args.next()? != WORKER_ARG {
-        return None;
-    }
+pub fn run_worker(args: Vec<OsString>) -> Result<(), String> {
     match worker_args(args) {
         (Some(socket), Some(pane), Some(pid)) => {
             watch(&socket, &pane, pid);
-            Some(crate::Exit::Success)
+            Ok(())
         }
         (Some(socket), Some(pane), None) => {
             release(&socket, &pane);
-            Some(crate::Exit::Failure)
+            Err("missing parent pid; released the pane".to_string())
         }
-        _ => Some(crate::Exit::Failure),
+        _ => Err(crate::self_worker::usage(
+            Worker::HerdrLinger,
+            "SOCKET PANE PARENT_PID",
+        )),
     }
 }
 
-fn worker_args(
-    mut args: impl Iterator<Item = std::ffi::OsString>,
-) -> (Option<PathBuf>, Option<String>, Option<u32>) {
+fn worker_args(args: Vec<OsString>) -> (Option<PathBuf>, Option<String>, Option<u32>) {
+    let mut args = args.into_iter();
     let socket = args.next().map(PathBuf::from);
     let pane = args.next().and_then(|a| a.into_string().ok());
     let pid = args

@@ -4,8 +4,12 @@ mod stdout_tail;
 mod text;
 mod watch;
 mod worker;
-pub use worker::run_if_worker;
+pub use worker::run_worker;
 pub(crate) use worker::worker_runtime;
+#[cfg(test)]
+pub(crate) use worker::{
+    worker_command as summary_worker_command, worker_request as summary_worker_request,
+};
 
 use std::path::Path;
 
