@@ -24,7 +24,7 @@
 
 ## History
 
-Recent logs may help. Example: `ls -ltr {{ logs_dir }} | tail -n 3`. Your current run directory is `{{ workspace_dir }}`. Successive sessions may or may not be continuations; judge relevance case by case, and discard what does not bear on the present request.
+Recent logs may help. Example: `ls -ltr {{ logs_dir }} | tail -n 3`. Your current run directory (workspace dir) is `{{ workspace_dir }}`. Successive sessions may or may not be continuations; judge relevance case by case, and discard what does not bear on the present request.
 
 When you load prior context, label it `HISTORY-n` with a number, `n`. The
  first time you mention in, pair it with its full log path.

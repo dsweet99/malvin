@@ -11,7 +11,8 @@ Repeat until you think you've solved the problem (or until you've invested more 
 
 ## Logging
 
-Log your hypotheses and test results -- as they become available -- to {{ exp_log }}.
+Log your hypotheses and test results -- as they become available -- to a log in [your workspace dir] / kpop / exp_log_<name>.md,
+  where you choose a short, useful name.
 When you are all done, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the
 chat/context directly.
 
@@ -22,7 +23,6 @@ chat/context directly.
 - Evidence is ideally based on direct observation -- measurements of some kind. Reference to a prior
   publication of good evidence is acceptable, too (although you should state how confident you are
   in the publication's evidence)
-- Keep an evidence log in {{ exp_log }} for reference by you and by future agents.
 
 ## Generalization
 
