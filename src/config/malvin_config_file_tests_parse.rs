@@ -151,7 +151,6 @@ fn parse_model_token_cost_rates_defaults_and_rejects_negative() {
     assert_eq!(mixed.table_errors.len(), 1);
 }
 
-
 #[test]
 fn parse_dm_on_emit_reads_a_command_and_ignores_blank_or_missing() {
     let cfg = super::parse_malvin_config("[dm]\non_emit = \"echo {body}\"\n");

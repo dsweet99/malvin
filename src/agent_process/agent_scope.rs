@@ -124,7 +124,9 @@ fn nested_command(
     let exe = crate::self_exe::self_exe().ok()?;
     let name = nested_group_name(std::process::id(), next_serial());
     let group = create_nested_group(parent, &name, limit)
-        .map_err(|e| warn!(error = %e, parent = %parent.display(), "cannot create nested agent cgroup"))
+        .map_err(
+            |e| warn!(error = %e, parent = %parent.display(), "cannot create nested agent cgroup"),
+        )
         .ok()?;
     let mut cmd = super::malvin_sandbox::malvin_std_command(exe);
     cmd.arg(LEAF_SHIM_MARKER).arg(&group).arg(program);
@@ -132,7 +134,11 @@ fn nested_command(
     Some(cmd)
 }
 
-fn scope_command(program: &OsStr, limit: u64, ticket: &mut SandboxSpawnTicket) -> std::process::Command {
+fn scope_command(
+    program: &OsStr,
+    limit: u64,
+    ticket: &mut SandboxSpawnTicket,
+) -> std::process::Command {
     let unit = next_scope_unit();
     let mut cmd = super::malvin_sandbox::malvin_std_command(SYSTEMD_RUN);
     cmd.args(scope_args(&unit, limit));

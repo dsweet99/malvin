@@ -30,8 +30,7 @@ impl TokenCostRates {
             (input_tokens as f64) * self.usd_per_megatoken_in / TOKENS_PER_MEGATOKEN,
             (output_tokens as f64) * self.usd_per_megatoken_out / TOKENS_PER_MEGATOKEN,
             (cache_read_tokens as f64) * self.usd_per_megatoken_cache_read / TOKENS_PER_MEGATOKEN,
-            (cache_write_tokens as f64) * self.usd_per_megatoken_cache_write
-                / TOKENS_PER_MEGATOKEN,
+            (cache_write_tokens as f64) * self.usd_per_megatoken_cache_write / TOKENS_PER_MEGATOKEN,
         )
     }
 

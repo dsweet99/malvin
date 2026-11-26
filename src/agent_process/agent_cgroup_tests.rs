@@ -68,7 +68,11 @@ fn leaf_layout_counts_nested_members_and_attributes_oom_locally() {
     assert_eq!(cgroup.member_pids(), HashSet::from([10, 11]));
     assert_eq!(cgroup.oom_kill_count(), 0);
     std::fs::write(group.join("memory.events.local"), "oom 1\noom_kill 0\n").expect("local");
-    std::fs::write(group.join("agent/memory.events.local"), "oom 0\noom_kill 2\n").expect("leaf");
+    std::fs::write(
+        group.join("agent/memory.events.local"),
+        "oom 0\noom_kill 2\n",
+    )
+    .expect("leaf");
     assert_eq!(cgroup.oom_kill_count(), 3);
     assert_eq!(AgentCgroup::new(10, group.clone()).oom_kill_count(), 9);
     set_active_agent_cgroup(Some(cgroup));

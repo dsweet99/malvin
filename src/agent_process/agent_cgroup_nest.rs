@@ -62,7 +62,11 @@ pub fn nested_group_name(pid: u32, serial: u64) -> String {
     format!("{NESTED_PREFIX}{pid}-{serial}")
 }
 
-pub fn create_nested_group(parent: &Path, name: &str, limit_bytes: u64) -> std::io::Result<PathBuf> {
+pub fn create_nested_group(
+    parent: &Path,
+    name: &str,
+    limit_bytes: u64,
+) -> std::io::Result<PathBuf> {
     sweep_stale_groups(parent);
     let group = parent.join(name);
     std::fs::create_dir(&group)?;
@@ -131,7 +135,8 @@ fn shim_group(arg: &OsStr) -> Option<PathBuf> {
     } else {
         PathBuf::from(arg)
     };
-    dir.starts_with(super::agent_cgroup::CGROUP_ROOT).then_some(dir)
+    dir.starts_with(super::agent_cgroup::CGROUP_ROOT)
+        .then_some(dir)
 }
 
 pub type ShimArgs = (OsString, OsString, Vec<OsString>);
@@ -156,7 +161,9 @@ pub struct ShimUsageError;
 pub fn run_if_leaf_shim() -> Option<crate::Exit> {
     use std::os::unix::process::CommandExt;
     let Ok((group, program, args)) = leaf_shim_invocation(std::env::args_os().skip(1))? else {
-        eprintln!("malvin: usage: malvin {LEAF_SHIM_MARKER} <GROUP> <PROGRAM> [ARGS...] (internal launcher)");
+        eprintln!(
+            "malvin: usage: malvin {LEAF_SHIM_MARKER} <GROUP> <PROGRAM> [ARGS...] (internal launcher)"
+        );
         return Some(crate::Exit::Failure);
     };
     let entered = shim_group(&group).map_or_else(
@@ -164,10 +171,15 @@ pub fn run_if_leaf_shim() -> Option<crate::Exit> {
         |dir| enter_leaf(&dir),
     );
     if let Err(e) = entered {
-        eprintln!("malvin: agent stays outside its cgroup leaf ({e}); using process-group containment");
+        eprintln!(
+            "malvin: agent stays outside its cgroup leaf ({e}); using process-group containment"
+        );
     }
     let error = std::process::Command::new(&program).args(args).exec();
-    eprintln!("malvin: cannot start {}: {error}", program.to_string_lossy());
+    eprintln!(
+        "malvin: cannot start {}: {error}",
+        program.to_string_lossy()
+    );
     Some(crate::Exit::Failure)
 }
 

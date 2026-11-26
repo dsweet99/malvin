@@ -87,6 +87,38 @@ fn completed_message_separates_only_a_final_attachment_marker() {
     assert_eq!(messages[0].attachment, None);
 }
 
+fn attachment_marker_tolerates_sloppy_separators() {
+    for line in [
+        "__ATTACH__: /tmp/r.pdf",
+        "__ATTACH__ /tmp/r.pdf",
+        "__ATTACH__:/tmp/r.pdf",
+        "__ATTACH__/tmp/r.pdf",
+        "__ATTACH__ : /tmp/r.pdf ",
+        "__ATTACH__\t/tmp/r.pdf",
+        "__ATTACH__ = /tmp/r.pdf",
+        "  __ATTACH__: `/tmp/r.pdf`",
+        "__ATTACH__: \"/tmp/r.pdf\"",
+        "__ATTACH__: </tmp/r.pdf>",
+    ] {
+        let messages = completed_direct_messages(&fenced(&format!("hello\n{line}")));
+        assert_eq!(
+            messages[0].attachment.as_deref(),
+            Some("/tmp/r.pdf"),
+            "{line}"
+        );
+        assert_eq!(messages[0].body, "hello", "{line}");
+    }
+    for line in [
+        "__ATTACH__",
+        "__ATTACH__ :  ",
+        "ATTACH: /tmp/r.pdf",
+        "x __ATTACH__ /a",
+    ] {
+        let messages = completed_direct_messages(&fenced(&format!("hello\n{line}")));
+        assert_eq!(messages[0].attachment, None, "{line}");
+    }
+}
+
 fn notify_writes_one_body_per_completed_message() {
     let _guard = lock_stdout_log();
     set_stdout_log_path(None);
@@ -113,12 +145,40 @@ fn notify_omits_attachment_marker_from_body_and_substitutes_attachment() {
         "printf '%s|%s\\n' {{body}} {{attachment}} >> '{}'",
         path.display()
     );
+    let report = dir.path().join("report.pdf");
+    std::fs::write(&report, "pdf").expect("write report");
+    let report = report.display().to_string();
     with_dm_on_emit(&template, None, || {
-        notify_completed_direct_messages(&fenced("hello\n__ATTACH__: report.pdf"));
+        notify_completed_direct_messages(&fenced(&format!("hello\n__ATTACH__ {report}")));
     });
     assert_eq!(
         std::fs::read_to_string(path).expect("read"),
-        "hello|report.pdf\n"
+        format!("hello|{report}\n")
+    );
+}
+
+#[test]
+fn notify_sends_without_a_missing_attachment_and_warns() {
+    let _guard = lock_stdout_log();
+    set_stdout_log_path(None);
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("dm.txt");
+    let missing = dir.path().join("missing.pdf").display().to_string();
+    let template = format!(
+        "printf '%s|%s\\n' {{body}} {{attachment}} >> '{}'",
+        path.display()
+    );
+    clear_captured_stderr_lines();
+    with_dm_on_emit(&template, None, || {
+        notify_completed_direct_messages(&fenced(&format!("hello\n__ATTACH__: {missing}")));
+    });
+    let warnings = take_captured_stderr_lines();
+    assert_eq!(std::fs::read_to_string(path).expect("read"), "hello|\n");
+    assert!(
+        warnings
+            .iter()
+            .any(|line| line.contains("dm attachment not found") && line.contains(&missing)),
+        "{warnings:?}"
     );
 }
 
@@ -214,6 +274,7 @@ fn merged_blank_on_emit_is_unset_and_a_command_is_kept() {
     blank_on_emit_is_unset_and_a_command_is_kept();
     render_replaces_quoted_placeholder_and_escapes_apostrophes();
     completed_message_separates_only_a_final_attachment_marker();
+    attachment_marker_tolerates_sloppy_separators();
     notify_writes_one_body_per_completed_message();
     notify_omits_attachment_marker_from_body_and_substitutes_attachment();
     notify_substitutes_empty_attachment_when_marker_is_absent();

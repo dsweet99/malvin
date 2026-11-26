@@ -26,8 +26,10 @@ fn leaf_and_root_cgroups_match_their_targets() {
     let inner = leaf_cgroup(5, &scope.join("malvin-nested-2-0/agent"), &nested).expect("inner");
     assert_eq!(inner.dir(), scope.join("malvin-nested-2-0"));
     assert!(leaf_cgroup(5, &scope.join(LEAF_NAME), &nested).is_none());
-    assert_eq!(root_cgroup(5, scope.clone(), &unit).map(|c| c.dir().to_path_buf()), Some(scope.clone()));
+    assert_eq!(
+        root_cgroup(5, scope.clone(), &unit).map(|c| c.dir().to_path_buf()),
+        Some(scope.clone())
+    );
     assert!(root_cgroup(5, scope.join(LEAF_NAME), &unit).is_none());
     assert!(root_cgroup(5, scope, &nested).is_none());
 }
-

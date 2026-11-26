@@ -62,9 +62,40 @@ fn body_without_final_attachment_line(mut body: String) -> String {
     body
 }
 
+const ATTACH_MARKER: &str = "__ATTACH__";
+
 fn final_attachment_line(body: &str) -> Option<&str> {
-    body.rsplit_once('\n')
-        .map_or(body, |(_, line)| line)
-        .strip_prefix("__ATTACH__: ")
-        .filter(|path| !path.is_empty())
+    attachment_path(body.rsplit_once('\n').map_or(body, |(_, line)| line))
+}
+
+pub(crate) fn attachment_path(line: &str) -> Option<&str> {
+    let rest = line.trim_start().strip_prefix(ATTACH_MARKER)?;
+    let path = rest
+        .trim_start_matches(|ch: char| ch.is_whitespace() || matches!(ch, ':' | '='))
+        .trim_end();
+    let path = unwrap_path(path).trim();
+    (!path.is_empty()).then_some(path)
+}
+
+fn unwrap_path(path: &str) -> &str {
+    for (open, close) in [('`', '`'), ('"', '"'), ('\'', '\''), ('<', '>')] {
+        if let Some(inner) = path
+            .strip_prefix(open)
+            .and_then(|rest| rest.strip_suffix(close))
+        {
+            return inner;
+        }
+    }
+    path
+}
+
+pub(crate) fn existing_attachment(attachment: Option<String>) -> Option<String> {
+    let path = attachment?;
+    if std::path::Path::new(&path).exists() {
+        return Some(path);
+    }
+    super::print_log_warning(&format!(
+        "dm attachment not found, sending without it: {path}"
+    ));
+    None
 }

@@ -1,8 +1,8 @@
 mod add_fact;
-mod atomic_file;
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
 pub(crate) mod args;
+mod atomic_file;
 mod auto_costs;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
@@ -98,6 +98,8 @@ pub(super) mod entrypoint_gates_only;
 pub(super) mod entrypoint_info_flags;
 #[path = "entrypoint_modal.rs"]
 pub(super) mod entrypoint_modal;
+#[path = "fact_agent_throttle.rs"]
+pub(crate) mod fact_agent_throttle;
 #[path = "models_cmd_catalog.rs"]
 pub(super) mod models_cmd_catalog;
 #[path = "models_cmd_claude_catalog.rs"]
@@ -141,8 +143,6 @@ pub(crate) mod router_flow_acp;
 pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 pub(super) mod router_flow_coder_prompts;
-#[path = "fact_agent_throttle.rs"]
-pub(crate) mod fact_agent_throttle;
 #[path = "router_flow_fact_agent.rs"]
 pub(crate) mod router_flow_fact_agent;
 #[path = "router_flow_loop.rs"]

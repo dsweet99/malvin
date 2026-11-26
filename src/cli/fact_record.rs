@@ -1,4 +1,3 @@
-
 use std::path::PathBuf;
 
 const FACTS_FILE: &str = "facts.jsonl";

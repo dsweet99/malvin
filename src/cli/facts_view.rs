@@ -136,7 +136,9 @@ mod tests {
             symptoms: vec!["s".into()],
         };
         let line = serde_json::to_string(&fact).unwrap();
-        let text = format!("{line}\nnot json\n{{\"fact_id\":\"b\",\"fact\":7}}\n{{\"fact_id\":\"c\",\"fact\":\"x\"}}\n");
+        let text = format!(
+            "{line}\nnot json\n{{\"fact_id\":\"b\",\"fact\":7}}\n{{\"fact_id\":\"c\",\"fact\":\"x\"}}\n"
+        );
         let ids: Vec<String> = parse_facts(&text).map(|f| f.fact_id).collect();
         assert_eq!(ids, ["a", "c"]);
         assert_eq!(FactRecord::from_line(&line), Some(fact));

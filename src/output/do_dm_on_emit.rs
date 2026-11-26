@@ -2,7 +2,7 @@ use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use super::dm_attachment::completed_direct_messages;
+use super::dm_attachment::{completed_direct_messages, existing_attachment};
 use super::dm_stderr::stderr_snippet;
 
 const PLACEHOLDER: &str = "{body}";
@@ -35,14 +35,15 @@ pub(crate) fn notify_completed_direct_messages(text: &str) {
         return;
     };
     for message in completed_direct_messages(text) {
-        if message.body.is_empty() && message.attachment.is_none() {
+        let attachment = existing_attachment(message.attachment);
+        if message.body.is_empty() && attachment.is_none() {
             continue;
         }
         let body = body_with_logspath(&message.body);
         run_shell_command(&render_on_emit(
             &template,
             &body,
-            message.attachment.as_deref().unwrap_or(""),
+            attachment.as_deref().unwrap_or(""),
         ));
     }
 }

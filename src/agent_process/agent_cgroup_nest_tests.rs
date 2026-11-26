@@ -39,7 +39,11 @@ fn group_names_owners_and_memory_delegation() {
     assert_eq!(group_owner_pid("agent"), None);
     let tmp = tempfile::tempdir().expect("tmp");
     assert!(!delegates_memory(tmp.path()));
-    std::fs::write(tmp.path().join("cgroup.subtree_control"), "cpu memory pids\n").expect("w");
+    std::fs::write(
+        tmp.path().join("cgroup.subtree_control"),
+        "cpu memory pids\n",
+    )
+    .expect("w");
     assert!(delegates_memory(tmp.path()));
     std::fs::write(tmp.path().join("cgroup.subtree_control"), "memoryx\n").expect("w");
     assert!(!delegates_memory(tmp.path()));
@@ -74,7 +78,10 @@ fn stale_groups_need_a_dead_owner() {
 fn nested_group_creation_and_leaf_entry() {
     let tmp = tempfile::tempdir().expect("tmp");
     let group = create_nested_group(tmp.path(), "malvin-nested-1-0", 4096).expect("group");
-    assert_eq!(std::fs::read_to_string(group.join("memory.max")).expect("max"), "4096");
+    assert_eq!(
+        std::fs::read_to_string(group.join("memory.max")).expect("max"),
+        "4096"
+    );
     assert!(create_nested_group(tmp.path(), "malvin-nested-1-0", 1).is_err());
     assert!(create_nested_group(&tmp.path().join("missing"), "x", 1).is_err());
     enter_leaf(&group).expect("leaf");
@@ -96,9 +103,17 @@ fn leaf_shim_arguments_and_group_paths() {
     let parsed = leaf_shim_invocation(args(&[LEAF_SHIM_MARKER, ".", "node", "a", "b"]));
     assert_eq!(
         parsed,
-        Some(Ok((".".into(), "node".into(), vec!["a".into(), "b".into()])))
+        Some(Ok((
+            ".".into(),
+            "node".into(),
+            vec!["a".into(), "b".into()]
+        )))
     );
-    for bad in [&[LEAF_SHIM_MARKER, "."][..], &[LEAF_SHIM_MARKER], &[LEAF_SHIM_MARKER, "--"]] {
+    for bad in [
+        &[LEAF_SHIM_MARKER, "."][..],
+        &[LEAF_SHIM_MARKER],
+        &[LEAF_SHIM_MARKER, "--"],
+    ] {
         assert_eq!(leaf_shim_invocation(args(bad)), Some(Err(ShimUsageError)));
     }
     assert!(leaf_shim_invocation(args(&["__summary-worker", ".", "x"])).is_none());

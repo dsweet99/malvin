@@ -89,7 +89,8 @@ fn spawn_bridge_process(
 ) -> Result<tokio::process::Child, AgentError> {
     let bridge = resolve_bridge_js().map_err(AgentError)?;
     let node = crate::backends::cursor_sdk::node_resolve::resolve_node_bin().map_err(AgentError)?;
-    let mut command = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, args.cwd, ticket);
+    let mut command =
+        crate::agent_process::agent_scope::malvin_agent_tokio_command(node, args.cwd, ticket);
     crate::backends::cursor_sdk::node_resolve::apply_quiet_node_cli(&mut command);
     command
         .arg(bridge)

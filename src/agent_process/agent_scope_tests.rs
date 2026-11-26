@@ -29,7 +29,10 @@ fn enclosure_detects_malvin_leaves_and_ancestors() {
     assert_eq!(enclosure_of(&leaf), Enclosure::MalvinLeaf(scope.clone()));
     assert_eq!(enclosure_of(&scope), Enclosure::InsideMalvin);
     assert_eq!(enclosure_of(&scope.join("other")), Enclosure::InsideMalvin);
-    assert_eq!(enclosure_of(&tmp.path().join("x.scope/agent")), Enclosure::Outside);
+    assert_eq!(
+        enclosure_of(&tmp.path().join("x.scope/agent")),
+        Enclosure::Outside
+    );
     assert_eq!(enclosure_of(Path::new("/")), Enclosure::Outside);
 }
 
@@ -42,8 +45,19 @@ fn nested_and_scope_commands_route_through_the_leaf_shim() {
     assert_eq!(args.first().copied(), Some(OsStr::new(LEAF_SHIM_MARKER)));
     assert_eq!(args.last().copied(), Some(OsStr::new("node")));
     let group = PathBuf::from(args[1]);
-    assert_eq!(std::fs::read_to_string(group.join("memory.max")).expect("max"), "4096");
-    assert!(nested_command(OsStr::new("node"), &tmp.path().join("missing"), 1, &mut ticket).is_none());
+    assert_eq!(
+        std::fs::read_to_string(group.join("memory.max")).expect("max"),
+        "4096"
+    );
+    assert!(
+        nested_command(
+            OsStr::new("node"),
+            &tmp.path().join("missing"),
+            1,
+            &mut ticket
+        )
+        .is_none()
+    );
     std::fs::remove_file(group.join("memory.max")).expect("rm");
     super::super::agent_scope_attach::attach_agent_scope(
         Some(ScopeTarget::Nested(group.clone())),

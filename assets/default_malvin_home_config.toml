@@ -35,6 +35,7 @@ usd_per_megatoken_cache_write = 0
 # Quote a word to keep spaces. A word that is exactly {body} becomes the DM text.
 # A word that is exactly {attachment} becomes the optional attachment path.
 # The attachment comes from a final DM line of the form `__ATTACH__: path/to/file`.
+# The separator after __ATTACH__ may vary. A missing file is logged and left out.
 # With no {body} word, the text is written to the program's standard input.
 # Omit [dm], leave on_emit empty, or set on_emit = [] to run nothing.
 # [dm]
