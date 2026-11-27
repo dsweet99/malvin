@@ -4,7 +4,8 @@ fn sandbox_oom_kill_facts_type_witness() {
     let _: Option<SandboxOomKillFacts> = None;
     let facts = SandboxOomKillFacts {
         reason: malvin::OOM_REASON_MEMORY_LIMIT,
-        rss_bytes: Some(1),
+        memory_bytes: Some(1),
+        memory_metric: Some("USS"),
         limit_bytes: 1,
         pgid: 1,
     };

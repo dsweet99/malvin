@@ -5,6 +5,10 @@ use std::time::Duration;
 
 use tracing::warn;
 
+use crate::agent_process::process_group_rss::MemorySample;
+
+pub type MemorySampler = fn(Option<u32>, &HashSet<u32>) -> Option<MemorySample>;
+
 const POLL_INTERVAL: Duration = if cfg!(test) {
     Duration::from_millis(10)
 } else {
@@ -23,7 +27,7 @@ pub struct MemWatchHandles {
 #[cfg(unix)]
 pub async fn watch_process_group_memory(handles: MemWatchHandles) {
     watch_process_group_memory_with_rss_sampler(handles, |pgid, baseline| {
-        crate::agent_process::malvin_sandbox::malvin_session_rss_bytes(pgid, baseline)
+        crate::agent_process::malvin_sandbox::malvin_session_memory_sample(pgid, baseline)
     })
     .await;
 }
@@ -31,17 +35,17 @@ pub async fn watch_process_group_memory(handles: MemWatchHandles) {
 #[cfg(unix)]
 pub async fn watch_process_group_memory_with_rss_sampler(
     handles: MemWatchHandles,
-    sample_rss: fn(Option<u32>, &HashSet<u32>) -> Option<u64>,
+    sample_memory: MemorySampler,
 ) {
-    watch_session_memory_with_rss_sampler(handles, sample_rss).await;
+    watch_session_memory_with_rss_sampler(handles, sample_memory).await;
 }
 
 #[cfg(unix)]
 async fn watch_session_memory_with_rss_sampler(
     handles: MemWatchHandles,
-    sample_rss: fn(Option<u32>, &HashSet<u32>) -> Option<u64>,
+    sample_memory: MemorySampler,
 ) {
-    let mut consecutive_rss_failures = 0u32;
+    let mut consecutive_sample_failures = 0u32;
     loop {
         if let Some(facts) = cgroup_oom_kill_facts(&handles) {
             terminate_for_memory(&handles, facts).await;
@@ -54,21 +58,21 @@ async fn watch_session_memory_with_rss_sampler(
             return;
         }
         if kernel_enforces_memory_limit(&handles) {
-            consecutive_rss_failures = 0;
+            consecutive_sample_failures = 0;
             tokio::time::sleep(POLL_INTERVAL).await;
             continue;
         }
-        let rss = sample_rss(handles.pgid, &handles.spawn_pid_baseline);
+        let sample = sample_memory(handles.pgid, &handles.spawn_pid_baseline);
         let allow_fail_closed = !handles
             .reader_dead
             .load(std::sync::atomic::Ordering::SeqCst);
         if memory_watch_should_terminate(
-            rss,
+            sample.map(|sample| sample.bytes),
             handles.limit_bytes,
-            &mut consecutive_rss_failures,
+            &mut consecutive_sample_failures,
             allow_fail_closed,
         ) {
-            terminate_for_memory(&handles, rss_kill_facts(&handles, rss)).await;
+            terminate_for_memory(&handles, memory_kill_facts(&handles, sample)).await;
             return;
         }
         tokio::time::sleep(POLL_INTERVAL).await;
@@ -103,13 +107,13 @@ fn cgroup_oom_kill_facts(
 }
 
 #[cfg(unix)]
-fn rss_kill_facts(
+fn memory_kill_facts(
     handles: &MemWatchHandles,
-    rss: Option<u64>,
+    sample: Option<MemorySample>,
 ) -> crate::agent_process::sandbox_oom::SandboxOomKillFacts<'static> {
     let limit_bytes = handles.limit_bytes;
     let pgid = handles.pgid;
-    rss.map_or_else(
+    sample.map_or_else(
         || {
             warn!(
                 limit_bytes,
@@ -121,15 +125,19 @@ fn rss_kill_facts(
                 None,
             )
         },
-        |rss_bytes| {
+        |sample| {
+            let metric = sample.metric.label();
             warn!(
-                rss_bytes,
-                limit_bytes, pgid, "malvin sandbox exceeded memory limit; terminating"
+                memory_bytes = sample.bytes,
+                memory_metric = metric,
+                limit_bytes,
+                pgid,
+                "malvin sandbox {metric} exceeded memory limit; terminating"
             );
             oom_facts(
                 handles,
                 crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
-                Some(rss_bytes),
+                Some(sample),
             )
         },
     )
@@ -139,11 +147,18 @@ fn rss_kill_facts(
 const fn oom_facts(
     handles: &MemWatchHandles,
     reason: &'static str,
-    rss_bytes: Option<u64>,
+    sample: Option<MemorySample>,
 ) -> crate::agent_process::sandbox_oom::SandboxOomKillFacts<'static> {
     crate::agent_process::sandbox_oom::SandboxOomKillFacts {
         reason,
-        rss_bytes,
+        memory_bytes: match sample {
+            Some(sample) => Some(sample.bytes),
+            None => None,
+        },
+        memory_metric: match sample {
+            Some(sample) => Some(sample.metric.label()),
+            None => None,
+        },
         limit_bytes: handles.limit_bytes,
         pgid: match handles.pgid {
             Some(pgid) => pgid,

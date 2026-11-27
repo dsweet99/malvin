@@ -39,7 +39,10 @@ async fn watcher_defers_memory_limit_to_kernel_when_agent_cgroup_is_active() {
     let _cgroup = fake_agent_cgroup(pgid, 0);
     let over_limit =
         watch_process_group_memory_with_rss_sampler(handles(pgid, baseline.clone()), |_, _| {
-            Some(999)
+            Some(crate::agent_process::process_group_rss::MemorySample::new(
+                999,
+                crate::agent_process::process_group_rss::MemoryMetric::Uss,
+            ))
         });
     let raced = tokio::time::timeout(std::time::Duration::from_millis(80), over_limit).await;
     let unmeasurable =
@@ -76,7 +79,13 @@ async fn watcher_ends_session_and_records_marker_on_cgroup_oom_kill() {
     let mut h = handles(pgid, baseline);
     h.limit_bytes = u64::MAX;
     h.run_dir = Some(artifacts.run_dir.clone());
-    watch_process_group_memory_with_rss_sampler(h, |_, _| Some(0)).await;
+    watch_process_group_memory_with_rss_sampler(h, |_, _| {
+        Some(crate::agent_process::process_group_rss::MemorySample::new(
+            0,
+            crate::agent_process::process_group_rss::MemoryMetric::Uss,
+        ))
+    })
+    .await;
     set_active_agent_cgroup(None);
     let status = child.wait().expect("wait");
     assert!(

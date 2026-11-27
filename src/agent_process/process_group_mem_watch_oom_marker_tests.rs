@@ -11,7 +11,8 @@ fn record_sandbox_oom_marker_noops_without_run_dir() {
         None,
         SandboxOomKillFacts {
             reason: OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-            rss_bytes: None,
+            memory_bytes: None,
+            memory_metric: None,
             limit_bytes: 1,
             pgid: 1,
         },
@@ -29,7 +30,8 @@ fn record_sandbox_oom_marker_writes_when_gate_iteration_unset() {
             Some(&artifacts.run_dir),
             SandboxOomKillFacts {
                 reason: OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-                rss_bytes: None,
+                memory_bytes: None,
+                memory_metric: None,
                 limit_bytes: 1,
                 pgid: 1,
             },
@@ -56,7 +58,8 @@ fn record_sandbox_oom_marker_writes_fail_closed_reason() {
         Some(&artifacts.run_dir),
         SandboxOomKillFacts {
             reason: OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-            rss_bytes: None,
+            memory_bytes: None,
+            memory_metric: None,
             limit_bytes: 512,
             pgid: 7,
         },

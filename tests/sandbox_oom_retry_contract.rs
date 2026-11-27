@@ -27,7 +27,8 @@ fn sandbox_oom_marker_is_iteration_scoped() {
             3,
             malvin::SandboxOomKillFacts {
                 reason: malvin::OOM_REASON_MEMORY_LIMIT,
-                rss_bytes: Some(1),
+                memory_bytes: Some(1),
+                memory_metric: Some("USS"),
                 limit_bytes: 1,
                 pgid: 1,
             },

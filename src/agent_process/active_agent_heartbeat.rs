@@ -85,11 +85,14 @@ pub fn active_agent_heartbeat_stats() -> Option<String> {
 
 #[cfg(unix)]
 fn format_agent_stats(pgid: u32, spawn_baseline: &HashSet<u32>) -> Option<String> {
-    let rss =
-        crate::agent_process::malvin_sandbox::malvin_session_rss_bytes(Some(pgid), spawn_baseline)?;
+    let sample = crate::agent_process::malvin_sandbox::malvin_session_memory_sample(
+        Some(pgid),
+        spawn_baseline,
+    )?;
     let procs = crate::agent_process::sandbox_monitor_pids(Some(pgid), spawn_baseline).len();
-    let rss_label = crate::workspace::log_gc::format_freed(rss);
-    Some(format!("sandbox: {rss_label} USS, {procs} procs"))
+    let bytes_label = crate::workspace::log_gc::format_freed(sample.bytes);
+    let metric = sample.metric.label();
+    Some(format!("sandbox: {bytes_label} {metric}, {procs} procs"))
 }
 
 #[cfg(not(unix))]
@@ -146,7 +149,7 @@ mod tests {
         let baseline = snapshot_pids();
         register_active_agent_process_group(Some(pgid), baseline.clone());
         let stats = active_agent_heartbeat_stats().expect("stats");
-        assert!(stats.contains("USS"));
+        assert!(stats.contains(" USS,") || stats.contains(" RSS,") || stats.contains(" USS+RSS,"));
         assert!(stats.contains("procs"));
         let source = super::active_agent_process_group_for_stats().expect("source");
         assert_eq!(source.pgid, pgid);

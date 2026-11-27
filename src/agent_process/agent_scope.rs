@@ -15,13 +15,20 @@ use super::malvin_sandbox::SandboxSpawnTicket;
 pub const NO_CGROUP_ENV: &str = "MALVIN_NO_CGROUP";
 const SYSTEMD_RUN: &str = "systemd-run";
 
-static SCOPE_PROBE: OnceLock<bool> = OnceLock::new();
+static SCOPE_PROBE: OnceLock<ScopeSupport> = OnceLock::new();
 static NEXT_SCOPE_SERIAL: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScopeTarget {
     Unit(String),
     Nested(PathBuf),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ScopeSupport {
+    WithOomPolicy,
+    WithoutOomPolicy,
+    Unavailable,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,36 +39,76 @@ pub(crate) enum Enclosure {
 }
 
 #[must_use]
-pub(crate) fn scope_args(unit: &str, mem_limit_bytes: u64) -> Vec<String> {
-    vec![
+pub(crate) fn scope_args(unit: &str, mem_limit_bytes: u64, oom_policy: bool) -> Vec<String> {
+    let mut args: Vec<String> = vec![
         "--user".into(),
         "--scope".into(),
         "--quiet".into(),
         "--collect".into(),
         format!("--unit={unit}"),
         format!("--property=MemoryMax={mem_limit_bytes}"),
-        "--property=OOMPolicy=continue".into(),
-        "--property=Delegate=yes".into(),
-        "--".into(),
-    ]
+    ];
+    if oom_policy {
+        args.push("--property=OOMPolicy=continue".into());
+    }
+    args.push("--property=Delegate=yes".into());
+    args.push("--".into());
+    args
 }
 
-fn probe_systemd_scope() -> bool {
+fn run_scope_probe(oom_policy: bool) -> Result<(), String> {
     let unit = next_scope_unit();
-    let ok = std::process::Command::new(SYSTEMD_RUN)
-        .args(scope_args(&unit, 1 << 40))
+    let output = std::process::Command::new(SYSTEMD_RUN)
+        .args(scope_args(&unit, 1 << 40, oom_policy))
         .arg("true")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .is_ok_and(|status| status.success());
-    if ok {
-        info!("malvin agent sessions run in per-session systemd scopes (cgroup v2)");
-    } else {
-        info!("systemd user scopes unavailable; agent sessions use process-group containment");
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .map_err(|e| format!("cannot run {SYSTEMD_RUN}: {e}"))?;
+    if output.status.success() {
+        return Ok(());
     }
-    ok
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    Err(format!(
+        "{SYSTEMD_RUN} exited with {}: {}",
+        output.status,
+        stderr.trim()
+    ))
+}
+
+fn probe_systemd_scope() -> ScopeSupport {
+    classify_scope_probe(run_scope_probe)
+}
+
+pub(crate) fn classify_scope_probe(probe: impl Fn(bool) -> Result<(), String>) -> ScopeSupport {
+    let Err(with_policy) = probe(true) else {
+        info!("malvin agent sessions run in per-session systemd scopes (cgroup v2)");
+        return ScopeSupport::WithOomPolicy;
+    };
+    warn!(
+        error = %with_policy,
+        "systemd-run rejected a scope with OOMPolicy=continue; retrying without OOMPolicy"
+    );
+    match probe(false) {
+        Ok(()) => {
+            info!(
+                "malvin agent sessions run in per-session systemd scopes without OOMPolicy (cgroup v2)"
+            );
+            ScopeSupport::WithoutOomPolicy
+        }
+        Err(without_policy) => {
+            warn!(
+                error = %without_policy,
+                "systemd user scopes unavailable; agent sessions use process-group containment"
+            );
+            ScopeSupport::Unavailable
+        }
+    }
+}
+
+fn scope_support() -> ScopeSupport {
+    *SCOPE_PROBE.get_or_init(probe_systemd_scope)
 }
 
 fn cgroups_disabled() -> bool {
@@ -103,7 +150,7 @@ pub fn agent_cgroups_enabled() -> bool {
     match own_enclosure() {
         Enclosure::MalvinLeaf(_) => true,
         Enclosure::InsideMalvin => false,
-        Enclosure::Outside => *SCOPE_PROBE.get_or_init(probe_systemd_scope),
+        Enclosure::Outside => scope_support() != ScopeSupport::Unavailable,
     }
 }
 
@@ -141,7 +188,11 @@ fn scope_command(
 ) -> std::process::Command {
     let unit = next_scope_unit();
     let mut cmd = super::malvin_sandbox::malvin_std_command(SYSTEMD_RUN);
-    cmd.args(scope_args(&unit, limit));
+    cmd.args(scope_args(
+        &unit,
+        limit,
+        scope_support() == ScopeSupport::WithOomPolicy,
+    ));
     if let Ok(exe) = crate::self_exe::self_exe() {
         cmd.arg(exe).arg(LEAF_SHIM_MARKER).arg(OWN_GROUP_ARG);
     }

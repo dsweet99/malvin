@@ -104,7 +104,12 @@ async fn watch_process_group_memory_still_kills_over_limit_when_reader_dead() {
             spawn_pid_baseline: baseline,
             run_dir: None,
         },
-        |_, _| Some(999),
+        |_, _| {
+            Some(crate::agent_process::process_group_rss::MemorySample::new(
+                999,
+                crate::agent_process::process_group_rss::MemoryMetric::Uss,
+            ))
+        },
     )
     .await;
     let status = child.wait().await.expect("wait");
@@ -133,13 +138,22 @@ async fn watch_process_group_memory_writes_sandbox_oom_marker() {
             spawn_pid_baseline: baseline,
             run_dir: Some(artifacts.run_dir.clone()),
         },
-        |_, _| Some(999),
+        |_, _| {
+            Some(crate::agent_process::process_group_rss::MemorySample::new(
+                999,
+                crate::agent_process::process_group_rss::MemoryMetric::Uss,
+            ))
+        },
     )
     .await;
     crate::gate_loop_session::set_active_gate_iteration(None);
     assert!(gate_iteration_oom_killed(&artifacts, 2));
     let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
     assert!(text.contains(OOM_REASON_MEMORY_LIMIT));
+    let json: serde_json::Value = serde_json::from_str(&text).expect("json");
+    assert_eq!(json["memory_metric"], "USS");
+    assert_eq!(json["memory_bytes"], 999);
+    assert!(json.get("rss_bytes").is_none());
 }
 #[cfg(unix)]
 #[tokio::test]
@@ -161,7 +175,12 @@ async fn watch_process_group_memory_writes_marker_without_gate_iteration() {
             spawn_pid_baseline: baseline,
             run_dir: Some(artifacts.run_dir.clone()),
         },
-        |_, _| Some(999),
+        |_, _| {
+            Some(crate::agent_process::process_group_rss::MemorySample::new(
+                999,
+                crate::agent_process::process_group_rss::MemoryMetric::Uss,
+            ))
+        },
     )
     .await;
     assert!(gate_iteration_oom_killed(&artifacts, 0));

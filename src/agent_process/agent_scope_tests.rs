@@ -2,7 +2,11 @@ use super::*;
 
 #[test]
 fn agent_scope_args_env_switch_and_unit_matching() {
-    let args = scope_args("malvin-agent-1-0", 4096);
+    let args = scope_args("malvin-agent-1-0", 4096, true);
+    assert!(args.contains(&"--property=OOMPolicy=continue".to_string()));
+    let bare = scope_args("malvin-agent-1-0", 4096, false);
+    assert!(!bare.iter().any(|a| a.contains("OOMPolicy")));
+    assert_eq!(bare.len() + 1, args.len());
     assert_eq!(args.first().map(String::as_str), Some("--user"));
     assert!(args.contains(&"--scope".to_string()));
     assert!(args.contains(&"--unit=malvin-agent-1-0".to_string()));
@@ -16,6 +20,31 @@ fn agent_scope_args_env_switch_and_unit_matching() {
     assert_eq!(cmd.as_std().get_program(), "node");
     assert!(next_scope_unit().starts_with("malvin-agent-"));
     let _ = probe_systemd_scope;
+    let _ = run_scope_probe;
+    let _ = scope_support;
+}
+
+#[test]
+fn scope_probe_falls_back_when_oom_policy_is_rejected() {
+    assert_eq!(
+        classify_scope_probe(|_| Ok(())),
+        ScopeSupport::WithOomPolicy
+    );
+    let calls = std::cell::RefCell::new(Vec::new());
+    let support = classify_scope_probe(|oom_policy| {
+        calls.borrow_mut().push(oom_policy);
+        if oom_policy {
+            Err("Unknown assignment: OOMPolicy=continue".to_string())
+        } else {
+            Ok(())
+        }
+    });
+    assert_eq!(support, ScopeSupport::WithoutOomPolicy);
+    assert_eq!(*calls.borrow(), vec![true, false]);
+    assert_eq!(
+        classify_scope_probe(|_| Err("no user bus".to_string())),
+        ScopeSupport::Unavailable
+    );
 }
 
 #[test]

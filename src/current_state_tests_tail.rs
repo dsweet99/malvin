@@ -27,7 +27,8 @@ fn format_retry_line_detects_oom_from_sandbox_marker() {
             1,
             crate::agent_process::sandbox_oom::SandboxOomKillFacts {
                 reason: crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
-                rss_bytes: Some(999),
+                memory_bytes: Some(999),
+                memory_metric: Some("USS"),
                 limit_bytes: 512,
                 pgid: 42,
             },
@@ -102,7 +103,8 @@ fn append_oom_reason_records_memory_kill() {
             1,
             crate::agent_process::sandbox_oom::SandboxOomKillFacts {
                 reason: crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
-                rss_bytes: Some(999),
+                memory_bytes: Some(999),
+                memory_metric: Some("USS"),
                 limit_bytes: 512,
                 pgid: 42,
             },

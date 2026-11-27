@@ -1,19 +1,29 @@
 use std::collections::HashSet;
 use std::fs;
 
+use super::process_group_rss::{MemoryMetric, MemorySample};
+
+#[cfg(test)]
 pub(crate) fn linux_pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
-    sum_measured(pids, linux_pid_sandbox_bytes)
+    linux_pids_sandbox_sample(pids).map(|sample| sample.bytes)
 }
 
-pub(crate) fn linux_pid_sandbox_bytes(pid: u32) -> Option<u64> {
-    linux_pid_uss_bytes(pid).or_else(|| linux_pid_rss_bytes(pid))
-}
-
-fn sum_measured(pids: &HashSet<u32>, measure: fn(u32) -> Option<u64>) -> Option<u64> {
+pub(crate) fn linux_pids_sandbox_sample(pids: &HashSet<u32>) -> Option<MemorySample> {
     pids.iter()
-        .filter_map(|&pid| measure(pid))
-        .fold(None, |total, bytes| {
-            Some(total.unwrap_or(0).saturating_add(bytes))
+        .filter_map(|&pid| linux_pid_sandbox_sample(pid))
+        .reduce(MemorySample::combine)
+}
+
+#[cfg(test)]
+pub(crate) fn linux_pid_sandbox_bytes(pid: u32) -> Option<u64> {
+    linux_pid_sandbox_sample(pid).map(|sample| sample.bytes)
+}
+
+pub(crate) fn linux_pid_sandbox_sample(pid: u32) -> Option<MemorySample> {
+    linux_pid_uss_bytes(pid)
+        .map(|bytes| MemorySample::new(bytes, MemoryMetric::Uss))
+        .or_else(|| {
+            linux_pid_rss_bytes(pid).map(|bytes| MemorySample::new(bytes, MemoryMetric::Rss))
         })
 }
 

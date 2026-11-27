@@ -10,7 +10,8 @@ pub const OOM_REASON_CGROUP_OOM_KILL: &str = "cgroup_oom_kill";
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SandboxOomKillFacts<'a> {
     pub reason: &'a str,
-    pub rss_bytes: Option<u64>,
+    pub memory_bytes: Option<u64>,
+    pub memory_metric: Option<&'a str>,
     pub limit_bytes: u64,
     pub pgid: u32,
 }
@@ -19,7 +20,8 @@ pub struct SandboxOomKillFacts<'a> {
 pub struct SandboxOomKillRecord<'a> {
     pub gate_iteration: usize,
     pub reason: &'a str,
-    pub rss_bytes: Option<u64>,
+    pub memory_bytes: Option<u64>,
+    pub memory_metric: Option<&'a str>,
     pub limit_bytes: u64,
     pub pgid: u32,
 }
@@ -30,7 +32,8 @@ impl<'a> SandboxOomKillRecord<'a> {
         Self {
             gate_iteration,
             reason: facts.reason,
-            rss_bytes: facts.rss_bytes,
+            memory_bytes: facts.memory_bytes,
+            memory_metric: facts.memory_metric,
             limit_bytes: facts.limit_bytes,
             pgid: facts.pgid,
         }
@@ -46,7 +49,8 @@ pub fn record_sandbox_oom_kill(
     let json = serde_json::json!({
         "gate_iteration": record.gate_iteration,
         "reason": record.reason,
-        "rss_bytes": record.rss_bytes,
+        "memory_bytes": record.memory_bytes,
+        "memory_metric": record.memory_metric,
         "limit_bytes": record.limit_bytes,
         "pgid": record.pgid,
     });
@@ -83,7 +87,8 @@ mod tests {
                 2,
                 SandboxOomKillFacts {
                     reason: OOM_REASON_MEMORY_LIMIT,
-                    rss_bytes: Some(999),
+                    memory_bytes: Some(999),
+                    memory_metric: Some("USS"),
                     limit_bytes: 512,
                     pgid: 42,
                 },
