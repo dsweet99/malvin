@@ -1,3 +1,12 @@
+There are two tasks.
+
+1. NOTES FOR MALVIN
+   If you found anything unusual, surprising, or novel that you think could be useful in the future, write it to `{{ workspace_dir }}/notes.md`.
+   Keep it brief and informationally dense. The file, `notes.md`, will be ready by you, malvin.
+
+
+2. SUMMARY FOR USER
+
 Write a summary of this entire session (possibly multiple agent chats/logs) as a DM to the user. Write it as first-person malvin to the user as a response to the user's request in `{{ user_request_path }}`.
 
 ## Directly respond to user request
