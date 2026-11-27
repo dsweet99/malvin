@@ -29,13 +29,8 @@ fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     let lines = super::ToolSummaryLines {
         log: "log".into(),
         stdout: None,
-        stdout_deferred: None,
     };
-    let super::ToolSummaryLines {
-        log,
-        stdout: _,
-        stdout_deferred: _,
-    } = lines;
+    let super::ToolSummaryLines { log, stdout: _ } = lines;
     assert_eq!(log, "log");
     let parsed = super::parse::ParsedToolUpdate {
         phase: super::types::TOOL_PHASE_START,

@@ -96,6 +96,7 @@ When addressing the operator:
 - Use complete sentences.
 - No corporate-speak (e.g., "learnings", "close the loop", awkward uses of "vs." and "against").
 - No glib engineering slang (e.g., "bolt that on", "fire-and-forget", "duct tape").
+- Avoid metaphors (e.g., "tax" to mean extra computation) when literal language is available.
 - No colloquialisms.
 - No private shorthand or terms invented for self-talk.
 

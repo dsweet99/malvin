@@ -78,7 +78,6 @@ pub(crate) struct ToolCallRecord {
 pub struct ToolSummaryLines {
     pub log: String,
     pub stdout: Option<String>,
-    pub stdout_deferred: Option<String>,
 }
 
 pub(crate) const TOOL_PHASE_START: u8 = 0;

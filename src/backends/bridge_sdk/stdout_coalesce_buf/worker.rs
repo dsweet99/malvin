@@ -3,9 +3,9 @@ use std::time::Instant;
 
 use crate::agent_process::TraceChunkEmission;
 
-#[cfg(not(test))]
-use super::bridge_sdk::stdout_coalesce_buf::write_coalesced_emissions;
 use super::bridge_sdk::stdout_coalesce_buf::{CoalesceSlot, Shared, lock_slot};
+#[cfg(not(test))]
+use super::bridge_sdk::stdout_coalesce_buf::{mark_line_open, write_coalesced_emissions};
 
 pub(super) fn worker_loop(shared: Arc<Shared>) {
     let mut slot = lock_slot(&shared);
@@ -75,7 +75,13 @@ fn deliver(shared: &Shared, emissions: Vec<TraceChunkEmission>) {
     #[cfg(test)]
     remember(shared, &emissions);
     #[cfg(not(test))]
-    write_coalesced_emissions(shared.io, emissions);
+    {
+        let wrote = !emissions.is_empty();
+        write_coalesced_emissions(shared.io, emissions);
+        if wrote {
+            mark_line_open(shared.io, true);
+        }
+    }
 }
 
 #[cfg(test)]

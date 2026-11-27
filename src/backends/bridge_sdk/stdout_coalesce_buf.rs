@@ -39,11 +39,13 @@ impl StdoutCoalesceBuf {
     pub(crate) fn feed_and_write(&self, kind: SessionUpdateChunkKind, chunk: &str) {
         let emissions = feed(self, kind, chunk);
         write_coalesced_emissions(self.shared.io, emissions);
+        mark_line_open(self.shared.io, pending_now(&self.shared));
     }
 
     pub(crate) fn flush_and_write(&self) {
         let emissions = flush(self);
         write_coalesced_emissions(self.shared.io, emissions);
+        mark_line_open(self.shared.io, false);
         if !self.shared.io.no_tee {
             crate::output::flush_formatted_markdown_tables();
         }
@@ -143,6 +145,16 @@ fn arm(shared: &Shared, slot: &mut CoalesceSlot) {
 fn notify(shared: &Shared, slot: &CoalesceSlot) {
     let _ = slot.deadline;
     shared.cv.notify_one();
+}
+
+fn pending_now(shared: &Shared) -> bool {
+    lock_slot(shared).inner.has_pending()
+}
+
+pub(crate) fn mark_line_open(io: AgentIoOptions, open: bool) {
+    if !io.no_tee {
+        crate::output::set_agent_text_line_open(open);
+    }
 }
 
 pub(crate) fn lock_slot(shared: &Shared) -> MutexGuard<'_, CoalesceSlot> {

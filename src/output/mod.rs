@@ -14,11 +14,12 @@ mod do_dm_on_emit;
 mod md_table;
 mod sentinel;
 pub(crate) mod stderr_log;
-mod stdout_defer;
 mod stdout_display;
 mod stdout_display_md;
 pub(crate) mod stdout_heartbeat;
 pub(crate) mod stdout_log_pair;
+mod stdout_open_line;
+pub(crate) use stdout_open_line::set_agent_text_line_open;
 mod stdout_render;
 pub(crate) mod stdout_tee_env;
 mod stdout_terminal;
@@ -26,8 +27,6 @@ pub(crate) mod terminal_wrap;
 mod test_modules;
 mod who_tag;
 
-#[allow(unused_imports)]
-pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
 #[cfg(test)]
 pub(crate) use stdout_render::emit_stdout_rendered_immediate;
 pub(crate) use stdout_render::write_heartbeat_log_line;

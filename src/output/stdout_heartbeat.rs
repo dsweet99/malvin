@@ -73,7 +73,7 @@ pub(crate) fn heartbeat_due(last: Instant, now: Instant) -> bool {
 }
 
 pub(crate) fn try_emit_heartbeat_if_due(now: Instant, arm_if_unarmed: bool) {
-    if heartbeat_stdout_suppressed() {
+    if heartbeat_stdout_suppressed() || super::stdout_open_line::agent_text_line_open_at(now) {
         return;
     }
     let Some((display, log)) = heartbeat_rendered_if_due(now, arm_if_unarmed) else {
@@ -148,6 +148,7 @@ pub(crate) fn reset_stdout_heartbeat_for_test() {
     *LAST_HERDR_WORKING_PULSE
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+    super::stdout_open_line::set_agent_text_line_open(false);
 }
 
 #[cfg(test)]

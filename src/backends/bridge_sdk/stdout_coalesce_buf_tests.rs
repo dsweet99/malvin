@@ -215,3 +215,31 @@ fn shown_thought_is_written() {
     let out = take_captured_stdout();
     assert!(out.contains("ponder"), "{out}");
 }
+
+#[test]
+fn heartbeat_waits_until_a_wrapped_paragraph_ends() {
+    use crate::output::stdout_heartbeat::{
+        HEARTBEAT_TEST_LOCK, maybe_emit_stdout_heartbeat, reset_stdout_heartbeat_for_test,
+        test_set_last_heartbeat_elapsed,
+    };
+    let _guard = HEARTBEAT_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    reset_stdout_heartbeat_for_test();
+    crate::output::set_heartbeat_stdout_suppressed(false);
+    let hb_prefix = crate::output::format_who_tag_prefix(crate::output::WHO_H);
+    let buf = build(sample_io(), Duration::from_secs(30));
+    enable_stdout_capture();
+    test_set_last_heartbeat_elapsed(Duration::from_secs(1));
+    buf.feed_and_write(SessionUpdateChunkKind::Message, &"word ".repeat(30));
+    test_set_last_heartbeat_elapsed(Duration::from_secs(61));
+    buf.feed_and_write(SessionUpdateChunkKind::Message, "end of paragraph.\n");
+    let paragraph = take_captured_stdout();
+    assert_eq!(paragraph.lines().count(), 2, "{paragraph}");
+    assert!(!paragraph.contains(&hb_prefix), "{paragraph}");
+    enable_stdout_capture();
+    maybe_emit_stdout_heartbeat();
+    let after = take_captured_stdout();
+    assert!(after.contains(&hb_prefix), "{after}");
+    reset_stdout_heartbeat_for_test();
+}

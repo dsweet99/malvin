@@ -16,18 +16,6 @@ pub(crate) fn emit_stdout_rendered_immediate(display: &str, log: &str) {
 }
 
 pub(crate) fn route_stdout_rendered_line(display: &str, log: &str, prelude: StdoutRenderPrelude) {
-    let deferred = match prelude {
-        StdoutRenderPrelude::FlushOnly => false,
-        StdoutRenderPrelude::TaggedWithHeartbeat => {
-            super::stdout_defer::try_defer_tagged_stdout(display, log)
-        }
-        StdoutRenderPrelude::HeartbeatOnly => {
-            super::stdout_defer::try_defer_heartbeat(display, log)
-        }
-    };
-    if deferred {
-        return;
-    }
     if prelude == StdoutRenderPrelude::TaggedWithHeartbeat {
         super::stdout_heartbeat::maybe_emit_stdout_heartbeat();
     }

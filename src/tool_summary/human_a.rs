@@ -17,7 +17,6 @@ const TOOL_STDOUT_RUNNING_MIN_MS: u128 = 1000;
 pub(crate) fn format_tool_stdout(
     parsed: &ParsedToolUpdate,
     tracker: &mut ToolSummaryTracker,
-    stdout_deferred: &mut Option<String>,
 ) -> Option<String> {
     let elapsed = tracker.record(&parsed.id)?.started.elapsed();
     let elapsed_ms = elapsed.as_millis();
@@ -35,7 +34,6 @@ pub(crate) fn format_tool_stdout(
     let rec = tracker.record_mut(&parsed.id)?;
     if !rec.stdout_start_emitted {
         rec.stdout_start_emitted = true;
-        *stdout_deferred = Some(line);
         return None;
     }
     Some(line)

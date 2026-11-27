@@ -60,10 +60,9 @@ pub fn tool_summary_lines(
     }
     notify_herdr_on_tracked_tool_start(&parsed, tracker);
     let log = format_tool_line(&parsed, tracker, ToolSummaryDetail::Log);
-    let mut stdout_deferred = None;
     let stdout = match detail {
         ToolSummaryDetail::Log => Some(log.clone()),
-        ToolSummaryDetail::Stdout => format_tool_stdout(&parsed, tracker, &mut stdout_deferred),
+        ToolSummaryDetail::Stdout => format_tool_stdout(&parsed, tracker),
     };
     if parsed.phase == TOOL_PHASE_DONE {
         tracker.record_tool_done(&parsed.id);
@@ -71,11 +70,7 @@ pub fn tool_summary_lines(
             tracker.calls.remove(&parsed.id);
         }
     }
-    Some(ToolSummaryLines {
-        log,
-        stdout,
-        stdout_deferred,
-    })
+    Some(ToolSummaryLines { log, stdout })
 }
 
 fn notify_herdr_on_tracked_tool_start(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) {
