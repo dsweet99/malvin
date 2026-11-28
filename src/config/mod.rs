@@ -8,6 +8,7 @@ pub mod mem_limit_config;
 pub mod model_id;
 pub(crate) mod model_id_types;
 pub mod model_list;
+pub(crate) mod thinking_level;
 pub(crate) mod workflow_name_aliases;
 
 pub use crate::sdk_drain_timeout::{

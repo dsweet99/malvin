@@ -37,15 +37,6 @@ fn env_api_key(provider: &str) -> Option<String> {
 }
 
 #[must_use]
-pub(crate) fn provider_api_key(provider: &str) -> Option<String> {
-    env_api_key(provider).or_else(|| {
-        let cred = stored_credential(provider)?;
-        let key = cred.get("key").and_then(Value::as_str)?.trim();
-        (!key.is_empty() && !key.starts_with('!')).then(|| key.to_string())
-    })
-}
-
-#[must_use]
 pub fn is_provider_authenticated(provider: &str) -> bool {
     provider_is_keyless_local(provider)
         || models_json_defines_provider(provider)
@@ -124,7 +115,6 @@ mod tests {
                 });
                 crate::agent_process::with_env("OPENAI_API_KEY", Some("test-key"), || {
                     assert!(is_provider_authenticated("openai"));
-                    assert_eq!(provider_api_key("openai").as_deref(), Some("test-key"));
                 });
                 crate::agent_process::with_env("ANTHROPIC_API_KEY", None, || {
                     crate::agent_process::with_env("ANTHROPIC_AUTH_TOKEN", None, || {
@@ -133,10 +123,6 @@ mod tests {
                             Some("oauth-test-token"),
                             || {
                                 assert!(is_provider_authenticated("anthropic"));
-                                assert_eq!(
-                                    provider_api_key("anthropic").as_deref(),
-                                    Some("oauth-test-token")
-                                );
                                 assert!(
                                     missing_credentials_hint("anthropic")
                                         .contains("ANTHROPIC_API_KEY")
@@ -147,21 +133,19 @@ mod tests {
                 });
                 crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
                     assert!(is_provider_authenticated("deepseek"));
-                    assert_eq!(provider_api_key("deepseek").as_deref(), Some("sk-x"));
                 });
             },
         );
     }
 
     #[test]
-    fn command_credentials_are_not_returned_as_keys() {
+    fn command_credentials_count_as_authenticated() {
         with_pi_dir(
             None,
             Some(r#"{"openrouter":{"type":"api_key","key":"!pass x"}}"#),
             || {
                 crate::agent_process::with_env("OPENROUTER_API_KEY", None, || {
                     assert!(is_provider_authenticated("openrouter"));
-                    assert!(provider_api_key("openrouter").is_none());
                 });
             },
         );

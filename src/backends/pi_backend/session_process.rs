@@ -71,7 +71,8 @@ fn append_provider_model(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     if let Some(thinking) = args.thinking {
-        cmd.arg("--thinking").arg(thinking);
+        cmd.arg("--thinking")
+            .arg(crate::config::thinking_level::pi_wire_thinking(thinking));
     }
 }
 
@@ -142,6 +143,39 @@ mod tests {
             let model = crate::config::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
             assert!(!take_local_hold(&model).expect("no hold"));
         }
+    }
+
+    #[test]
+    fn ultra_thinking_reaches_pi_as_max() {
+        let model = crate::config::model_id::parse_model_id("pi:openai/gpt-4o[thinking=ultra]")
+            .expect("model");
+        let args = BridgeSpawnArgs {
+            cwd: std::path::Path::new("."),
+            model: &model,
+            thinking: model.thinking_param(),
+            io: crate::agent_process::AgentIoOptions {
+                no_tee: false,
+                raw_output: false,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+            run_dir: None,
+            trace_path: None,
+            timing: None,
+        };
+        let mut cmd = tokio::process::Command::new("pi");
+        append_provider_model(&mut cmd, "openai", "gpt-4o", &args);
+        let argv: Vec<String> = cmd
+            .as_std()
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        let at = argv
+            .iter()
+            .position(|arg| arg == "--thinking")
+            .expect("--thinking");
+        assert_eq!(argv[at + 1], "max");
     }
 
     #[test]

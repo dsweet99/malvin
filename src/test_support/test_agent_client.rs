@@ -30,12 +30,7 @@ pub fn write_fake_gate(
     tempfile::TempDir,
     crate::cli::repo_checks::FakeCommandDirGuard,
 ) {
-    if crate::git_worktree_toplevel(work_dir).is_none() {
-        let _ = std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(work_dir)
-            .status();
-    }
+    crate::test_support::test_utils::ensure_git_repo(work_dir);
     let checks = crate::malvin_checks_path(work_dir);
     if let Some(parent) = checks.parent() {
         std::fs::create_dir_all(parent).expect("mkdir checks parent");

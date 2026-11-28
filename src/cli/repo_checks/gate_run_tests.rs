@@ -32,14 +32,7 @@ fn gate_commands_run_at_git_toplevel_from_nested_work_dir() {
     use std::fs;
     let tmp = tempfile::tempdir().expect("tempdir");
     let root = tmp.path();
-    assert!(
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(root)
-            .status()
-            .expect("git init")
-            .success()
-    );
+    malvin::test_support::test_utils::git_init(root);
     let nested = root.join("nested");
     fs::create_dir_all(&nested).expect("mkdir nested");
     fs::write(root.join("ROOT_ONLY"), "x\n").expect("root marker");
@@ -114,11 +107,7 @@ fn failing_gate_run_stderr_uses_malvin_not_error_or_warning() {
 fn minimal_git_workspace() -> (tempfile::TempDir, std::path::PathBuf) {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path().to_path_buf();
-    std::process::Command::new("git")
-        .args(["init"])
-        .current_dir(&work)
-        .status()
-        .expect("git init");
+    malvin::test_support::test_utils::git_init(&work);
     std::fs::write(
         work.join("Cargo.toml"),
         "[package]\nname = \"m\"\nversion = \"0.1.0\"\n",

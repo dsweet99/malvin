@@ -42,11 +42,12 @@ struct OpenRouterPricing {
 
 fn parse_rate_per_million(value: &str) -> Option<f64> {
     let per_token = value.trim().parse::<f64>().ok()?;
-    Some(per_token * 1_000_000.0)
+    let per_million = per_token * 1_000_000.0;
+    (per_million.is_finite() && per_million >= 0.0).then_some(per_million)
 }
 
 fn model_cost_from_pricing(pricing: &OpenRouterPricing) -> Option<ModelCost> {
-    Some(ModelCost {
+    let cost = ModelCost {
         input: parse_rate_per_million(&pricing.prompt)?,
         output: parse_rate_per_million(&pricing.completion)?,
         cache_read: pricing
@@ -59,7 +60,8 @@ fn model_cost_from_pricing(pricing: &OpenRouterPricing) -> Option<ModelCost> {
             .as_deref()
             .and_then(parse_rate_per_million)
             .unwrap_or(0.0),
-    })
+    };
+    cost.is_priced().then_some(cost)
 }
 
 fn pricing_from_models_body(body: &str) -> Option<HashMap<String, ModelCost>> {
@@ -73,14 +75,8 @@ fn pricing_from_models_body(body: &str) -> Option<HashMap<String, ModelCost>> {
     (!by_id.is_empty()).then_some(by_id)
 }
 
-fn fetch_live_pricing_sync(api_key: &str, url: &str) -> Option<HashMap<String, ModelCost>> {
-    let headers = [("Authorization", format!("Bearer {api_key}"))];
-    let body = fetch_text(&HttpRequest {
-        url,
-        headers: &headers,
-        json_body: None,
-        timeout: Duration::from_secs(15),
-    })?;
+fn fetch_live_pricing_sync(url: &str) -> Option<HashMap<String, ModelCost>> {
+    let body = fetch_text(&HttpRequest::get(url, Duration::from_secs(15)))?;
     pricing_from_models_body(&body)
 }
 
@@ -88,13 +84,7 @@ pub(crate) fn warm_openrouter_pricing_cache(force: bool) {
     if !force && CACHE.all_fresh() {
         return;
     }
-    let api_key = crate::backends::pi_backend::provider_auth::provider_api_key("openrouter")
-        .unwrap_or_default();
-    if api_key.trim().is_empty() {
-        return;
-    }
-    let fetched = fetch_live_pricing_sync(&api_key, &models_url());
-    if let Some(by_id) = fetched {
+    if let Some(by_id) = fetch_live_pricing_sync(&models_url()) {
         CACHE.replace_all(by_id);
     }
 }

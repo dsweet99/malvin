@@ -147,14 +147,7 @@ mod tests {
         malvin::test_support::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
-            assert!(
-                std::process::Command::new("git")
-                    .args(["init"])
-                    .current_dir(work)
-                    .status()
-                    .expect("git init")
-                    .success()
-            );
+            malvin::test_support::test_utils::git_init(work);
             std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
             std::fs::write(work.join(".malvin/checks"), "true\n").expect("legacy checks");
             let mut router = RouterOpts::test_defaults();

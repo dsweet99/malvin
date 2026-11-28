@@ -126,12 +126,7 @@ fn non_git_upload_over_the_cap_is_refused_and_git_trees_are_not_measured() {
         err.contains("not in a git work tree") && err.contains("smaller directory"),
         "{err}"
     );
-    let git = std::process::Command::new("git")
-        .args(["init", "-q"])
-        .current_dir(d)
-        .status()
-        .unwrap();
-    assert!(git.success());
+    crate::test_support::test_utils::git_init(d);
     assert!(check_upload_size(d, 2000).is_ok());
 }
 

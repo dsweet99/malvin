@@ -85,10 +85,7 @@ pub(crate) async fn codex_delete_thread(session: &CodexSession) -> Result<(), Ag
 }
 
 fn codex_effort_from_thinking(thinking: &str) -> String {
-    match thinking {
-        "off" | "minimal" => "low".to_owned(),
-        other => other.to_owned(),
-    }
+    crate::config::thinking_level::codex_wire_thinking(thinking).to_owned()
 }
 
 fn turn_start_params(

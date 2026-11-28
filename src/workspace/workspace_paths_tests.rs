@@ -19,14 +19,7 @@ fn malvin_data_root_uses_git_toplevel_when_inside_repo() {
     let tmp = tempfile::tempdir().unwrap();
     let repo = tmp.path().join("repo");
     std::fs::create_dir_all(repo.join("src")).unwrap();
-    assert!(
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(&repo)
-            .status()
-            .unwrap()
-            .success()
-    );
+    crate::test_support::test_utils::git_init(&repo);
     let sub = repo.join("src");
     let repo = repo.canonicalize().expect("canonicalize");
     assert_eq!(malvin_data_root(&sub), repo);
@@ -121,14 +114,7 @@ fn work_dir_manifest_round_trip() {
 
 fn remove_legacy_malvin_checks_file_deletes_legacy_not_layout_checks() {
     crate::test_support::test_utils::with_isolated_home(|work| {
-        assert!(
-            std::process::Command::new("git")
-                .args(["init"])
-                .current_dir(work)
-                .status()
-                .expect("git init")
-                .success()
-        );
+        crate::test_support::test_utils::git_init(work);
         std::fs::write(work.join(".malvin_checks"), "legacy\n").unwrap();
         std::fs::create_dir_all(work.join(MALVIN_DIR)).unwrap();
         std::fs::write(malvin_checks_path(work), "current\n").unwrap();

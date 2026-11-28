@@ -25,14 +25,7 @@ mod tests {
     #[test]
     fn ensure_malvin_checks_for_command_writes_config_not_checks() {
         malvin::test_support::test_utils::with_isolated_home(|work| {
-            assert!(
-                std::process::Command::new("git")
-                    .args(["init"])
-                    .current_dir(work)
-                    .status()
-                    .expect("git init")
-                    .success()
-            );
+            malvin::test_support::test_utils::git_init(work);
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
             let checks = malvin::malvin_checks_path(work);

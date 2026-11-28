@@ -1,7 +1,7 @@
 use std::process::Command;
 
 use super::pi_backend::discover::{resolve_npm_pi_cli_entry, resolve_npm_pi_entry};
-use super::pi_backend::models_rpc::BASE_THINKING_LEVELS;
+use super::pi_backend::models_rpc::base_thinking_levels;
 
 pub fn refresh_npm_pi_models() -> Result<(), String> {
     let entry = resolve_npm_pi_cli_entry()?;
@@ -76,7 +76,7 @@ fn parse_list_models_table(stdout: &str) -> Vec<(String, String)> {
         }
         let id = format!("{provider}/{model}");
         let levels = if cols.get(4).copied() == Some("yes") {
-            BASE_THINKING_LEVELS.join("|")
+            base_thinking_levels().join("|")
         } else {
             "off".to_string()
         };

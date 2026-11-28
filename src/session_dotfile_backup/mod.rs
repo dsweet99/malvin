@@ -6,8 +6,6 @@ pub(crate) mod gate_restore_repair;
 mod gitignore_tree;
 mod named_file_tree;
 mod slots;
-#[cfg(test)]
-mod tree_test_support;
 mod typed_slot_backups;
 mod vision_tree;
 mod wrappers;

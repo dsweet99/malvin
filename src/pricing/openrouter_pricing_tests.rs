@@ -15,6 +15,22 @@ fn parse_rate_per_million_scales_token_price() {
 }
 
 #[test]
+fn parse_rate_per_million_rejects_the_variable_price_sentinel() {
+    assert_eq!(parse_rate_per_million("-1"), None);
+    assert_eq!(parse_rate_per_million("NaN"), None);
+    assert_eq!(parse_rate_per_million("inf"), None);
+}
+
+#[test]
+fn catalog_drops_models_priced_with_the_minus_one_sentinel() {
+    let body = r#"{"data":[{"id":"openrouter/auto","pricing":{"prompt":"-1","completion":"-1"}},{"id":"free/m","pricing":{"prompt":"0","completion":"0"}},{"id":"paid/m","pricing":{"prompt":"0.000001","completion":"0.000002"}}]}"#;
+    let by_id = super::pricing_from_models_body(body).expect("catalog");
+    assert!(!by_id.contains_key("openrouter/auto"));
+    assert!(!by_id.contains_key("free/m"));
+    assert!(by_id.contains_key("paid/m"));
+}
+
+#[test]
 #[allow(clippy::float_cmp)]
 fn fetch_live_pricing_parses_mock_models_response() {
     use std::io::{Read, Write};
@@ -34,7 +50,7 @@ fn fetch_live_pricing_parses_mock_models_response() {
         }
     });
     let url = format!("http://{addr}/models");
-    let costs = fetch_live_pricing_sync("test-key", &url).expect("costs");
+    let costs = fetch_live_pricing_sync(&url).expect("costs");
     let cost = costs.get("x-ai/grok-latest").expect("model");
     assert_eq!(cost.input, 2.0);
     assert_eq!(cost.output, 10.0);
@@ -148,15 +164,20 @@ fn fetch_live_pricing_rejects_a_body_that_is_not_a_catalog() {
         }
     });
     let url = format!("http://{addr}/models");
-    assert!(fetch_live_pricing_sync("test-key", &url).is_none());
+    assert!(fetch_live_pricing_sync(&url).is_none());
 }
 
 #[test]
-fn warm_openrouter_pricing_cache_noops_without_api_key() {
+fn warm_openrouter_pricing_cache_fetches_without_an_api_key() {
+    let body =
+        r#"{"data":[{"id":"vendor/m","pricing":{"prompt":"0.000001","completion":"0.000002"}}]}"#;
+    let url = format!("{}/models", crate::http_fetch::serve_once(body));
     crate::test_support::test_utils::with_isolated_home(|_| {
         crate::agent_process::with_env("OPENROUTER_API_KEY", None, || {
-            warm_openrouter_pricing_cache(true);
-            assert!(!CACHE.path().exists());
+            crate::agent_process::with_env("MALVIN_TEST_OPENROUTER_MODELS_URL", Some(&url), || {
+                warm_openrouter_pricing_cache(true);
+                assert!(lookup_model_cost("vendor/m").is_some());
+            });
         });
     });
 }

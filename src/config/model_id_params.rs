@@ -1,4 +1,5 @@
 use super::ModelParam;
+use crate::config::thinking_level::{ThinkingLevel, level_names};
 
 #[must_use]
 pub fn format_bracket_params(params: &[ModelParam]) -> String {
@@ -87,9 +88,9 @@ fn kv_error(part: &str) -> String {
     }
 }
 
-const THINKING_LEVELS: &[&str] = &[
-    "off", "minimal", "low", "medium", "high", "xhigh", "max", "ultra",
-];
+fn thinking_levels() -> Vec<&'static str> {
+    level_names(&ThinkingLevel::ALL)
+}
 
 pub(super) fn validate_pi_thinking_params(params: &[ModelParam]) -> Result<(), String> {
     for p in params {
@@ -99,7 +100,7 @@ pub(super) fn validate_pi_thinking_params(params: &[ModelParam]) -> Result<(), S
                 p.id
             ));
         }
-        require_known_value("thinking", THINKING_LEVELS, &p.value)?;
+        require_known_value("thinking", &thinking_levels(), &p.value)?;
     }
     Ok(())
 }
@@ -107,7 +108,7 @@ pub(super) fn validate_pi_thinking_params(params: &[ModelParam]) -> Result<(), S
 pub(super) fn validate_codex_params(params: &[ModelParam]) -> Result<(), String> {
     for p in params {
         match p.id.as_str() {
-            "thinking" => require_known_value("thinking", THINKING_LEVELS, &p.value)?,
+            "thinking" => require_known_value("thinking", &thinking_levels(), &p.value)?,
             "service" => require_nonempty_service(&p.value)?,
             other => {
                 return Err(format!(
@@ -119,12 +120,14 @@ pub(super) fn validate_codex_params(params: &[ModelParam]) -> Result<(), String>
     Ok(())
 }
 
-const CLAUDE_EFFORT_LEVELS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
-
 pub(super) fn validate_claude_params(params: &[ModelParam]) -> Result<(), String> {
     for p in params {
         match p.id.as_str() {
-            "effort" => require_known_value("effort", CLAUDE_EFFORT_LEVELS, &p.value)?,
+            "effort" => require_known_value(
+                "effort",
+                &level_names(&ThinkingLevel::CLAUDE_EFFORT),
+                &p.value,
+            )?,
             "fast" => require_known_value("fast", &["true", "false"], &p.value)?,
             other => {
                 return Err(format!(

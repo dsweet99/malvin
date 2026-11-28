@@ -32,7 +32,7 @@ fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {
 #[test]
 fn run_repo_workspace_gates_errors_when_malvin_checks_missing() {
     with_isolated_home(|work| {
-        super::repo_checks::tests_gates_helpers::git_init_work(work);
+        malvin::test_support::test_utils::git_init(work);
         fs::write(work.join("main.rs"), "fn main() {}\n").unwrap();
         fs::write(
             work.join(".kissconfig"),

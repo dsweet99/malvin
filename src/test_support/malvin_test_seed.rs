@@ -3,22 +3,12 @@ use std::path::Path;
 
 #[cfg(test)]
 pub fn seed_malvin_checks(work: &Path, content: &str) {
-    ensure_git_repo_for_checks_seed(work);
+    crate::test_support::test_utils::ensure_git_repo(work);
     let path = crate::malvin_checks_path(work);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).expect("mkdir checks parent");
     }
     std::fs::write(path, content).expect("write checks");
-}
-
-#[cfg(test)]
-fn ensure_git_repo_for_checks_seed(work: &Path) {
-    if crate::git_worktree_toplevel(work).is_none() {
-        let _ = std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(work)
-            .status();
-    }
 }
 
 #[cfg(test)]

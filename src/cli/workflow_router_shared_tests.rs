@@ -154,13 +154,7 @@ pub(crate) fn missing_checks_fixture(
     malvin::artifacts::RunArtifacts,
     malvin::artifacts::SessionDotfileBackups,
 ) {
-    if malvin::git_worktree_toplevel(work).is_none() {
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(work)
-            .status()
-            .expect("git init");
-    }
+    malvin::test_support::test_utils::ensure_git_repo(work);
     let checks_path = malvin::malvin_checks_path(work);
     if checks_path.is_file() {
         std::fs::remove_file(&checks_path).expect("remove checks");

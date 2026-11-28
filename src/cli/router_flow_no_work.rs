@@ -1,7 +1,20 @@
 use malvin::output::{MALVIN_DONE, is_sentinel_line};
 
+fn is_fence_line(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed.starts_with("```") || trimmed.starts_with("~~~")
+}
+
 pub(crate) fn chat_has_malvin_done(chat: &str) -> bool {
-    chat.lines().any(|line| is_sentinel_line(line, MALVIN_DONE))
+    let lines: Vec<&str> = chat.lines().collect();
+    let Some(last) = lines.iter().rposition(|line| !line.trim_ascii().is_empty()) else {
+        return false;
+    };
+    let fences_before = lines[..last]
+        .iter()
+        .filter(|line| is_fence_line(line))
+        .count();
+    fences_before % 2 == 0 && is_sentinel_line(lines[last], MALVIN_DONE)
 }
 
 #[cfg(test)]
@@ -9,13 +22,24 @@ mod tests {
     use super::chat_has_malvin_done;
 
     #[test]
-    fn detects_done_alone_on_a_line() {
+    fn detects_done_on_the_last_non_blank_line() {
         assert!(chat_has_malvin_done("__MALVIN_DONE__\n"));
+        assert!(chat_has_malvin_done("preamble\n  __MALVIN_DONE__  \n\n"));
         assert!(chat_has_malvin_done(
-            "preamble\n  __MALVIN_DONE__  \nmore\n"
+            "```\ncode\n```\nDone.\n__MALVIN_DONE__"
         ));
+        assert!(!chat_has_malvin_done(""));
         assert!(!chat_has_malvin_done("not done yet\n"));
         assert!(!chat_has_malvin_done("__MALVIN_DONE__ trailing\n"));
         assert!(!chat_has_malvin_done("prefix __MALVIN_DONE__\n"));
+    }
+
+    #[test]
+    fn ignores_a_quoted_or_mid_reply_marker() {
+        assert!(!chat_has_malvin_done(
+            "No impasse. I am therefore not writing\n```\n__MALVIN_DONE__\n```\n"
+        ));
+        assert!(!chat_has_malvin_done("```\n__MALVIN_DONE__\n"));
+        assert!(!chat_has_malvin_done("preamble\n__MALVIN_DONE__\nmore\n"));
     }
 }

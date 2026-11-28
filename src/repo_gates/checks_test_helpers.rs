@@ -2,18 +2,7 @@
 use std::path::Path;
 
 #[cfg(test)]
-pub(crate) fn git_init(work: &Path) {
-    assert!(
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(work)
-            .status()
-            .expect("git init status")
-            .success(),
-        "git init failed in {}",
-        work.display()
-    );
-}
+pub(crate) use crate::test_support::test_utils::git_init;
 
 #[cfg(test)]
 pub(crate) fn write_git_root_checks(work: &Path, content: impl AsRef<[u8]>) {

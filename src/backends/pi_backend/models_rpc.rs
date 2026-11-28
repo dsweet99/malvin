@@ -5,12 +5,18 @@ use std::time::Duration;
 
 use serde_json::Value;
 
+use crate::config::thinking_level::ThinkingLevel;
+
 use super::pi_backend::discover::resolve_npm_pi_entry;
 use super::pi_backend::session_process::entry_is_rpc_entry;
 
-pub(super) const BASE_THINKING_LEVELS: [&str; 5] = ["off", "minimal", "low", "medium", "high"];
-const EXTENDED_THINKING_LEVELS: [&str; 7] =
-    ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+pub(super) fn base_thinking_levels() -> Vec<&'static str> {
+    ThinkingLevel::PI
+        .into_iter()
+        .filter(|level| !level.pi_needs_explicit_level_map())
+        .map(ThinkingLevel::name)
+        .collect()
+}
 const RPC_TIMEOUT: Duration = Duration::from_secs(30);
 const MODELS_REQUEST: &str = r#"{"id":"malvin-models","type":"get_available_models"}"#;
 
@@ -103,13 +109,14 @@ fn supported_thinking_levels(model: &Value) -> Vec<&'static str> {
         return vec!["off"];
     }
     let map = model.get("thinkingLevelMap");
-    EXTENDED_THINKING_LEVELS
+    ThinkingLevel::PI
         .into_iter()
-        .filter(|level| match map.and_then(|m| m.get(*level)) {
+        .filter(|level| match map.and_then(|m| m.get(level.name())) {
             Some(Value::Null) => false,
             Some(_) => true,
-            None => !matches!(*level, "xhigh" | "max"),
+            None => !level.pi_needs_explicit_level_map(),
         })
+        .map(ThinkingLevel::name)
         .collect()
 }
 
@@ -137,7 +144,7 @@ mod tests {
         );
         assert_eq!(
             supported_thinking_levels(&json!({"reasoning": true})),
-            BASE_THINKING_LEVELS
+            ["off", "minimal", "low", "medium", "high"]
         );
         assert_eq!(
             supported_thinking_levels(&json!({"reasoning": false})),

@@ -13,11 +13,6 @@ pub fn flow_test_artifacts_no_checks(tmp: &tempfile::TempDir) -> RunArtifacts {
 }
 
 pub fn flow_test_artifacts(tmp: &tempfile::TempDir) -> RunArtifacts {
-    std::process::Command::new("git")
-        .args(["init"])
-        .current_dir(tmp.path())
-        .status()
-        .expect("git init");
     crate::seed_malvin_checks(tmp.path(), "true\n");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "ignored").expect("plan");

@@ -52,18 +52,11 @@ fn openai_without_a_key_is_not_authenticated() {
             assert!(!crate::backends::pi_backend::is_provider_authenticated(
                 "openai"
             ));
-            assert!(
-                crate::backends::pi_backend::provider_auth::provider_api_key("openai").is_none()
-            );
         });
         crate::agent_process::with_env("OPENAI_API_KEY", Some("sk-test"), || {
             assert!(crate::backends::pi_backend::is_provider_authenticated(
                 "openai"
             ));
-            assert_eq!(
-                crate::backends::pi_backend::provider_auth::provider_api_key("openai").as_deref(),
-                Some("sk-test")
-            );
         });
     });
     assert!(crate::backends::pi_backend::provider_has_known_credentials(

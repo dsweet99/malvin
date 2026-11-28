@@ -7,7 +7,12 @@ use serde_json::Value;
 const CACHE_FILE: &str = "claude_models.json";
 const LIST_SCRIPT: &str = "list_models.js";
 const LIST_TIMEOUT: Duration = Duration::from_mins(1);
-const DEFAULT_EFFORT: &str = "low|medium|high|xhigh|max";
+
+fn default_effort() -> String {
+    crate::config::thinking_level::joined_level_names(
+        &crate::config::thinking_level::ThinkingLevel::CLAUDE_EFFORT,
+    )
+}
 
 #[must_use]
 pub fn claude_models_cache_path() -> PathBuf {
@@ -70,15 +75,15 @@ pub fn builtin_models() -> Vec<(String, String)> {
     vec![
         (
             "sonnet".into(),
-            format!("Claude Sonnet effort={DEFAULT_EFFORT}"),
+            format!("Claude Sonnet effort={}", default_effort()),
         ),
         (
             "opus".into(),
-            format!("Claude Opus effort={DEFAULT_EFFORT} fast=true|false"),
+            format!("Claude Opus effort={} fast=true|false", default_effort()),
         ),
         (
             "haiku".into(),
-            format!("Claude Haiku effort={DEFAULT_EFFORT}"),
+            format!("Claude Haiku effort={}", default_effort()),
         ),
     ]
 }

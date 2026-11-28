@@ -14,7 +14,8 @@ pub(super) fn lookup_rates(provider: &str, model: &str) -> Option<ModelCost> {
 fn first_priced(sources: &[&dyn PricingSource], provider: &str, model: &str) -> Option<ModelCost> {
     sources
         .iter()
-        .find_map(|source| source.lookup(provider, model))
+        .filter_map(|source| source.lookup(provider, model))
+        .find(ModelCost::is_priced)
 }
 
 fn token_count(obj: &Map<String, Value>, keys: &[&str]) -> u64 {
@@ -77,5 +78,17 @@ mod tests {
         let cost = first_priced(&sources, "p", "m").expect("priced");
         assert!((cost.input - 2.0).abs() < 1e-9);
         assert!(first_priced(&[&Fixed(None)], "p", "m").is_none());
+    }
+
+    #[test]
+    fn first_priced_skips_negative_and_zero_rate_tables() {
+        let sources: [&dyn PricingSource; 3] = [
+            &Fixed(Some(-1_000_000.0)),
+            &Fixed(Some(0.0)),
+            &Fixed(Some(3.0)),
+        ];
+        let cost = first_priced(&sources, "p", "m").expect("priced");
+        assert!((cost.input - 3.0).abs() < 1e-9);
+        assert!(first_priced(&[&Fixed(Some(-1.0))], "p", "m").is_none());
     }
 }

@@ -17,11 +17,7 @@ fn git_worktree_toplevel_resolves_inside_repo() {
     let w = tmp.path();
     fs::create_dir_all(w.join("src")).unwrap();
     fs::write(w.join(".gitignore"), "x\n").unwrap();
-    std::process::Command::new("git")
-        .args(["init"])
-        .current_dir(w)
-        .status()
-        .expect("git init");
+    crate::test_support::test_utils::git_init(w);
     let root = git_worktree_toplevel(w).expect("inside repo");
     assert_eq!(root, w.canonicalize().expect("canonicalize"));
     assert!(git_worktree_toplevel(&w.join("src")).is_some());

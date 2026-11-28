@@ -29,9 +29,9 @@ pub(crate) struct CostUsd {
 impl ModelCost {
     #[must_use]
     pub(crate) fn is_priced(&self) -> bool {
-        [self.input, self.output, self.cache_read, self.cache_write]
-            .iter()
-            .any(|rate| *rate > 0.0)
+        let rates = [self.input, self.output, self.cache_read, self.cache_write];
+        rates.iter().all(|rate| rate.is_finite() && *rate >= 0.0)
+            && rates.iter().any(|rate| *rate > 0.0)
     }
 
     #[must_use]
@@ -74,6 +74,20 @@ mod tests {
         assert!((cost.total - 6.0).abs() < 1e-12);
         assert!((cost.output - 3.0).abs() < 1e-12);
         assert!(cost.cache_write.abs() < 1e-12);
+    }
+
+    #[test]
+    fn negative_or_non_finite_rates_are_not_priced() {
+        let rates = |input: f64| ModelCost {
+            input,
+            output: 1.0,
+            cache_read: 0.0,
+            cache_write: 0.0,
+        };
+        assert!(!rates(-1.0).is_priced());
+        assert!(!rates(f64::NAN).is_priced());
+        assert!(!rates(f64::INFINITY).is_priced());
+        assert!(rates(0.0).is_priced());
     }
 
     #[test]

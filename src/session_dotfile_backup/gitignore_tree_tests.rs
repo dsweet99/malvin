@@ -1,5 +1,5 @@
 use super::GitignoreBackup;
-use crate::session_dotfile_backup::tree_test_support::init_git_repo;
+use crate::test_support::test_utils::git_init as init_git_repo;
 use crate::test_support::test_utils::with_isolated_home;
 use std::path::{Path, PathBuf};
 

@@ -48,3 +48,18 @@ pub use logs_bucket::TestLogsBucket;
 pub fn empty_session_dotfile_backups(work: &Path) -> crate::artifacts::SessionDotfileBackups {
     crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot session dotfiles")
 }
+
+pub fn git_init(work: &Path) {
+    let status = std::process::Command::new("git")
+        .args(["init", "-q"])
+        .current_dir(work)
+        .status()
+        .expect("spawn git init");
+    assert!(status.success(), "git init failed in {}", work.display());
+}
+
+pub fn ensure_git_repo(work: &Path) {
+    if crate::git_worktree_toplevel(work).is_none() {
+        git_init(work);
+    }
+}

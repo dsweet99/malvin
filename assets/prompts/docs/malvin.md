@@ -17,7 +17,7 @@ malvin [OPTION]... [REQUEST]...
 
 These forms are mutually exclusive: pass request(s) **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, optional `router_b`, then `router_c` when `router_b` ran, then `router_summarize`). Without `--gates` that sequence runs once when `router_a_2` or `router_c` emits `__MALVIN_DONE__`. If `router_c` omits the marker, another full iteration starts while the `--max-loops` budget (default 999) remains. With `--gates`, a gate failure starts another full iteration until that budget is spent. A lone-line `__MALVIN_DONE__` in the `router_a_2` reply skips `router_b` and `router_c`. Gates run only after that marker, or after the same marker in the `router_c` reply. `router_a_2.md` asks for that marker only on an impasse. Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, its own router run, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0.
+Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, optional `router_b`, then `router_c` when `router_b` ran, then `router_summarize`). Without `--gates` that sequence runs once when `router_a_2` or `router_c` emits `__MALVIN_DONE__`. If `router_c` omits the marker, another full iteration starts while the `--max-loops` budget (default 999) remains. With `--gates`, a gate failure starts another full iteration until that budget is spent. A lone-line `__MALVIN_DONE__` in the `router_a_2` reply skips `router_b` and `router_c`. Malvin counts the marker only when it is the last non-blank line of the reply and is not inside a fenced code block (opened by ```` ``` ```` or `~~~`). A marker quoted inside a fence, or followed by more text, has no effect. Gates run only after that marker, or after the same marker in the `router_c` reply. `router_a_2.md` asks for that marker only on an impasse. Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, its own router run, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0.
 
 ## Commands
 
@@ -54,7 +54,7 @@ Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` i
 
 ### `--no-emit`
 
-Disable delivery of direct messages (DM fences) through the configured `[dm].on_emit` command in `~/.malvinconf/config.toml` for this invocation. Direct messages still appear in the normal output and logs.
+Disable delivery of direct messages (DM fences) through the configured `[dm].on_emit` command in `~/.malvinconf/config.toml` for this invocation. The `on_emit` command ignores a DM fence whose opening marker sits inside a fenced code block, so a quoted example is not delivered. Direct messages still appear in the normal output and logs.
 
 ### `--no-auto-costs`
 

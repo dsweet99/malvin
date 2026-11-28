@@ -8,9 +8,17 @@ pub(crate) struct CompletedDirectMessage {
 pub(crate) fn completed_direct_messages(text: &str) -> Vec<CompletedDirectMessage> {
     let mut out = Vec::new();
     let mut inside = false;
+    let mut in_code_fence = false;
     let mut body = String::new();
     for raw in text.split_inclusive('\n') {
         let line = raw.trim_end_matches(['\r', '\n']);
+        if !inside && is_code_fence_line(line) {
+            in_code_fence = !in_code_fence;
+            continue;
+        }
+        if in_code_fence {
+            continue;
+        }
         if take_marker(&mut inside, &mut body, &mut out, line) {
             continue;
         }
@@ -19,6 +27,11 @@ pub(crate) fn completed_direct_messages(text: &str) -> Vec<CompletedDirectMessag
         }
     }
     out
+}
+
+fn is_code_fence_line(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed.starts_with("```") || trimmed.starts_with("~~~")
 }
 
 fn take_marker(
@@ -98,4 +111,24 @@ pub(crate) fn existing_attachment(attachment: Option<String>) -> Option<String> 
         "dm attachment not found, sending without it: {path}"
     ));
     None
+}
+
+#[cfg(test)]
+mod fence_tests {
+    use super::super::sentinel::{DM_END, DM_START};
+    use super::completed_direct_messages;
+
+    #[test]
+    fn a_dm_quoted_inside_a_code_fence_is_not_sent() {
+        let quoted = format!("Example:\n```\n{DM_START}\nhi\n{DM_END}\n```\n");
+        assert!(completed_direct_messages(&quoted).is_empty());
+    }
+
+    #[test]
+    fn a_dm_may_contain_a_code_fence_and_follow_one() {
+        let text = format!("```\nx\n```\n{DM_START}\n```\ncode\n```\n{DM_END}\n");
+        let messages = completed_direct_messages(&text);
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].body, "```\ncode\n```");
+    }
 }
