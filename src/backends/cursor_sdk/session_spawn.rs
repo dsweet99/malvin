@@ -134,7 +134,7 @@ fn cursor_build_bridge_command(
     ticket: &mut crate::agent_process::malvin_sandbox::SandboxSpawnTicket,
 ) -> tokio::process::Command {
     use std::process::Stdio;
-    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, cwd, ticket);
+    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, ticket);
     super::cursor_sdk::node_resolve::apply_quiet_node_cli(&mut cmd);
     cmd.arg(bridge)
         .current_dir(cwd)

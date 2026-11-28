@@ -3,13 +3,11 @@ use super::Commands;
 pub const fn ensure_malvin_checks_for_command(_cmd: &Commands) {}
 
 pub fn ensure_malvin_checks_for_gates_only_route() -> Result<(), String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    malvin::repo_gates::ensure_default_malvin_config_file(&cwd)
+    malvin::repo_gates::ensure_default_malvin_config_file()
 }
 
 pub fn ensure_malvin_checks_for_default_route() -> Result<(), String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    malvin::repo_gates::ensure_default_malvin_config_file(&cwd)
+    malvin::repo_gates::ensure_default_malvin_config_file()
 }
 
 #[cfg(test)]
@@ -29,7 +27,7 @@ mod tests {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
             let checks = malvin::malvin_checks_path(work);
-            let config = malvin::malvin_config_path(work);
+            let config = malvin::malvin_home_config_path();
             assert!(!checks.exists());
             assert!(!config.exists());
 

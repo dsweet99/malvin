@@ -1,7 +1,5 @@
-use std::path::Path;
-
 use crate::output::print_log_warning;
-use crate::workspace::workspace_paths::malvin_config_path;
+use crate::workspace::workspace_paths::malvin_home_config_path;
 
 #[path = "malvin_config_agent.rs"]
 mod malvin_config_agent;
@@ -35,18 +33,23 @@ pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
 };
 pub(crate) use malvin_config_parse::parse_malvin_config;
-pub use malvin_config_top::{DEFAULT_CONTEXT_SIZE, TokenCostRates};
-pub(crate) use malvin_config_top::{parse_context_size, parse_model_token_cost_rates, parse_theme};
+pub use malvin_config_top::{
+    DEFAULT_CONTEXT_SIZE, DEFAULT_TIME_SINCE_LAST_CALL_SECONDS, TokenCostRates,
+};
+pub(crate) use malvin_config_top::{
+    parse_context_size, parse_model_token_cost_rates, parse_theme,
+    parse_time_since_last_call_seconds,
+};
 
 pub const DEFAULT_MAX_LOOPS: usize = 999;
 
-pub fn ensure_malvin_config_file(work_dir: &Path) -> Result<(), String> {
-    let _ = open_malvin_config(work_dir)?;
+pub fn ensure_malvin_config_file() -> Result<(), String> {
+    let _ = open_malvin_config()?;
     Ok(())
 }
 
-pub fn load_malvin_config(work_dir: &Path) -> MalvinConfig {
-    let path = malvin_config_path(work_dir);
+pub fn load_malvin_config() -> MalvinConfig {
+    let path = malvin_home_config_path();
     let Ok(text) = std::fs::read_to_string(&path) else {
         let mut cfg = parse_malvin_config(DEFAULT_MALVIN_CONFIG_TEMPLATE);
         cfg.mem_limit_gb = crate::config::mem_limit_config::default_mem_limit_gb();
@@ -64,8 +67,8 @@ pub fn load_malvin_config(work_dir: &Path) -> MalvinConfig {
     parse_malvin_config(&merged)
 }
 
-pub fn open_malvin_config(work_dir: &Path) -> Result<MalvinConfig, String> {
-    let path = malvin_config_path(work_dir);
+pub fn open_malvin_config() -> Result<MalvinConfig, String> {
+    let path = malvin_home_config_path();
     ensure_config_parent_dir(&path)?;
     let template = parse_template_value()?;
     if path.is_file() {

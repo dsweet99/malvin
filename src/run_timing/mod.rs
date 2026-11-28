@@ -14,7 +14,7 @@ use std::path::Path;
 
 pub use policy::{
     CostPolicy, RUN_TIMING_JSON_FILE, RUN_TIMING_SUMMARY_PREFIX, TOOL_CALL_TYPE_MS_KEYS,
-    TimingPhase, cost_policy_for_model, set_suppress_stdout_footnotes,
+    TimingPhase, cost_policy_for_model,
 };
 pub use process_ledger::{arm_process_footnotes, note_process_start};
 pub(crate) use process_ledger_live::replace_tracked_timing;

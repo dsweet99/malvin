@@ -6,8 +6,8 @@ use crate::cli::{Cli, SharedOpts};
 use clap::{CommandFactory, FromArgMatches};
 use malvin::config::malvin_config_file::AgentConfig;
 
-pub(super) fn write_agent_config(work_dir: &std::path::Path) {
-    let path = malvin::malvin_config_path(work_dir);
+pub(super) fn write_agent_config() {
+    let path = malvin::malvin_home_config_path();
     let mut text = std::fs::read_to_string(&path).expect("read");
     if text.contains("[agent]") {
         text = text
@@ -30,19 +30,19 @@ pub(super) fn with_seeded_agent_config(f: impl FnOnce()) {
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        malvin::config::malvin_config_file::open_malvin_config(work).expect("seed");
-        write_agent_config(work);
+        malvin::config::malvin_config_file::open_malvin_config().expect("seed");
+        write_agent_config();
         f();
         std::env::set_current_dir(cwd).expect("restore cwd");
     });
 }
 
 fn write_agent_config_adds_agent_section_to_partial_file() {
-    malvin::test_support::test_utils::with_isolated_home(|work| {
-        let path = malvin::malvin_config_path(work);
+    malvin::test_support::test_utils::with_isolated_home(|_| {
+        let path = malvin::malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "mem_limit_gb = 2\n").expect("write");
-        write_agent_config(work);
+        write_agent_config();
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(text.contains("[agent]"));
         assert!(text.contains("model = \"cursor:cfg-model\""));
@@ -121,7 +121,7 @@ fn apply_workspace_config_defaults_for_request_does_not_create_config() {
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        let config_path = malvin::malvin_config_path(work);
+        let config_path = malvin::malvin_home_config_path();
         assert!(!config_path.exists());
         let matches = Cli::command().get_matches_from(["malvin", "hello"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
@@ -144,8 +144,8 @@ fn parse_cli_with_config_defaults_gates_only() {
 }
 
 fn model_list_config_and_cli_override_preserve_order() {
-    malvin::test_support::test_utils::with_isolated_home(|work| {
-        let path = malvin::malvin_config_path(work);
+    malvin::test_support::test_utils::with_isolated_home(|_| {
+        let path = malvin::malvin_home_config_path();
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, "[agent]\nmodel = ['cursor:primary', 'claude:sonnet']\n[aliases.models]\nbackup = 'codex:gpt-5.6'\n").unwrap();
         let (configured, _) = parse_cli_with_config_defaults(["malvin", "task"]).unwrap();

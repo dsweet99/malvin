@@ -54,13 +54,12 @@ fn gate_commands_run_at_git_toplevel_from_nested_work_dir() {
 fn prepare_repo_workspace_succeeds_on_empty_dir_and_gate_run_private_helpers_succeed_on_empty_workspace()
  {
     {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        prepare_repo_workspace(tmp.path(), RepoGateOutput::Tagged, None).expect("prepare");
+        prepare_repo_workspace().expect("prepare");
     }
     {
         let tmp = tempfile::tempdir().expect("tempdir");
         let work = tmp.path();
-        prepare_repo_workspace_with_details(work).expect("prepare");
+        prepare_repo_workspace_with_details().expect("prepare");
         run_malvin_checks_with_details(work, RepoGateOutput::Tagged, None, &[])
             .expect("empty malvin_checks");
         run_shell_command_line_with_details(work, RepoGateOutput::Tagged, None, "")
@@ -132,9 +131,12 @@ fn gate_run_wires_private_runners_on_minimal_workspace() {
 
 #[test]
 fn prefer_gate_outcome_over_checks_restore_keeps_gate_failure() {
-    let gate = Err("__MALVIN_GATE_FAILURE__:`make lint` failed (exit 1)".into());
+    let gate = Err(super::GateRunError::Gate(super::RepoGateFailure::Message(
+        "`make lint` failed (exit 1)".into(),
+    )));
     let restore = Err("malvin_checks restore: blocked".into());
     let err = super::prefer_gate_outcome_over_checks_restore(gate, restore).unwrap_err();
-    assert!(err.contains("make lint"));
-    assert!(!err.contains("malvin_checks restore"));
+    assert!(matches!(err, super::GateRunError::Gate(_)), "{err}");
+    let restore_only = super::prefer_gate_outcome_over_checks_restore(Ok(()), Err("blocked".into()));
+    assert!(matches!(restore_only, Err(super::GateRunError::Setup(_))));
 }

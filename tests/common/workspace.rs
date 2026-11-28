@@ -32,12 +32,12 @@ pub fn seed_malvin_checks_legacy_fast(workspace: &Path, content: &str) {
     std::fs::write(checks_path, content).expect("write checks");
 }
 
-pub fn seed_malvin_config(workspace: &Path, content: &str) {
+pub fn seed_malvin_config(content: &str) {
     assert!(
         std::env::var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION).as_deref() == Ok("1"),
         "seed_malvin_config requires with_isolated_home or activate_test_home (see plan.md)"
     );
-    let path = malvin::malvin_config_path(workspace);
+    let path = malvin::malvin_home_config_path();
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).expect("mkdir ~/.malvinconf");
     }
@@ -60,7 +60,7 @@ where
         std::env::set_var("HOME", &home);
         std::env::set_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, "1");
     }
-    seed_fast_integration_malvin_config(&home);
+    seed_fast_integration_malvin_config();
     f(&work, &home);
     restore_env_var("HOME", old_home);
     restore_env_var(
@@ -75,11 +75,11 @@ pub fn activate_test_home(home: &Path) {
         std::env::set_var("HOME", home);
         std::env::set_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, "1");
     }
-    seed_fast_integration_malvin_config(home);
+    seed_fast_integration_malvin_config();
 }
 
-pub fn seed_fast_integration_malvin_config(home: &Path) {
-    seed_malvin_config(home, "mem_limit_gb = 4\n");
+pub fn seed_fast_integration_malvin_config() {
+    seed_malvin_config("mem_limit_gb = 4\n");
 }
 
 fn restore_env_var(key: &str, value: Option<std::ffi::OsString>) {

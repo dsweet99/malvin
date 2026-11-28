@@ -28,14 +28,13 @@ fn kiss_cov_local_llm() {
     let _ = super::local_llm_ollama::list_ollama_models;
     let _ = super::session_spawn_local::local_cli_args;
     let _ = super::local_context::ensure_capped_local_model_catalog;
-    let _ = super::local_context::context_size_for_workdir;
+    let _ = super::local_context::configured_context_size;
     let _ = super::local_context::max_tokens_for_context;
     let _ = stringify!(LOCAL_LLMS_CONFIG_FILE);
     let _ = stringify!(LocalLlmEntry);
     let _ = stringify!(LocalLlmsConfig);
     let _ = stringify!(configured_allowlist);
     let _ = stringify!(time_since_last_call_seconds);
-    let _ = stringify!(DEFAULT_IDLE_SECS);
     let _ = stringify!(ManagerRequest);
     let _ = stringify!(ManagerResponse);
     let _ = stringify!(ensure_provider_running);

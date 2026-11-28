@@ -71,7 +71,7 @@ fn due_heartbeat_terminal_uses_color_without_wall_clock_prefix() {
 }
 
 fn first_tagged_stdout_line_is_not_preceded_by_immediate_heartbeat() {
-    let (_guard, _stdout_guard) = heartbeat_test_guards();
+    let (_guard, _stdout_guard, _dm_guard) = heartbeat_test_guards();
     reset_stdout_heartbeat_for_test();
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("stdout.log");
@@ -183,10 +183,11 @@ fn celebration_emoji_appears_only_on_a_colored_heartbeat_and_never_in_the_log() 
 
 fn heartbeat_suppressed_for_do_plain_stdout() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
-        crate::output::set_heartbeat_stdout_suppressed(true);
+        let _dm_only = crate::output::enter_stdout_mode(crate::output::StdoutMode::DmOnly {
+            markdown: false,
+        });
         crate::output::stdout_heartbeat::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
         try_emit_heartbeat_if_due(Instant::now(), false);
-        crate::output::set_heartbeat_stdout_suppressed(false);
     });
     assert!(
         terminal.is_empty(),
@@ -237,9 +238,8 @@ fn logs_line_is_followed_by_one_heartbeat() {
 #[test]
 fn emit_stdout_heartbeat_now_writes_nothing_when_suppressed() {
     let text = fresh_heartbeat_log_capture_test(|| {
-        crate::output::set_heartbeat_stdout_suppressed(true);
+        let _silent = crate::output::enter_stdout_mode(crate::output::StdoutMode::Silent);
         crate::output::stdout_heartbeat::emit_stdout_heartbeat_now();
-        crate::output::set_heartbeat_stdout_suppressed(false);
     });
     assert!(text.is_empty(), "{text}");
 }

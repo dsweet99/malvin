@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::agent_process::sandbox_oom::gate_iteration_oom_killed;
 use crate::artifacts::RunArtifacts;
 use crate::config::mem_limit_config::{
@@ -8,7 +6,6 @@ use crate::config::mem_limit_config::{
 
 #[must_use]
 pub fn format_current_state(
-    work_dir: &Path,
     gate_iteration: Option<usize>,
     artifacts: Option<&RunArtifacts>,
 ) -> String {
@@ -16,7 +13,7 @@ pub fn format_current_state(
         format!("User: {}", format_user_identity()),
         format!("Date/time: {}", format_local_datetime()),
         format_elapsed_line(crate::gate_loop_session::router_session_elapsed()),
-        format_sandbox_memory_line(work_dir),
+        format_sandbox_memory_line(),
         format_retry_line(gate_iteration, artifacts),
     ]
     .join("\n")
@@ -116,8 +113,8 @@ pub fn format_elapsed_line(elapsed: Option<std::time::Duration>) -> String {
 }
 
 #[must_use]
-pub fn format_sandbox_memory_line(work_dir: &Path) -> String {
-    let limit = load_mem_limit_bytes(work_dir);
+pub fn format_sandbox_memory_line() -> String {
+    let limit = load_mem_limit_bytes();
     let rss = current_sandbox_rss_bytes().unwrap_or(0);
     let available = limit.saturating_sub(rss);
     let mut parts = vec![

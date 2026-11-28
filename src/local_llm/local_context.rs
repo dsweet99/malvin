@@ -14,8 +14,8 @@ pub(crate) const KEYLESS_LOCAL_API_KEY: &str = "local";
 pub(crate) const LOCAL_LLM_BASE_URL_ENV: &str = "MALVIN_LOCAL_LLM_BASE_URL";
 
 #[must_use]
-pub(crate) fn context_size_for_workdir(work_dir: &Path) -> u32 {
-    load_malvin_config(work_dir).context_size.max(1)
+pub(crate) fn configured_context_size() -> u32 {
+    load_malvin_config().context_size.max(1)
 }
 
 #[must_use]

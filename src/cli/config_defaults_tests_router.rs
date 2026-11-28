@@ -6,7 +6,7 @@ fn apply_workspace_config_defaults_skips_default_route() {
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        let config_path = malvin::malvin_config_path(work);
+        let config_path = malvin::malvin_home_config_path();
         assert!(!config_path.exists());
         let route_matches = Cli::command().get_matches_from(["malvin", "hello"]);
         let mut route_cli = Cli::from_arg_matches(&route_matches).expect("cli");

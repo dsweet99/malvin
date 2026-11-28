@@ -29,7 +29,7 @@ pub struct PruneResult {
 }
 
 fn prune_logs(work_dir: &Path, protect_run: Option<&Path>) -> PruneResult {
-    let config = load_logs_gc_config(work_dir);
+    let config = load_logs_gc_config();
     let home_logs = malvin_home_logs_root();
     if !home_logs.is_dir() {
         return PruneResult {

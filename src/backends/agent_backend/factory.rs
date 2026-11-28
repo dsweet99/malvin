@@ -20,12 +20,12 @@ pub const fn default_workflow_stdout_tee_flags(emit_stdout_markdown: bool) -> Ag
 }
 
 #[must_use]
-pub fn agent_io_options(
+pub const fn agent_io_options(
     log_full_outgoing_prompts: bool,
     tee: AgentStdoutTeeFlags,
 ) -> AgentIoOptions {
     AgentIoOptions {
-        no_tee: crate::output::stdout_suppressed(),
+        no_tee: false,
         raw_output: tee.raw_output,
         show_thoughts_on_stdout: tee.show_thoughts_on_stdout,
         emit_stdout_markdown: tee.emit_stdout_markdown,
@@ -33,7 +33,7 @@ pub fn agent_io_options(
     }
 }
 
-pub fn build_agent_backend(
+pub const fn build_agent_backend(
     model: ParsedModel,
     max_acp_retries: u32,
     emit_stdout_markdown: bool,
@@ -46,7 +46,7 @@ pub fn build_agent_backend(
     )
 }
 
-pub fn build_agent_backend_with_tee(
+pub const fn build_agent_backend_with_tee(
     model: ParsedModel,
     max_acp_retries: u32,
     tee: AgentStdoutTeeFlags,
@@ -86,9 +86,8 @@ mod tests {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .token_cost_rates;
-        let expected =
-            crate::config::malvin_config_file::load_malvin_config(std::path::Path::new("."))
-                .token_cost_rates_for("cursor:auto");
+        let expected = crate::config::malvin_config_file::load_malvin_config()
+            .token_cost_rates_for("cursor:auto");
         assert_eq!(rates, expected);
     }
     #[test]

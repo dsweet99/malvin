@@ -5,8 +5,9 @@ use crate::terminal_palette::TerminalTheme;
 use std::collections::BTreeMap;
 
 use super::{
-    AgentConfig, DEFAULT_CONTEXT_SIZE, MalvinConfig, parse_agent_config, parse_aliases_lenient,
-    parse_context_size, parse_model_token_cost_rates, parse_theme, warn_config_once,
+    AgentConfig, DEFAULT_CONTEXT_SIZE, DEFAULT_TIME_SINCE_LAST_CALL_SECONDS, MalvinConfig,
+    parse_agent_config, parse_aliases_lenient, parse_context_size, parse_model_token_cost_rates,
+    parse_theme, parse_time_since_last_call_seconds, warn_config_once,
 };
 
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
@@ -25,6 +26,11 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         logs,
         agent,
         dm_on_emit: parse_dm_on_emit(text),
+        time_since_last_call_seconds: parse_or_warn(
+            parse_time_since_last_call_seconds(text),
+            "time_since_last_call_seconds",
+            DEFAULT_TIME_SINCE_LAST_CALL_SECONDS,
+        ),
     }
 }
 
@@ -45,6 +51,9 @@ fn parse_token_cost_rates(text: &str) -> BTreeMap<String, super::TokenCostRates>
 fn parse_dm_on_emit(text: &str) -> Option<String> {
     let value = text.parse::<toml::Value>().ok()?;
     let raw = value.get("dm").and_then(|section| section.get("on_emit"))?;
+    if raw.as_array().is_some_and(Vec::is_empty) {
+        return None;
+    }
     match raw.as_str() {
         Some(command) if !command.trim().is_empty() => Some(command.to_string()),
         Some(_) => None,

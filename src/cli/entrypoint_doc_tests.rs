@@ -5,11 +5,8 @@ use crate::cli::SharedOpts;
 use malvin::test_support::test_utils::with_isolated_home;
 fn prepare_cli_output_initializes_output_state_and_entrypoint_from_doc_argv_exits_success() {
     {
-        malvin::output::set_stdout_suppressed(true);
         let shared = SharedOpts::test_defaults();
         prepare_cli_output(&shared);
-        assert!(!malvin::output::stdout_suppressed());
-        malvin::output::set_stdout_suppressed(false);
     }
     {
         with_isolated_home(|_| {
@@ -221,9 +218,7 @@ fn entrypoint_from_admin_rejects_max_acp_retries_flag() {
 
 fn entrypoint_from_doc_does_not_suppress_stdout() {
     with_isolated_home(|_| {
-        malvin::output::set_stdout_suppressed(false);
         assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
-        assert!(!malvin::output::stdout_suppressed());
     });
 }
 
@@ -254,7 +249,7 @@ fn finish_entrypoint_success_and_failure_paths() {
 
 #[test]
 fn run_async_cli_runs_immediate_ok_future() {
-    assert!(run_async_cli(|| async { Ok(()) }).is_ok());
+    assert!(run_async_cli(|| async { Ok::<(), String>(()) }).is_ok());
     malvin::run_timing::emit_process_footnotes_if_armed();
 }
 

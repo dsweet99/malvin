@@ -3,7 +3,7 @@ use super::router_flow::router_flow_acp::{
     RouterAcpIterationInput, RouterAcpIterationOutcome, finalize_router_acp_iteration,
     run_router_acp_open_iteration,
 };
-use crate::cli::format_workspace_gate_failure;
+use crate::cli::CliError;
 use crate::cli::workflow_router_shared::effective_max_loops;
 use crate::cli::{RouterOpts, SharedOpts};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, merge_and_sanitize_for_gate_restore};
@@ -59,7 +59,7 @@ pub(crate) fn restore_router_iteration_dotfiles(
 
 pub(crate) async fn run_router_agent_loops(
     mut input: RouterAgentLoopInput<'_>,
-) -> Result<RouterAgentLoopOutcome, String> {
+) -> Result<RouterAgentLoopOutcome, CliError> {
     let max_loops = effective_max_loops(input.max_loops);
     let mut last_acp = Ok(());
     let mut last_backups = empty_iteration_backups();
@@ -76,7 +76,7 @@ pub(crate) async fn run_router_agent_loops(
             RouterLoopDecision::Continue => {}
             RouterLoopDecision::Exit => break,
             RouterLoopDecision::ExitGatesFailed(detail) => {
-                return Err(format_workspace_gate_failure("malvin", &detail));
+                return Err(CliError::from_router_gates("malvin", &detail));
             }
         }
     }

@@ -200,7 +200,6 @@ fn scope_command(
 #[must_use]
 pub fn malvin_agent_tokio_command(
     program: impl AsRef<OsStr>,
-    work_dir: &Path,
     ticket: &mut SandboxSpawnTicket,
 ) -> tokio::process::Command {
     ticket.set_scope_unit(None);
@@ -208,7 +207,7 @@ pub fn malvin_agent_tokio_command(
     if !agent_cgroups_enabled() {
         return super::malvin_sandbox::malvin_tokio_command(program);
     }
-    let limit = crate::config::mem_limit_config::load_mem_limit_bytes(work_dir);
+    let limit = crate::config::mem_limit_config::load_mem_limit_bytes();
     let cmd = match own_enclosure() {
         Enclosure::MalvinLeaf(parent) => nested_command(program, &parent, limit, ticket)
             .unwrap_or_else(|| super::malvin_sandbox::malvin_std_command(program)),

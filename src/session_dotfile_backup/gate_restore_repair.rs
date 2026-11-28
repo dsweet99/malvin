@@ -41,11 +41,11 @@ fn set_aside_invalid_config(config: &Path) -> Result<(), String> {
     }
 }
 
-fn repair_malvin_home_config_on_disk_impl(work_dir: &Path) -> Result<(), String> {
+fn repair_malvin_home_config_on_disk_impl() -> Result<(), String> {
     if !crate::workspace::workspace_paths::home_malvin_config_delete_allowed() {
         return Ok(());
     }
-    let path = crate::malvin_config_path(work_dir);
+    let path = crate::malvin_home_config_path();
     if !path.is_file() {
         return Ok(());
     }
@@ -59,11 +59,11 @@ fn repair_malvin_home_config_on_disk_impl(work_dir: &Path) -> Result<(), String>
     } else {
         set_aside_invalid_config(&path)?;
     }
-    crate::config::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)
+    crate::config::malvin_config_file::ensure_malvin_config_file_if_missing()
 }
 
-pub fn repair_invalid_malvin_home_config_on_disk(work_dir: &Path) -> Result<(), String> {
-    repair_malvin_home_config_on_disk_impl(work_dir)
+pub fn repair_invalid_malvin_home_config_on_disk() -> Result<(), String> {
+    repair_malvin_home_config_on_disk_impl()
 }
 
 #[cfg(test)]

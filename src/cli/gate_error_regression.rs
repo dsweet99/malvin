@@ -1,11 +1,9 @@
-use crate::cli::repo_checks::{
-    GATE_FAILURE_MARKER, RepoGateCommandFailure, RepoGateFailure, is_gate_failure_error,
-    repo_gate_failure_to_string,
-};
+use crate::cli::CliError;
+use crate::cli::repo_checks::{GateRunError, RepoGateCommandFailure, RepoGateFailure};
 use malvin::output::{ERROR_WHO, format_who_tag_delim};
 use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
-use super::entrypoint::print_command_error;
+use super::entrypoint_support::print_cli_error;
 
 fn sample_command_failure() -> RepoGateCommandFailure {
     RepoGateCommandFailure {
@@ -16,71 +14,61 @@ fn sample_command_failure() -> RepoGateCommandFailure {
     }
 }
 
-#[test]
-fn wrapped_post_run_retry_error_is_classified_as_gate_failure() {
-    let gate_err = repo_gate_failure_to_string(RepoGateFailure::Command(sample_command_failure()));
-    let wrapped = format!("post-run gates still failing after tidy router session: {gate_err}");
-    assert!(
-        is_gate_failure_error(&wrapped),
-        "tidy-retry wrapper must not break gate-failure detection; got: {wrapped:?}"
-    );
+fn router_gate_error() -> CliError {
+    let failure = GateRunError::Gate(RepoGateFailure::Command(sample_command_failure()));
+    CliError::from_router_gates("malvin", &failure)
 }
 
 #[test]
-fn print_command_error_on_wrapped_gate_retry_avoids_error_tag() {
-    let wrapped = format!(
-        "post-run gates still failing after tidy router session: {}",
-        repo_gate_failure_to_string(RepoGateFailure::Command(sample_command_failure()))
-    );
+fn a_failed_gate_command_is_a_gate_failure_and_a_setup_error_is_not() {
+    assert!(matches!(router_gate_error(), CliError::GatesFailed(_)));
+    let setup = GateRunError::Setup("restore .malvin/gates: blocked".to_string());
+    assert!(matches!(
+        CliError::from_router_gates("malvin", &setup),
+        CliError::Other(_)
+    ));
+    assert!(matches!(
+        CliError::from("text that mentions failed (exit 1)"),
+        CliError::Other(_)
+    ));
+}
+
+#[test]
+fn printing_a_gate_failure_avoids_the_error_tag_and_keeps_context() {
+    let error = router_gate_error();
     let error_tag = format_who_tag_delim(ERROR_WHO);
-    let stderr = capture_stderr_output(|| print_command_error(&wrapped));
+    let stderr = capture_stderr_output(|| print_cli_error(&error));
+    assert!(!stderr.contains(&error_tag), "{stderr:?}");
     assert!(
-        !stderr.contains(&error_tag),
-        "wrapped gate failures must not be painted as error who-tag; got: {stderr:?}"
+        stderr.contains("Workspace checks did not pass"),
+        "{stderr:?}"
     );
-    assert!(
-        !stderr.contains(GATE_FAILURE_MARKER),
-        "internal gate marker must not be user-facing; got: {stderr:?}"
-    );
-    assert!(
-        stderr.contains("post-run gates still failing after tidy router session"),
-        "wrapped context should remain visible; got: {stderr:?}"
-    );
-    assert!(
-        stderr.contains("`make lint` failed (exit 1)"),
-        "gate summary should remain visible; got: {stderr:?}"
+    assert_eq!(
+        stderr.matches("`make lint` failed (exit 1)").count(),
+        1,
+        "{stderr:?}"
     );
 }
 
 #[test]
-fn gate_failure_entrypoint_path_prints_summary_once() {
-    let summary = "`make lint` failed (exit 1)";
-    let stderr = capture_stderr_output(|| {
-        let msg = repo_gate_failure_to_string(RepoGateFailure::Command(sample_command_failure()));
-        assert!(is_gate_failure_error(&msg));
-        print_command_error(&msg);
-    });
-    let count = stderr.matches(summary).count();
-    assert_eq!(
-        count, 1,
-        "summary must appear once (emit + entrypoint currently duplicate); stderr={stderr:?}"
-    );
+fn a_gate_failure_is_not_written_to_the_run_error_log() {
+    let _guard = malvin::workspace::run_id::ACTIVE_RUN_DIR_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = tempfile::tempdir().expect("temp");
+    malvin::workspace::run_id::activate_run(dir.path().to_path_buf());
+    let _ = capture_stderr_output(|| print_cli_error(&router_gate_error()));
+    let _ = capture_stderr_output(|| print_cli_error(&CliError::from("plain failure")));
+    super::error_run_log::clear_command_error_run_dir();
+    let log = std::fs::read_to_string(dir.path().join("malvin_error.log")).unwrap_or_default();
+    assert!(log.contains("plain failure"), "{log:?}");
+    assert!(!log.contains("make lint"), "{log:?}");
 }
 
 #[test]
-fn repeated_gate_failure_conversion_emits_body_once() {
-    let failure = sample_command_failure();
-    let stderr = capture_stderr_output(|| {
-        let _ = repo_gate_failure_to_string(RepoGateFailure::Command(failure));
-    });
-    assert_eq!(
-        stderr.matches("stdout:").count(),
-        1,
-        "gate body stdout section must not be duplicated; stderr={stderr:?}"
-    );
-    assert_eq!(
-        stderr.matches("gate-out").count(),
-        1,
-        "gate stdout payload must not be duplicated; stderr={stderr:?}"
-    );
+fn the_gate_report_prints_each_stream_once() {
+    let failure = RepoGateFailure::Command(sample_command_failure());
+    let stderr = capture_stderr_output(|| failure.emit_repo_gate_failure_stderr());
+    assert_eq!(stderr.matches("stdout:").count(), 1, "{stderr:?}");
+    assert_eq!(stderr.matches("gate-out").count(), 1, "{stderr:?}");
 }

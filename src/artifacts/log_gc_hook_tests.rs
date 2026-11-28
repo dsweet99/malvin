@@ -11,7 +11,7 @@ fn seed_home_logs_for_gc_test(work_dir: &std::path::Path) -> std::path::PathBuf 
         std::fs::create_dir_all(logs.join(name)).unwrap();
         std::fs::write(logs.join(name).join("payload"), vec![0u8; 500]).unwrap();
     }
-    let config_path = crate::malvin_config_path(work_dir);
+    let config_path = crate::malvin_home_config_path();
     if let Some(parent) = config_path.parent() {
         std::fs::create_dir_all(parent).unwrap();
     }

@@ -2,29 +2,32 @@ use std::path::{Path, PathBuf};
 
 use super::repo_checks::command_support::{apply_fake_path_if_present, run_command_failure};
 use super::repo_checks::gate_log::{emit_repo_gate_line, try_append_command_output};
-use super::repo_checks::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
+use super::repo_checks::types::{GateRunError, RepoGateFailure, RepoGateOutput};
 
 pub fn run_repo_workspace_gates(
     work_dir: &Path,
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
-) -> Result<(), String> {
+) -> Result<(), GateRunError> {
     use malvin::artifacts::{
         backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
     };
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
-    let gate_result = run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
-        .map_err(repo_gate_failure_to_string);
+    let gate_result =
+        run_repo_workspace_gates_with_details(work_dir, output, run_log_dir).map_err(|failure| {
+            failure.emit_repo_gate_failure_stderr();
+            GateRunError::Gate(failure)
+        });
     let restore_result = restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup);
     prefer_gate_outcome_over_checks_restore(gate_result, restore_result)
 }
 
 fn prefer_gate_outcome_over_checks_restore(
-    gate_result: Result<(), String>,
+    gate_result: Result<(), GateRunError>,
     restore_result: Result<(), String>,
-) -> Result<(), String> {
+) -> Result<(), GateRunError> {
     gate_result?;
-    restore_result
+    Ok(restore_result?)
 }
 
 pub fn run_repo_workspace_gates_with_details(
@@ -32,23 +35,17 @@ pub fn run_repo_workspace_gates_with_details(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
-    prepare_repo_workspace_with_details(work_dir)?;
+    prepare_repo_workspace_with_details()?;
     run_quality_gates_with_details(work_dir, output, run_log_dir)
 }
 
 #[cfg(test)]
-pub fn prepare_repo_workspace(
-    work_dir: &Path,
-    output: RepoGateOutput,
-    run_log_dir: Option<&Path>,
-) -> Result<(), String> {
-    let _ = output;
-    let _ = run_log_dir;
-    prepare_repo_workspace_with_details(work_dir).map_err(repo_gate_failure_to_string)
+pub fn prepare_repo_workspace() -> Result<(), String> {
+    prepare_repo_workspace_with_details().map_err(|failure| failure.to_string())
 }
 
-fn prepare_repo_workspace_with_details(work_dir: &Path) -> Result<(), RepoGateFailure> {
-    malvin::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)
+fn prepare_repo_workspace_with_details() -> Result<(), RepoGateFailure> {
+    malvin::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk()
         .map_err(RepoGateFailure::Message)?;
     Ok(())
 }

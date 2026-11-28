@@ -134,11 +134,6 @@ pub fn snapshot_category_dir(category: &str) -> PathBuf {
 }
 
 #[must_use]
-pub fn malvin_config_path(_work_dir: &Path) -> PathBuf {
-    malvin_home_config_path()
-}
-
-#[must_use]
 pub fn malvin_home_config_path() -> PathBuf {
     malvin_user_home_root().join(MALVIN_HOME_CONFIG_FILE)
 }

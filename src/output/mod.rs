@@ -1,15 +1,18 @@
 pub(crate) mod acp_tee;
 mod acp_tee_markdown;
+mod code_fence;
+pub use code_fence::CodeFence;
 mod code_hl;
 mod code_lex;
 mod code_paint;
 mod dm_attachment;
-mod dm_hook;
-pub use dm_hook::set_dm_emit_enabled;
+mod dm_on_emit_render;
+mod dm_on_emit_run;
+mod dm_relay;
+pub use dm_relay::set_dm_emit_enabled;
 mod dm_stderr;
 mod do_dm_emit;
 mod do_dm_filter;
-mod do_dm_mode;
 mod do_dm_on_emit;
 pub mod heartbeat_hooks;
 mod line_format;
@@ -41,17 +44,25 @@ pub(crate) use stdout_format::{
 };
 
 #[cfg(test)]
-pub(crate) use dm_hook::mark_line;
-pub(crate) use dm_hook::{deliver_finished_dm, parse_dm_emit_mark};
+pub(crate) use dm_relay::mark_line;
+pub(crate) use dm_relay::parse_dm_emit_mark;
 #[cfg(test)]
-pub(crate) use dm_hook::{reset_dm_hook_state, set_test_dm_hook};
+pub(crate) use dm_relay::{clear_test_marks, force_modal_mark, take_test_marks};
 pub(crate) use do_dm_emit::emit_wrapped_do_dm_line;
-pub use do_dm_filter::{feed_do_dm_stdout_text, set_do_dm_stdout_mode, set_do_dm_stdout_opts};
 #[cfg(test)]
-pub(crate) use do_dm_mode::DO_DM_TEST_LOCK;
-pub use do_dm_mode::{DoDmStdoutOpts, do_dm_stdout_mode};
-pub(crate) use do_dm_on_emit::notify_completed_direct_messages;
+pub use do_dm_filter::set_do_dm_stdout_mode;
+pub use do_dm_filter::{enter_dm_only_stdout_mode, feed_do_dm_stdout_text};
+mod stdout_mode;
+#[cfg(test)]
+pub(crate) use stdout_mode::DO_DM_TEST_LOCK;
+pub use stdout_mode::{
+    StdoutMode, StdoutModeGuard, do_dm_stdout_mode, enter_stdout_mode, heartbeat_stdout_suppressed,
+    set_stdout_mode, stdout_display_discarded, stdout_mode,
+};
+pub(crate) use do_dm_on_emit::{deliver_relayed_direct_message, notify_completed_direct_messages};
 pub use do_dm_on_emit::set_dm_on_emit_command;
+#[cfg(test)]
+pub(crate) use do_dm_on_emit::with_dm_on_emit;
 pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use stdout_display::{
     print_stdout_italic_text, print_stdout_line, print_stdout_raw_line,
@@ -60,11 +71,6 @@ pub use stdout_display::{
 pub use stdout_display_md::{
     flush_formatted_markdown_tables, print_stdout_line_with_markdown,
     print_stdout_text_with_markdown,
-};
-pub use stdout_heartbeat::{heartbeat_stdout_suppressed, set_heartbeat_stdout_suppressed};
-pub use stdout_terminal::{
-    set_stdout_display_discarded, set_stdout_suppressed, stdout_display_discarded,
-    stdout_suppressed,
 };
 
 pub use acp_tee::{

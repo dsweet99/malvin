@@ -56,11 +56,14 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
         return Exit::Success;
     };
     match workflow {
-        MalvinWorkflow::Admin { admin, model } => finish_entrypoint(dispatch_command(
-            crate::cli::Commands::Admin(admin),
-            &model.canonical(),
-            &matches,
-        )),
+        MalvinWorkflow::Admin { admin, model } => finish_entrypoint(
+            dispatch_command(
+                crate::cli::Commands::Admin(admin),
+                &model.canonical(),
+                &matches,
+            )
+            .map_err(crate::cli::CliError::from),
+        ),
         MalvinWorkflow::DefaultRoute {
             jobs,
             shared,

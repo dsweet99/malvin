@@ -64,7 +64,7 @@ pub(super) fn configured_codex_command(
     cwd: &std::path::Path,
     ticket: &mut SandboxSpawnTicket,
 ) -> tokio::process::Command {
-    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(bin, cwd, ticket);
+    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(bin, ticket);
     configure_codex_sandbox(&mut cmd, codex_uses_outer_sandbox());
     cmd.arg("app-server")
         .arg("--stdio")

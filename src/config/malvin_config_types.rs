@@ -39,6 +39,7 @@ pub struct MalvinConfig {
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
     pub dm_on_emit: Option<String>,
+    pub time_since_last_call_seconds: u64,
 }
 
 impl MalvinConfig {

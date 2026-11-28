@@ -1,4 +1,3 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -6,16 +5,7 @@ use super::heartbeat_hooks::{heartbeat_payload, notify_working};
 use super::stdout_emit::emit_stdout_rendered_immediate;
 use super::{WHO_H, stdout_heartbeat_display_and_log_line, timestamp_now_string};
 
-static HEARTBEAT_STDOUT_SUPPRESSED: AtomicBool = AtomicBool::new(false);
-
-pub fn set_heartbeat_stdout_suppressed(suppress: bool) {
-    HEARTBEAT_STDOUT_SUPPRESSED.store(suppress, Ordering::Relaxed);
-}
-
-#[must_use]
-pub fn heartbeat_stdout_suppressed() -> bool {
-    HEARTBEAT_STDOUT_SUPPRESSED.load(Ordering::Relaxed)
-}
+use super::stdout_mode::heartbeat_stdout_suppressed;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_mins(1);
 
@@ -121,12 +111,13 @@ pub(crate) fn poll_wall_clock_heartbeat_if_due() {
 }
 
 #[cfg(test)]
-static WALL_CLOCK_POLLER_STOP: AtomicBool = AtomicBool::new(false);
+static WALL_CLOCK_POLLER_STOP: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
 
 pub(crate) fn wall_clock_poller_loop() {
     loop {
         #[cfg(test)]
-        if WALL_CLOCK_POLLER_STOP.load(Ordering::Relaxed) {
+        if WALL_CLOCK_POLLER_STOP.load(std::sync::atomic::Ordering::Relaxed) {
             break;
         }
         std::thread::sleep(HEARTBEAT_POLL_INTERVAL);

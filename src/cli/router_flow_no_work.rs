@@ -1,20 +1,15 @@
 use malvin::output::{MALVIN_DONE, is_sentinel_line};
 
-fn is_fence_line(line: &str) -> bool {
-    let trimmed = line.trim_start();
-    trimmed.starts_with("```") || trimmed.starts_with("~~~")
-}
-
 pub(crate) fn chat_has_malvin_done(chat: &str) -> bool {
     let lines: Vec<&str> = chat.lines().collect();
     let Some(last) = lines.iter().rposition(|line| !line.trim_ascii().is_empty()) else {
         return false;
     };
-    let fences_before = lines[..last]
-        .iter()
-        .filter(|line| is_fence_line(line))
-        .count();
-    fences_before % 2 == 0 && is_sentinel_line(lines[last], MALVIN_DONE)
+    let mut fence = malvin::output::CodeFence::new();
+    for line in &lines[..last] {
+        fence.observe(line);
+    }
+    !fence.is_open() && is_sentinel_line(lines[last], MALVIN_DONE)
 }
 
 #[cfg(test)]

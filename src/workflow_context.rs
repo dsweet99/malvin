@@ -92,14 +92,10 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
     insert_quality_gates_log_paths(context, artifacts, base);
 }
 
-fn insert_current_state(
-    context: &mut HashMap<String, String>,
-    artifacts: &RunArtifacts,
-    base: &Path,
-) {
+fn insert_current_state(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
     context.insert(
         "current_state".to_string(),
-        crate::current_state::format_current_state(base, None, Some(artifacts)),
+        crate::current_state::format_current_state(None, Some(artifacts)),
     );
 }
 
@@ -150,7 +146,7 @@ pub fn format_agents_md_insert(work_dir: &Path) -> String {
 pub fn workflow_context_paths_only(artifacts: &RunArtifacts, model: &str) -> WorkflowRenderContext {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
-    insert_current_state(&mut context, artifacts, &artifacts.work_dir);
+    insert_current_state(&mut context, artifacts);
     context.insert("malvin_command".to_string(), format_malvin_command(model));
     context.insert("pi_extra".to_string(), format_pi_extra(model));
     context.insert(

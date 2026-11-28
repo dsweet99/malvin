@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::Path;
 
 use crate::cli::router_flow::{RouterArgs, run_router};
 use crate::cli::{RouterOpts, SharedOpts};
@@ -28,7 +27,6 @@ fn should_setup_costs(config: &MalvinConfig, model: &ParsedModel, disabled: bool
 
 struct CostSetupEnv<'a> {
     model: &'a ParsedModel,
-    work_dir: &'a Path,
     disabled: bool,
 }
 
@@ -57,9 +55,9 @@ fn render_set_costs_request(model: &ParsedModel) -> Result<String, String> {
 
 fn warn_if_reloaded_rates_unset<L>(env: &CostSetupEnv<'_>, load: &mut L)
 where
-    L: FnMut(&Path) -> MalvinConfig,
+    L: FnMut() -> MalvinConfig,
 {
-    let refreshed = load(env.work_dir);
+    let refreshed = load();
     if rates_are_unset(&refreshed, env.model) {
         crate::output::print_log_warning("token costs remain unset after automatic setup");
     }
@@ -67,7 +65,7 @@ where
 
 fn record_cost_setup_outcome<L>(env: &CostSetupEnv<'_>, outcome: CostSetupOutcome, mut load: L)
 where
-    L: FnMut(&Path) -> MalvinConfig,
+    L: FnMut() -> MalvinConfig,
 {
     if let CostSetupOutcome::Failed(err) = &outcome {
         let line = if err.is_empty() {
@@ -85,9 +83,9 @@ where
 
 fn prepare_cost_setup<L>(env: &CostSetupEnv<'_>, load: &mut L) -> bool
 where
-    L: FnMut(&Path) -> MalvinConfig,
+    L: FnMut() -> MalvinConfig,
 {
-    let config = load(env.work_dir);
+    let config = load();
     should_setup_costs(&config, env.model, env.disabled)
 }
 
@@ -109,18 +107,15 @@ async fn run_set_costs_workflow(shared: &SharedOpts, router: &RouterOpts) -> Res
         },
     )
     .await
+    .map_err(|error| error.to_string())
 }
 
 pub(super) async fn maybe_run_cost_setup(shared: &SharedOpts, router: &RouterOpts) {
     if skip_automatic_cost_setup() {
         return;
     }
-    let Ok(work_dir) = std::env::current_dir() else {
-        return;
-    };
     let env = CostSetupEnv {
         model: shared.model.first(),
-        work_dir: &work_dir,
         disabled: shared.no_auto_costs,
     };
     if !prepare_cost_setup(&env, &mut load_malvin_config) {

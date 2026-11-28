@@ -43,9 +43,8 @@ fn configured_npm_pi_command(
             args.model.canonical()
         ))
     })?;
-    crate::local_llm::prepare_local_llm(args.cwd, provider, model).map_err(AgentError)?;
-    let mut cmd =
-        crate::agent_process::agent_scope::malvin_agent_tokio_command(node, args.cwd, ticket);
+    crate::local_llm::prepare_local_llm(provider, model).map_err(AgentError)?;
+    let mut cmd = crate::agent_process::agent_scope::malvin_agent_tokio_command(node, ticket);
     cmd.arg(&entry);
     if !entry_is_rpc_entry(&entry) {
         cmd.arg("--mode").arg("rpc");
@@ -109,7 +108,7 @@ pub(super) fn build_npm_pi_session(
 
 fn local_output_cap(args: &BridgeSpawnArgs<'_>) -> Option<u64> {
     let (provider, model) = args.model.pi_provider_and_model()?;
-    crate::local_llm::local_output_cap(args.cwd, provider, model)
+    crate::local_llm::local_output_cap(provider, model)
 }
 
 fn take_local_hold(model: &crate::config::model_id::ParsedModel) -> Result<bool, AgentError> {

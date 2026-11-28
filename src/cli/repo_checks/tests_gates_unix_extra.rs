@@ -45,7 +45,7 @@ fn run_repo_workspace_gates_errors_when_malvin_checks_missing() {
         let _guard = set_fake_command_dir(bin_dir.path());
         let err = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None).unwrap_err();
         assert!(
-            err.contains("missing"),
+            err.to_string().contains("missing"),
             "expected missing-checks error, got: {err}"
         );
         assert!(!malvin_checks.exists());
@@ -91,7 +91,7 @@ fn prepare_repo_workspace_skips_quality_commands() {
         write_trace_echo_script(bin_dir.path(), name, &trace, 1);
     }
     let _guard = set_fake_command_dir(bin_dir.path());
-    let result = prepare_repo_workspace(work, RepoGateOutput::Tagged, None);
+    let result = prepare_repo_workspace();
     assert!(result.is_ok());
     assert!(
         !trace.exists(),

@@ -1,5 +1,5 @@
 use super::*;
-use crate::malvin_config_path;
+use crate::malvin_home_config_path;
 #[test]
 fn parse_mem_limit_gb_reads_top_level_key_and_parse_mem_limit_gb_defaults_when_key_missing() {
     {
@@ -17,8 +17,8 @@ fn parse_mem_limit_gb_rejects_zero_and_load_mem_limit_bytes_missing_config_uses_
         assert!(parse_mem_limit_gb("mem_limit_gb = 0\n").is_err());
     }
     {
-        crate::test_support::test_utils::with_isolated_home(|work| {
-            let bytes = load_mem_limit_bytes(work);
+        crate::test_support::test_utils::with_isolated_home(|_| {
+            let bytes = load_mem_limit_bytes();
             assert_eq!(bytes, default_mem_limit_gb().saturating_mul(GIB));
         });
     }
@@ -26,11 +26,11 @@ fn parse_mem_limit_gb_rejects_zero_and_load_mem_limit_bytes_missing_config_uses_
 
 #[test]
 fn load_mem_limit_gb_reads_home_config() {
-    crate::test_support::test_utils::with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    crate::test_support::test_utils::with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "mem_limit_gb = 6\n[logs]\nmax_age_days = 1\n").expect("write");
-        assert_eq!(load_mem_limit_gb(work), 6);
+        assert_eq!(load_mem_limit_gb(), 6);
     });
 }
 

@@ -3,7 +3,7 @@ use super::{AgentConfig, open_malvin_config};
 use crate::config::model_id::UNPREFIXED_MODEL_MESSAGE;
 use crate::test_support::test_utils::with_isolated_home;
 use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
-use crate::workspace::workspace_paths::malvin_config_path;
+use crate::workspace::workspace_paths::malvin_home_config_path;
 use std::collections::BTreeMap;
 
 fn parse_agent(text: &str) -> Result<AgentConfig, String> {
@@ -35,8 +35,8 @@ fn parse_agent_config_ignores_legacy_model_key_and_parse_agent_config_rejects_ba
 
 #[test]
 fn open_malvin_config_leaves_bare_model_on_disk_without_rewrite() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(
             &path,
@@ -49,7 +49,7 @@ max_loops = 5
         )
         .expect("write");
         let before = std::fs::read_to_string(&path).expect("read before");
-        let cfg = open_malvin_config(work).expect("open must not hard-fail on bare model");
+        let cfg = open_malvin_config().expect("open must not hard-fail on bare model");
         let after = std::fs::read_to_string(&path).expect("read after");
         assert_eq!(
             before, after,
@@ -62,10 +62,10 @@ max_loops = 5
 
 #[test]
 fn open_malvin_config_writes_prefixed_model_on_fresh_init() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         assert!(!path.exists());
-        open_malvin_config(work).expect("open");
+        open_malvin_config().expect("open");
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(
             text.contains("model = [\"cursor:auto\"]"),

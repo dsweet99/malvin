@@ -32,9 +32,6 @@ pub fn note_command_error_emitted(message: &str) {
 }
 
 pub fn append_command_error_to_run_log(message: &str) {
-    if crate::cli::repo_checks::is_gate_failure_error(message) {
-        return;
-    }
     let Some(dir) = malvin::workspace::run_id::active_run_dir() else {
         return;
     };

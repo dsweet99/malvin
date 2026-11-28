@@ -8,7 +8,7 @@ pub struct DefaultRouteDispatch<'a> {
     pub router: &'a RouterOpts,
 }
 
-pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), String> {
+pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), crate::cli::CliError> {
     use crate::cli::router_flow::RouterArgs;
     let DefaultRouteDispatch {
         jobs,

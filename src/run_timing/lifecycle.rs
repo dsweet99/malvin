@@ -9,8 +9,7 @@ use super::state::RunTiming;
 fn token_cost_rates_from_home_config(
     model: &str,
 ) -> crate::config::malvin_config_file::TokenCostRates {
-    crate::config::malvin_config_file::load_malvin_config(std::path::Path::new("."))
-        .token_cost_rates_for(model)
+    crate::config::malvin_config_file::load_malvin_config().token_cost_rates_for(model)
 }
 
 #[must_use]

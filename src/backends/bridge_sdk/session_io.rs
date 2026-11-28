@@ -188,7 +188,7 @@ pub(crate) fn start_mem_watch(args: MemWatchArgs<'_>) {
         let handles = crate::agent_process::MemWatchHandles {
             reader_dead: std::sync::Arc::clone(args.reader_dead),
             pgid: Some(pgid),
-            limit_bytes: crate::config::mem_limit_config::load_mem_limit_bytes(args.work_dir),
+            limit_bytes: crate::config::mem_limit_config::load_mem_limit_bytes(),
             spawn_pid_baseline: args.spawn_pid_baseline.clone(),
             run_dir: args.run_dir.map(std::path::Path::to_path_buf),
         };

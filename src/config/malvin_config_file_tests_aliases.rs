@@ -1,6 +1,6 @@
 use super::parse_malvin_config;
 use crate::test_support::test_utils::with_isolated_home;
-use crate::workspace::workspace_paths::malvin_config_path;
+use crate::workspace::workspace_paths::malvin_home_config_path;
 #[test]
 fn parse_model_aliases_from_config_and_removed_rpi_agent_model_falls_back_to_default() {
     {
@@ -55,8 +55,8 @@ localish = "rpi:openai/gpt-4o"
 
 #[test]
 fn parse_model_cli_arg_uses_home_model_aliases() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(
             &path,
@@ -125,8 +125,8 @@ fn one_bad_alias_entry_is_skipped_and_the_rest_are_kept() {
 
 #[test]
 fn load_aliases_read_home_config() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(
             &path,

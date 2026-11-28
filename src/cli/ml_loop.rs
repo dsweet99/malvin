@@ -2,10 +2,10 @@ use std::future::Future;
 
 use super::shared_opts::MetaLoopCount;
 
-pub(crate) async fn run_meta_loop<F, Fut>(count: MetaLoopCount, mut body: F) -> Result<(), String>
+pub(crate) async fn run_meta_loop<F, Fut, E>(count: MetaLoopCount, mut body: F) -> Result<(), E>
 where
     F: FnMut() -> Fut,
-    Fut: Future<Output = Result<(), String>>,
+    Fut: Future<Output = Result<(), E>>,
 {
     let mut done = 0u64;
     loop {
@@ -37,7 +37,7 @@ mod tests {
         let n = Cell::new(0);
         run_meta_loop(MetaLoopCount::Times(1), || {
             n.set(n.get() + 1);
-            async { Ok(()) }
+            async { Ok::<(), String>(()) }
         })
         .await
         .expect("ok");
@@ -49,7 +49,7 @@ mod tests {
         let n = Cell::new(0);
         run_meta_loop(MetaLoopCount::Times(3), || {
             n.set(n.get() + 1);
-            async { Ok(()) }
+            async { Ok::<(), String>(()) }
         })
         .await
         .expect("ok");

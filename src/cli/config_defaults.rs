@@ -18,11 +18,10 @@ fn finalize_shared_model(matches: &ArgMatches, shared: &mut SharedOpts) -> Resul
 }
 
 fn load_agent_config(matches: &ArgMatches) -> Result<AgentConfig, String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     if global_flag_from_command_line(matches, "model") {
-        return Ok(malvin::config::malvin_config_file::load_agent_config_lenient(&cwd));
+        return Ok(malvin::config::malvin_config_file::load_agent_config_lenient());
     }
-    malvin::config::malvin_config_file::load_agent_config_strict(&cwd)
+    malvin::config::malvin_config_file::load_agent_config_strict()
 }
 
 fn apply_shared_and_finalize(

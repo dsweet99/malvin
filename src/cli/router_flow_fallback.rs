@@ -1,6 +1,6 @@
 use super::router_flow_loop::{RouterAgentLoopInput, run_router_agent_loops};
 use crate::artifacts::AgentDirs;
-use crate::cli::SharedOpts;
+use crate::cli::{CliError, SharedOpts};
 use malvin::agent_process::{AccountDenial, account_denial};
 use malvin::backends::agent_backend::{SdkClient, build_agent_backend};
 use malvin::run_timing::RunTiming;
@@ -16,10 +16,10 @@ pub(super) fn new_router_client(shared: &SharedOpts) -> SdkClient {
 
 enum RouterModelError {
     Model(String),
-    Workflow(String),
+    Workflow(CliError),
 }
 
-pub(super) async fn run_router_models(input: RouterAgentLoopInput<'_>) -> Result<(), String> {
+pub(super) async fn run_router_models(input: RouterAgentLoopInput<'_>) -> Result<(), CliError> {
     let mut prior_timing = None;
     let mut models = input.shared.model.iter().peekable();
     while let Some(model) = models.next() {
@@ -40,10 +40,10 @@ pub(super) async fn run_router_models(input: RouterAgentLoopInput<'_>) -> Result
         match result {
             Err(RouterModelError::Model(error)) => {
                 let Some(next) = models.peek() else {
-                    return Err(error);
+                    return Err(error.into());
                 };
                 let Some(denial) = fallback_denial(&error) else {
-                    return Err(error);
+                    return Err(error.into());
                 };
                 malvin::output::print_log_warning(&format!(
                     "{} failed due to {}; switching to {}: {error}",

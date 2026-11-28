@@ -4,7 +4,7 @@ use super::{
 };
 use crate::test_support::test_utils::with_isolated_home;
 use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
-use crate::workspace::workspace_paths::malvin_config_path;
+use crate::workspace::workspace_paths::malvin_home_config_path;
 use std::collections::BTreeMap;
 
 fn parse_agent(text: &str) -> Result<super::AgentConfig, String> {
@@ -31,10 +31,10 @@ fn merge_missing_keys_is_idempotent() {
 }
 
 fn open_malvin_config_creates_file_with_all_sections() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         assert!(!path.exists());
-        let cfg = open_malvin_config(work).expect("open");
+        let cfg = open_malvin_config().expect("open");
         assert!(path.is_file());
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(text.contains("[logs]"));
@@ -54,8 +54,8 @@ fn open_malvin_config_creates_file_with_all_sections() {
 }
 
 fn open_malvin_config_merges_missing_agent_in_memory_only() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(
             &path,
@@ -63,7 +63,7 @@ fn open_malvin_config_merges_missing_agent_in_memory_only() {
         )
         .expect("write");
         let before = std::fs::read_to_string(&path).expect("read before");
-        let cfg = open_malvin_config(work).expect("open");
+        let cfg = open_malvin_config().expect("open");
         let after = std::fs::read_to_string(&path).expect("read after");
         assert_eq!(
             before, after,
@@ -136,12 +136,12 @@ fn parse_context_size_reads_top_level_key() {
 }
 
 fn open_malvin_config_merges_theme_in_memory_only() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "mem_limit_gb = 6\n").expect("write");
         let before = std::fs::read_to_string(&path).expect("read before");
-        let cfg = open_malvin_config(work).expect("open");
+        let cfg = open_malvin_config().expect("open");
         let after = std::fs::read_to_string(&path).expect("read after");
         assert_eq!(before, after);
         assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
@@ -149,11 +149,11 @@ fn open_malvin_config_merges_theme_in_memory_only() {
 }
 
 fn load_malvin_config_reads_light_theme() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "theme = \"light\"\n").expect("write");
-        let cfg = load_malvin_config(work);
+        let cfg = load_malvin_config();
         assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Light);
     });
 }
@@ -172,21 +172,21 @@ max_acp_retries = 2
 }
 
 fn load_malvin_config_uses_defaults_for_invalid_on_disk_toml() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "not valid {{{ toml").expect("write");
-        let cfg = load_malvin_config(work);
+        let cfg = load_malvin_config();
         assert_eq!(cfg.agent.model.first().canonical(), DEFAULT_CLI_MODEL);
     });
 }
 
 fn load_malvin_config_merges_partial_file_in_memory_only() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "mem_limit_gb = 8\n").expect("write");
-        let cfg = load_malvin_config(work);
+        let cfg = load_malvin_config();
         assert_eq!(cfg.mem_limit_gb, 8);
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(!text.contains("[agent]"));
@@ -194,16 +194,16 @@ fn load_malvin_config_merges_partial_file_in_memory_only() {
 }
 
 fn config_io_helpers_read_missing_file_as_empty_table() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         let value = read_on_disk_config_value(&path).expect("read");
         assert!(value.as_table().expect("table").is_empty());
     });
 }
 
 fn config_io_helpers_write_and_read_round_trip() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         ensure_config_parent_dir(&path).expect("mkdir");
         let value: toml::Value = toml::from_str("mem_limit_gb = 3").expect("toml");
         write_config_value(&path, &value).expect("write");

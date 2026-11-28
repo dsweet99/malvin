@@ -1,5 +1,4 @@
 use std::cell::{Cell, RefCell};
-use std::path::Path;
 
 use super::{
     CostSetupEnv, CostSetupOutcome, prepare_cost_setup, record_cost_setup_outcome,
@@ -26,11 +25,7 @@ fn config(auto_setup_costs: bool) -> MalvinConfig {
 }
 
 fn env_for(model: &ParsedModel, disabled: bool) -> CostSetupEnv<'_> {
-    CostSetupEnv {
-        model,
-        work_dir: Path::new("."),
-        disabled,
-    }
+    CostSetupEnv { model, disabled }
 }
 
 struct Seam {
@@ -42,7 +37,7 @@ struct Seam {
 fn apply_cost_setup<S, L>(env: &CostSetupEnv<'_>, run: S, mut load: L)
 where
     S: FnOnce(&ParsedModel) -> CostSetupOutcome,
-    L: FnMut(&Path) -> MalvinConfig,
+    L: FnMut() -> MalvinConfig,
 {
     if !prepare_cost_setup(env, &mut load) {
         return;
@@ -61,7 +56,7 @@ fn drive(env: &CostSetupEnv<'_>, configs: Vec<MalvinConfig>, outcome: CostSetupO
                 ran.set(true);
                 outcome
             },
-            |_| {
+            || {
                 loads.set(loads.get() + 1);
                 pending.borrow_mut().remove(0)
             },

@@ -25,7 +25,7 @@ impl Drop for SummaryTask {
 }
 
 pub fn start(artifacts: &RunArtifacts) -> Option<SummaryTask> {
-    let config = crate::config::malvin_config_file::load_malvin_config(&artifacts.work_dir);
+    let config = crate::config::malvin_config_file::load_malvin_config();
     if config.agent.model_lite.is_none() {
         let request = std::fs::read_to_string(&artifacts.plan_path).ok()?;
         text::local_task(&request)?;

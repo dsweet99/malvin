@@ -37,7 +37,7 @@ fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
         .parent()
         .ok_or("request has no parent directory")?
         .to_path_buf();
-    let config = crate::config::malvin_config_file::load_malvin_config(&work_dir);
+    let config = crate::config::malvin_config_file::load_malvin_config();
     let models = config.agent.model_lite;
     let artifacts = RunArtifacts {
         run_dir,

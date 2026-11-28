@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-pub(crate) const DEFAULT_IDLE_SECS: u64 = 600;
 const IDLE_ENV: &str = "MALVIN_TIME_SINCE_LAST_CALL_SECONDS";
 const SOCK_ENV: &str = "MALVIN_LOCAL_LLM_MANAGER_SOCK";
 const LOCK_ENV: &str = "MALVIN_LOCAL_LLM_MANAGER_LOCK";
@@ -20,15 +19,7 @@ pub(crate) fn idle_secs() -> u64 {
             return n;
         }
     }
-    read_idle_from_home_config().unwrap_or(DEFAULT_IDLE_SECS)
-}
-
-fn read_idle_from_home_config() -> Option<u64> {
-    let path = crate::workspace::workspace_paths::malvin_home_config_path();
-    let text = std::fs::read_to_string(path).ok()?;
-    let value = text.parse::<toml::Value>().ok()?;
-    let n = value.get("time_since_last_call_seconds")?.as_integer()?;
-    u64::try_from(n).ok().filter(|v| *v > 0)
+    crate::config::malvin_config_file::load_malvin_config().time_since_last_call_seconds
 }
 
 pub(crate) fn manager_sock_path() -> PathBuf {
@@ -72,7 +63,10 @@ mod tests {
             assert_eq!(idle_secs(), 12);
         });
         with_env(IDLE_ENV, Some("0"), || {
-            assert_eq!(idle_secs(), DEFAULT_IDLE_SECS);
+            assert_eq!(
+                idle_secs(),
+                crate::config::malvin_config_file::DEFAULT_TIME_SINCE_LAST_CALL_SECONDS
+            );
         });
     }
 

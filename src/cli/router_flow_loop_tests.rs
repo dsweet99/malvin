@@ -243,12 +243,14 @@ fn open_request_restarts_until_the_last_loop_and_skips_gates() {
 fn exit_gates_failed_outranks_finalize_error() {
     use super::RouterLoopDecision;
     use super::router_flow_loop_decide::prefer_exit_gates_over_acp;
-    let gates = RouterLoopDecision::ExitGatesFailed("gate detail".to_string());
+    let gates = RouterLoopDecision::ExitGatesFailed(crate::cli::repo_checks::GateRunError::Setup(
+        "gate detail".to_string(),
+    ));
     let acp_err = Err("finalize failed".to_string());
     let decided = prefer_exit_gates_over_acp(&acp_err, gates);
     assert!(matches!(
         decided,
-        RouterLoopDecision::ExitGatesFailed(detail) if detail == "gate detail"
+        RouterLoopDecision::ExitGatesFailed(detail) if detail.to_string() == "gate detail"
     ));
     let continued = prefer_exit_gates_over_acp(&acp_err, RouterLoopDecision::Continue);
     assert!(matches!(continued, RouterLoopDecision::Exit));

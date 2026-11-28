@@ -11,12 +11,12 @@ use common::with_isolated_home;
 
 #[test]
 fn load_mem_limit_gb_reads_home_config_file() {
-    with_isolated_home(|work, _home| {
-        let path = malvin::malvin_config_path(work);
+    with_isolated_home(|_, _| {
+        let path = malvin::malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "mem_limit_gb = 5\n[logs]\nmax_age_days = 1\n").expect("write");
-        assert_eq!(load_mem_limit_gb(work), 5);
-        assert_eq!(load_mem_limit_bytes(work), 5 * 1024 * 1024 * 1024);
+        assert_eq!(load_mem_limit_gb(), 5);
+        assert_eq!(load_mem_limit_bytes(), 5 * 1024 * 1024 * 1024);
     });
 }
 

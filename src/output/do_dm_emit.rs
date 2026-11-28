@@ -1,8 +1,8 @@
 pub(crate) fn emit_do_dm_body(body: &str) {
-    if body.is_empty() || !super::do_dm_mode::do_dm_stdout_mode() {
+    if body.is_empty() || !super::stdout_mode::do_dm_stdout_mode() {
         return;
     }
-    if super::do_dm_mode::do_dm_stdout_markdown() {
+    if super::stdout_mode::do_dm_stdout_markdown() {
         emit_markdown_body(body);
         return;
     }
@@ -31,7 +31,7 @@ fn emit_markdown_body(body: &str) {
 }
 
 pub(crate) fn emit_wrapped_do_dm_line(line: &str) {
-    if super::do_dm_mode::do_dm_stdout_markdown() {
+    if super::stdout_mode::do_dm_stdout_markdown() {
         emit_markdown_do_dm_line(line);
         return;
     }

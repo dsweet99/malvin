@@ -55,7 +55,7 @@ pub async fn maybe_run_init_bootstrap(
     init: InitWorkflowOpts,
     shared: &SharedOpts,
     router: &RouterOpts,
-) -> Result<(), String> {
+) -> Result<(), crate::cli::CliError> {
     if should_bootstrap_gates(router)? {
         let bootstrap_router = router_for_init_bootstrap(router);
         run_init(init, shared, &bootstrap_router).await?;
@@ -67,7 +67,7 @@ pub async fn run_init(
     init: InitWorkflowOpts,
     shared: &SharedOpts,
     router: &RouterOpts,
-) -> Result<(), String> {
+) -> Result<(), crate::cli::CliError> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let request = render_init_router_request(&cwd)?;
     run_router(

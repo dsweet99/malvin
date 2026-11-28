@@ -70,11 +70,7 @@ macro_rules! gate_iteration_context {
         );
         ctx.insert(
             "current_state".to_string(),
-            malvin::current_state::format_current_state(
-                $artifacts.work_dir.as_path(),
-                Some($iteration),
-                Some($artifacts),
-            ),
+            malvin::current_state::format_current_state(Some($iteration), Some($artifacts)),
         );
         ctx
     }};
@@ -87,7 +83,7 @@ fn prefer_gate_outcome_surfaces_restore_when_gate_passed() {
         Err("malvin_checks restore: boom".into()),
     )
     .unwrap_err();
-    assert!(err.contains("malvin_checks restore"));
+    assert!(err.to_string().contains("malvin_checks restore"));
 }
 
 #[test]

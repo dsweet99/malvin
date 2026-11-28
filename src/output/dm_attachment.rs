@@ -1,3 +1,4 @@
+use super::code_fence::CodeFence;
 use super::sentinel::{DM_END, DM_START, is_sentinel_line};
 
 pub(crate) struct CompletedDirectMessage {
@@ -8,15 +9,11 @@ pub(crate) struct CompletedDirectMessage {
 pub(crate) fn completed_direct_messages(text: &str) -> Vec<CompletedDirectMessage> {
     let mut out = Vec::new();
     let mut inside = false;
-    let mut in_code_fence = false;
+    let mut fence = CodeFence::new();
     let mut body = String::new();
     for raw in text.split_inclusive('\n') {
         let line = raw.trim_end_matches(['\r', '\n']);
-        if !inside && is_code_fence_line(line) {
-            in_code_fence = !in_code_fence;
-            continue;
-        }
-        if in_code_fence {
+        if !inside && (fence.observe(line) || fence.is_open()) {
             continue;
         }
         if take_marker(&mut inside, &mut body, &mut out, line) {
@@ -27,11 +24,6 @@ pub(crate) fn completed_direct_messages(text: &str) -> Vec<CompletedDirectMessag
         }
     }
     out
-}
-
-fn is_code_fence_line(line: &str) -> bool {
-    let trimmed = line.trim_start();
-    trimmed.starts_with("```") || trimmed.starts_with("~~~")
 }
 
 fn take_marker(

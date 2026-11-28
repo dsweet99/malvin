@@ -12,7 +12,7 @@ pub(crate) fn tidy_router_with_gates_forced(router: &RouterOpts) -> RouterOpts {
     forced
 }
 
-pub async fn run_tidy(max_loops: usize, opts: AgentRouteOpts<'_>) -> Result<(), String> {
+pub async fn run_tidy(max_loops: usize, opts: AgentRouteOpts<'_>) -> Result<(), crate::cli::CliError> {
     let router = tidy_router_with_gates_forced(opts.router);
     run_router(
         RouterArgs {

@@ -61,11 +61,11 @@ fn announce_sweep(result: Result<usize, String>) {
     }
 }
 
-fn load_plan(cwd: &std::path::Path, inv: &ModalInvocation) -> Result<session::Plan, String> {
+fn load_plan(inv: &ModalInvocation) -> Result<session::Plan, String> {
     let cfg_root = config::read_config_root(&crate::malvin_home_config_path())?;
     let cfg = config::parse_modal_config(
         &cfg_root,
-        crate::config::mem_limit_config::load_mem_limit_gb(cwd),
+        crate::config::mem_limit_config::load_mem_limit_gb(),
     )?
     .with_options(&inv.options);
     let spec = image::image_spec(&cfg, &inv.model, image::uploadable_binary())?;
@@ -91,7 +91,7 @@ pub fn run_modal(inv: &ModalInvocation) -> Result<i32, String> {
         &std::env::current_dir().map_err(|e| format!("current dir: {e}"))?,
     );
     workspace::check_upload_size(&cwd, workspace::MAX_NON_GIT_UPLOAD_BYTES)?;
-    let plan = load_plan(&cwd, inv)?;
+    let plan = load_plan(inv)?;
     let mut bridge = start_bridge()?;
     announce_sweep(sweep::sweep_stale(&mut bridge, &sweep::host_name()));
     bridge.call("ensure_image", plan.spec.request(false))?;

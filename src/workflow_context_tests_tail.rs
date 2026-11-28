@@ -99,7 +99,7 @@ fn insert_current_state_populates_key() {
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     crate::gate_loop_session::reset_for_independent_run();
     let mut ctx = HashMap::new();
-    insert_current_state(&mut ctx, &artifacts, tmp.path());
+    insert_current_state(&mut ctx, &artifacts);
     let state = ctx.get("current_state").expect("state");
     assert!(state.contains("User:"));
     assert!(state.contains("Date/time:"));

@@ -78,7 +78,7 @@ fn consume_dm_mark(stream: Stream, line: &str) -> bool {
     match crate::output::parse_dm_emit_mark(line) {
         None => false,
         Some(Ok(body)) => {
-            crate::output::deliver_finished_dm(&body);
+            crate::output::deliver_relayed_direct_message(&body);
             true
         }
         Some(Err(())) => {

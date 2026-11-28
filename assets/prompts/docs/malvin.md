@@ -54,7 +54,7 @@ Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` i
 
 ### `--no-emit`
 
-Disable delivery of direct messages (DM fences) through the configured `[dm].on_emit` command in `~/.malvinconf/config.toml` for this invocation. The `on_emit` command ignores a DM fence whose opening marker sits inside a fenced code block, so a quoted example is not delivered. Direct messages still appear in the normal output and logs.
+Disable delivery of direct messages (DM fences) through the configured `[dm].on_emit` command in `~/.malvinconf/config.toml` for this invocation. The `on_emit` command ignores a DM fence whose opening marker sits inside a fenced code block, so a quoted example is not delivered. Each finished direct message is delivered once, with or without `-q`. Under `--remote=modal:sandbox`, the Sandbox forwards each finished direct message to the local malvin, which runs `on_emit` on your machine. Direct messages still appear in the normal output and logs.
 
 ### `--no-auto-costs`
 

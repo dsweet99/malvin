@@ -4,13 +4,14 @@ use crate::cli::router_flow::router_flow_acp::RouterExitSummarize;
 use crate::cli::router_machine::{
     Completion, Effect, Iteration, RouterEvent, RouterState, transition,
 };
+use crate::cli::repo_checks::GateRunError;
 use crate::cli::workflow_router_shared::run_router_workspace_gates;
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 
 pub(crate) enum RouterLoopDecision {
     Continue,
     Exit,
-    ExitGatesFailed(String),
+    ExitGatesFailed(GateRunError),
 }
 
 pub(crate) struct RouterLoopExitInput<'a> {

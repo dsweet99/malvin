@@ -31,12 +31,13 @@ usd_per_megatoken_out = 0
 usd_per_megatoken_cache_read = 0
 usd_per_megatoken_cache_write = 0
 
-# Run a program after each finished direct message. Words split on whitespace.
-# Quote a word to keep spaces. A word that is exactly {body} becomes the DM text.
-# A word that is exactly {attachment} becomes the optional attachment path.
+# Run a shell command (sh -c) after each finished direct message.
+# {body} becomes the DM text and {attachment} the optional attachment path; both are shell-quoted.
 # The attachment comes from a final DM line of the form `__ATTACH__: path/to/file`.
 # The separator after __ATTACH__ may vary. A missing file is logged and left out.
-# With no {body} word, the text is written to the program's standard input.
+# With no {body} placeholder, the text is written to the command's standard input.
+# The body starts with the run's log directory. A DM inside a fenced code block is not sent.
+# The command sees MALVIN_DM_INDEX, MALVIN_WORKSPACE and MALVIN_RUN_DIR and is stopped after 20 s.
 # Omit [dm], leave on_emit empty, or set on_emit = [] to run nothing.
 # [dm]
 # on_emit = "slack send {body}"

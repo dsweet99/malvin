@@ -14,7 +14,7 @@ const AGE_ONLY_TOML: &str = "[logs]\nmax_count = 0\nmax_age_days = 30\nmax_bytes
 
 fn prune_logs_after_run_created_applies_retention_across_hash_buckets() {
     crate::test_support::test_utils::with_isolated_home(|work| {
-        let config_path = crate::malvin_config_path(work);
+        let config_path = crate::malvin_home_config_path();
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent).expect("mkdir config parent");
         }
@@ -173,7 +173,7 @@ fn prune_run_dirs_never_deletes_protected_active_run() {
 
 fn prune_leaves_nonempty_foreign_bucket_with_non_run_content() {
     crate::test_support::test_utils::with_isolated_home(|work| {
-        let config_path = crate::malvin_config_path(work);
+        let config_path = crate::malvin_home_config_path();
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent).expect("mkdir config parent");
         }

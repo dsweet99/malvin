@@ -3,6 +3,8 @@ pub(crate) mod admin_args;
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
 pub(crate) mod args;
+pub(crate) mod cli_error;
+pub(crate) use cli_error::CliError;
 mod atomic_file;
 mod auto_costs;
 pub(crate) mod cli_request;

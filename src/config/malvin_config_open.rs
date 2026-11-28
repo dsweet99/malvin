@@ -4,7 +4,7 @@ use super::{
     AgentConfig, MalvinConfig, ensure_config_parent_dir, merge_missing_keys, parse_agent_config,
     parse_malvin_config, parse_model_aliases, parse_template_value, write_config_value,
 };
-use crate::workspace::workspace_paths::malvin_config_path;
+use crate::workspace::workspace_paths::malvin_home_config_path;
 
 fn parse_agent_config_text(text: &str) -> Result<AgentConfig, String> {
     let model_aliases = parse_model_aliases(text)?;
@@ -23,8 +23,8 @@ pub(super) fn create_malvin_config_from_template(
     ))
 }
 
-pub fn ensure_malvin_config_file_if_missing(work_dir: &Path) -> Result<(), String> {
-    let path = malvin_config_path(work_dir);
+pub fn ensure_malvin_config_file_if_missing() -> Result<(), String> {
+    let path = malvin_home_config_path();
     ensure_config_parent_dir(&path)?;
     if path.is_file() && !file_is_empty(&path)? {
         return Ok(());
@@ -42,8 +42,8 @@ fn file_is_empty(path: &Path) -> Result<bool, String> {
     Ok(meta.len() == 0)
 }
 
-pub fn load_agent_config_strict(work_dir: &Path) -> Result<AgentConfig, String> {
-    let path = malvin_config_path(work_dir);
+pub fn load_agent_config_strict() -> Result<AgentConfig, String> {
+    let path = malvin_home_config_path();
     let Ok(text) = std::fs::read_to_string(&path) else {
         return Ok(AgentConfig::default());
     };
@@ -59,11 +59,11 @@ pub fn load_agent_config_strict(work_dir: &Path) -> Result<AgentConfig, String> 
 }
 
 #[must_use]
-pub fn load_agent_config_lenient(work_dir: &Path) -> AgentConfig {
-    if let Ok(agent) = load_agent_config_strict(work_dir) {
+pub fn load_agent_config_lenient() -> AgentConfig {
+    if let Ok(agent) = load_agent_config_strict() {
         return agent;
     }
-    let path = malvin_config_path(work_dir);
+    let path = malvin_home_config_path();
     let Ok(text) = std::fs::read_to_string(&path) else {
         return AgentConfig::default();
     };

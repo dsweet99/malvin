@@ -26,8 +26,8 @@ pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
 
 pub use gate_command_match::command_matches_malvin_checks_gate;
 
-pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> {
-    crate::config::malvin_config_file::ensure_malvin_config_file(work_dir)
+pub fn ensure_default_malvin_config_file() -> Result<(), String> {
+    crate::config::malvin_config_file::ensure_malvin_config_file()
 }
 
 mod prompt_markdown;

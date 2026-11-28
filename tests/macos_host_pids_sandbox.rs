@@ -17,7 +17,7 @@ async fn macos_agent_launch_uses_isolated_process_group_without_cgroups() {
     use malvin::agent_process::agent_scope::{agent_cgroups_enabled, malvin_agent_tokio_command};
 
     assert!(!agent_cgroups_enabled());
-    let mut cmd = malvin_agent_tokio_command("sh", std::path::Path::new("."));
+    let mut cmd = malvin_agent_tokio_command("sh");
     assert_eq!(cmd.as_std().get_program(), "sh");
     cmd.args(["-c", "ps -o pgid= -p $$"])
         .stdout(std::process::Stdio::piped());

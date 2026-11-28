@@ -1,12 +1,12 @@
 use super::{ensure_config_parent_dir, load_malvin_config, read_on_disk_config_value};
 use crate::test_support::test_utils::with_isolated_home;
 use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
-use crate::workspace::workspace_paths::malvin_config_path;
+use crate::workspace::workspace_paths::malvin_home_config_path;
 
 #[test]
 fn read_on_disk_config_value_rejects_invalid_toml() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         ensure_config_parent_dir(&path).expect("mkdir");
         std::fs::write(&path, "not toml").expect("write");
         assert!(read_on_disk_config_value(&path).is_err());
@@ -35,6 +35,7 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         logs: cfg.logs,
         agent: cfg.agent.clone(),
         dm_on_emit: cfg.dm_on_emit.clone(),
+        time_since_last_call_seconds: cfg.time_since_last_call_seconds,
     };
     assert_eq!(full.agent, cfg.agent);
     assert_eq!(read_string(None), None);
@@ -50,11 +51,11 @@ fn auto_setup_costs_defaults_to_true_and_accepts_false() {
 
 #[test]
 fn load_malvin_config_ignores_legacy_mpc_key() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "mem_limit_gb = 4\nmpc = false\n").expect("write");
-        let cfg = load_malvin_config(work);
+        let cfg = load_malvin_config();
         assert_eq!(cfg.mem_limit_gb, 4);
     });
 }
@@ -161,4 +162,26 @@ fn parse_dm_on_emit_reads_a_command_and_ignores_blank_or_missing() {
     assert_eq!(missing.dm_on_emit, None);
     let wrong = super::parse_malvin_config("[dm]\non_emit = 1\n");
     assert_eq!(wrong.dm_on_emit, None);
+    let empty_list = super::parse_malvin_config("[dm]\non_emit = []\n");
+    assert_eq!(empty_list.dm_on_emit, None);
+}
+
+#[test]
+fn time_since_last_call_seconds_is_parsed_and_invalid_values_fall_back() {
+    use super::{DEFAULT_TIME_SINCE_LAST_CALL_SECONDS, parse_time_since_last_call_seconds};
+    let set = super::parse_malvin_config("time_since_last_call_seconds = 42\n");
+    assert_eq!(set.time_since_last_call_seconds, 42);
+    let missing = super::parse_malvin_config("mem_limit_gb = 4\n");
+    assert_eq!(
+        missing.time_since_last_call_seconds,
+        DEFAULT_TIME_SINCE_LAST_CALL_SECONDS
+    );
+    for bad in ["0", "-5", "\"soon\""] {
+        let text = format!("time_since_last_call_seconds = {bad}\n");
+        assert!(parse_time_since_last_call_seconds(&text).is_err(), "{bad}");
+        assert_eq!(
+            super::parse_malvin_config(&text).time_since_last_call_seconds,
+            DEFAULT_TIME_SINCE_LAST_CALL_SECONDS
+        );
+    }
 }

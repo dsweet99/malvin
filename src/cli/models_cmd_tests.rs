@@ -114,10 +114,10 @@ fn model_list_suffix_places_config_aliases_above_current() {
     use super::models_cmd::print_models_suffix;
     use malvin::output::{enable_stdout_capture, take_captured_stdout};
     use malvin::test_support::test_utils::with_isolated_home;
-    use malvin::workspace::workspace_paths::malvin_config_path;
+    use malvin::workspace::workspace_paths::malvin_home_config_path;
 
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "[agent]\nmodel = \"cursor:auto\"\n").expect("write");
         enable_stdout_capture();
@@ -151,7 +151,7 @@ fn current_model_label_reads_config_or_default() {
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        malvin::config::malvin_config_file::open_malvin_config(work).expect("seed");
+        malvin::config::malvin_config_file::open_malvin_config().expect("seed");
         let label = current_model_label();
         assert!(label.starts_with("cursor:"), "{label}");
         enable_stdout_capture();

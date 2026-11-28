@@ -1,14 +1,13 @@
 use super::{DM_END, DM_START, feed_do_dm_stdout_text, reset_do_dm_filter};
 use crate::output::{
-    DoDmStdoutOpts, do_dm_stdout_mode, enable_stdout_capture, set_do_dm_stdout_mode,
-    set_do_dm_stdout_opts, take_captured_stdout,
+    StdoutMode, do_dm_stdout_mode, enable_stdout_capture, set_do_dm_stdout_mode, set_stdout_mode,
+    take_captured_stdout,
 };
 
 fn with_dm_capture(f: impl FnOnce()) -> String {
     let _dm = crate::output::DO_DM_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    crate::output::reset_dm_hook_state();
     reset_do_dm_filter();
     set_do_dm_stdout_mode(true);
     enable_stdout_capture();
@@ -113,23 +112,19 @@ fn accepts_markers_with_surrounding_whitespace_and_streaming_leading_whitespace_
 #[test]
 #[allow(unsafe_code)]
 fn markdown_dm_renders_termimad_on_stdout() {
-    let _dm = crate::output::DO_DM_TEST_LOCK
+    let _stdout = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let _stdout = crate::output::STDOUT_LOG_TEST_LOCK
+    let _dm = crate::output::DO_DM_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let prev = std::env::var_os("NO_COLOR");
     unsafe {
         std::env::remove_var("NO_COLOR");
     }
-    crate::output::reset_dm_hook_state();
     reset_do_dm_filter();
     crate::output::init_stdout_style_for_test(true);
-    set_do_dm_stdout_opts(DoDmStdoutOpts {
-        enabled: true,
-        emit_markdown: true,
-    });
+    set_stdout_mode(StdoutMode::DmOnly { markdown: true });
     enable_stdout_capture();
     feed_do_dm_stdout_text(&format!(
         "{DM_START}\n# Hello\n\n**bold** item\n\n| A | B |\n| --- | --- |\n| c | d |\n{DM_END}\n"
@@ -171,4 +166,30 @@ fn merged_extracts_body_between_fences_and_ignores_text_outside_fences() {
     rejects_same_line_start_and_end();
     rejects_non_alone_marker_forms();
     rejects_start_and_body_on_one_line();
+}
+
+#[test]
+fn a_dm_quoted_inside_a_code_fence_is_not_shown_and_fences_inside_a_dm_are_kept() {
+    let out = with_dm_capture(|| {
+        feed_do_dm_stdout_text(&format!("~~~\n```\n{DM_START}\nquoted\n{DM_END}\n~~~\n"));
+        feed_do_dm_stdout_text(&format!("{DM_START}\n```\ncode\n```\n{DM_END}\n"));
+        feed_do_dm_stdout_text(&format!("{DM_START}\nafter\n{DM_END}\n"));
+    });
+    assert!(!out.contains("quoted"), "{out:?}");
+    assert!(out.contains("code"), "{out:?}");
+    assert!(out.contains("after"), "{out:?}");
+}
+
+#[test]
+fn leaving_dm_only_briefly_keeps_a_partly_streamed_dm() {
+    let _lock = crate::output::DO_DM_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dm_only = crate::output::enter_dm_only_stdout_mode(false);
+    crate::output::enable_stdout_capture();
+    crate::output::feed_do_dm_stdout_text(&format!("{}\nfirst ", crate::output::DM_START));
+    drop(crate::output::enter_stdout_mode(StdoutMode::Normal));
+    crate::output::feed_do_dm_stdout_text(&format!("half\n{}\n", crate::output::DM_END));
+    let shown = crate::ansi_strip::strip_ansi_escapes(&crate::output::take_captured_stdout());
+    assert!(shown.contains("first half"), "{shown:?}");
 }

@@ -51,8 +51,8 @@ fn is_run_log_dir_name_matches_malvin_run_dirs() {
 }
 
 fn load_logs_gc_config_uses_defaults_when_missing() {
-    crate::test_support::test_utils::with_isolated_home(|work| {
-        let cfg = load_logs_gc_config(work);
+    crate::test_support::test_utils::with_isolated_home(|_| {
+        let cfg = load_logs_gc_config();
         assert_eq!(cfg, LogsGcConfig::default());
     });
 }

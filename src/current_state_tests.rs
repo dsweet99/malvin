@@ -67,7 +67,7 @@ fn current_sandbox_rss_bytes_when_agent_registered() {
         Some(pgid),
         baseline,
     );
-    let line = format_sandbox_memory_line(std::path::Path::new("."));
+    let line = format_sandbox_memory_line();
     assert!(line.contains("in use"));
     crate::agent_process::active_agent_heartbeat::unregister_active_agent_process_group(Some(pgid));
     crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
@@ -96,8 +96,7 @@ fn format_local_datetime_is_non_empty() {
 }
 
 fn format_sandbox_memory_line_includes_limit_and_available() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let line = format_sandbox_memory_line(tmp.path());
+    let line = format_sandbox_memory_line();
     assert!(line.starts_with("Sandbox memory:"));
     assert!(line.contains("limit"));
     assert!(line.contains("available"));
@@ -114,8 +113,7 @@ fn format_retry_line_first_gate_iteration_is_not_retry() {
 }
 
 fn format_current_state_joins_all_sections() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let text = format_current_state(tmp.path(), None, None);
+    let text = format_current_state(None, None);
     assert!(text.contains("User:"));
     assert!(text.contains("Date/time:"));
     assert!(text.contains("Elapsed since router session start:"));

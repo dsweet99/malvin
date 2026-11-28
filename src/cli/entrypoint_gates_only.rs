@@ -10,7 +10,9 @@ pub(crate) struct GatesOnlyDispatch<'a> {
     pub router: &'a RouterOpts,
 }
 
-pub(crate) fn dispatch_gates_only_route(input: GatesOnlyDispatch<'_>) -> Result<(), String> {
+pub(crate) fn dispatch_gates_only_route(
+    input: GatesOnlyDispatch<'_>,
+) -> Result<(), crate::cli::CliError> {
     let GatesOnlyDispatch { shared, router } = input;
     let ml = shared.ml;
     let shared = shared.clone();

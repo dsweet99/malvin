@@ -127,16 +127,18 @@ fn armed_emit_prints_timing_and_cost_outside_dm_mode() {
     let _dm = crate::output::DO_DM_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    use crate::output::{StdoutMode, set_stdout_mode, stdout_mode};
     crate::output::set_stdout_log_path(None);
-    crate::output::set_do_dm_stdout_mode(true);
-    crate::run_timing::set_suppress_stdout_footnotes(false);
+    let dm_markdown = StdoutMode::DmOnly { markdown: true };
+    set_stdout_mode(dm_markdown);
     let text = capture_emit(true);
     let second = capture_emit(false);
-    crate::run_timing::set_suppress_stdout_footnotes(true);
+    assert_eq!(stdout_mode(), dm_markdown, "footnotes must restore the DM mode");
+    set_stdout_mode(StdoutMode::Silent);
     let suppressed = capture_emit(true);
-    crate::run_timing::set_suppress_stdout_footnotes(false);
+    set_stdout_mode(dm_markdown);
     let restored = capture_emit(true);
-    crate::output::set_do_dm_stdout_mode(false);
+    set_stdout_mode(StdoutMode::Normal);
     assert!(text.contains("TIMING:"), "{text}");
     assert!(text.contains("COST:"), "{text}");
     assert!(!second.contains("TIMING:"), "{second}");

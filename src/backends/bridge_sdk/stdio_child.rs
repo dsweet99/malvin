@@ -13,7 +13,6 @@ use super::bridge_sdk::stream_log::StreamLog;
 pub(crate) struct MemWatchArgs<'a> {
     pub process_group_id: Option<u32>,
     pub reader_dead: &'a std::sync::Arc<std::sync::atomic::AtomicBool>,
-    pub work_dir: &'a std::path::Path,
     pub spawn_pid_baseline: &'a std::collections::HashSet<u32>,
     pub run_dir: Option<&'a std::path::Path>,
 }
@@ -70,7 +69,6 @@ impl StdioChild {
         MemWatchArgs {
             process_group_id: self.process_group_id,
             reader_dead: &self.reader_dead,
-            work_dir: &self.work_dir,
             spawn_pid_baseline: &self.spawn_pid_baseline,
             run_dir: self.log.run_dir.as_deref(),
         }

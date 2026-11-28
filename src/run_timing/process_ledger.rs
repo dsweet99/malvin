@@ -30,12 +30,8 @@ pub fn emit_process_footnotes_if_armed() {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .clone();
     let wall = START.get().map_or(0, |start| ms(start.elapsed()));
-    let restore_dm = crate::output::do_dm_stdout_mode();
-    crate::output::set_do_dm_stdout_mode(false);
+    let _normal = crate::output::enter_stdout_mode(crate::output::StdoutMode::Normal);
     super::report::print_timing_and_cost_summary(&footnotes_value(&totals, wall));
-    if restore_dm {
-        crate::output::set_do_dm_stdout_mode(true);
-    }
 }
 
 fn totals_slot() -> &'static Mutex<Ledger> {

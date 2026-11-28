@@ -9,7 +9,7 @@ fn session_log_oom_prose_does_not_trigger_retry_reason() {
         "Our test output exceeded memory limit in the benchmark harness\n",
     )
     .expect("write");
-    let line = format_current_state(tmp.path(), Some(2), Some(&artifacts));
+    let line = format_current_state(Some(2), Some(&artifacts));
     assert!(
         !line.contains("OOM"),
         "agent transcript prose must not infer malvin OOM kills: {line}"

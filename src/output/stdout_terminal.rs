@@ -1,26 +1,6 @@
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicBool, Ordering};
 
-static STDOUT_SUPPRESSED: AtomicBool = AtomicBool::new(false);
-static STDOUT_DISPLAY_DISCARDED: AtomicBool = AtomicBool::new(false);
-
-pub fn set_stdout_suppressed(suppress: bool) {
-    STDOUT_SUPPRESSED.store(suppress, Ordering::Relaxed);
-}
-
-pub fn set_stdout_display_discarded(discard: bool) {
-    STDOUT_DISPLAY_DISCARDED.store(discard, Ordering::Relaxed);
-}
-
-#[must_use]
-pub fn stdout_display_discarded() -> bool {
-    STDOUT_DISPLAY_DISCARDED.load(Ordering::Relaxed)
-}
-
-#[must_use]
-pub fn stdout_suppressed() -> bool {
-    STDOUT_SUPPRESSED.load(Ordering::Relaxed)
-}
+use super::stdout_mode::{StdoutMode, stdout_mode};
 
 thread_local! {
     static CAPTURE_STDOUT: RefCell<bool> = const { RefCell::new(false) };
@@ -40,20 +20,15 @@ pub(crate) fn take_captured_stdout() -> String {
 }
 
 pub(crate) fn print_stdout_display_line(display: &str) {
-    if stdout_suppressed() || stdout_display_discarded() {
-        return;
+    if stdout_mode() == StdoutMode::Normal {
+        emit_stdout_display_line_raw(display);
     }
-    if super::do_dm_mode::do_dm_stdout_mode() {
-        return;
-    }
-    emit_stdout_display_line_raw(display);
 }
 
 pub(crate) fn emit_do_dm_body_line(line: &str) {
-    if stdout_suppressed() || stdout_display_discarded() {
-        return;
+    if stdout_mode() != StdoutMode::Silent {
+        emit_stdout_display_line_raw(line);
     }
-    emit_stdout_display_line_raw(line);
 }
 
 fn emit_stdout_display_line_raw(display: &str) {
@@ -78,10 +53,7 @@ pub(crate) fn write_display_line(out: &mut impl std::io::Write, display: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        enable_stdout_capture, print_stdout_display_line, set_stdout_suppressed,
-        take_captured_stdout,
-    };
+    use super::{enable_stdout_capture, print_stdout_display_line, take_captured_stdout};
 
     #[test]
     fn capture_routes_display_without_real_stdout() {
@@ -91,14 +63,15 @@ mod tests {
     }
 
     #[test]
-    fn background_mode_suppresses_stdout_display() {
-        set_stdout_suppressed(true);
-        assert!(super::stdout_suppressed());
+    fn silent_mode_discards_display_and_dm_lines() {
+        let _dm = crate::output::DO_DM_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _silent = crate::output::enter_stdout_mode(crate::output::StdoutMode::Silent);
         enable_stdout_capture();
         print_stdout_display_line("malvin.| hidden");
+        super::emit_do_dm_body_line("dm hidden");
         assert!(take_captured_stdout().is_empty());
-        set_stdout_suppressed(false);
-        assert!(!super::stdout_suppressed());
     }
 
     struct FailingWriter(std::io::ErrorKind);

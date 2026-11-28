@@ -132,8 +132,8 @@ fn kiss_cov_dotfile_spec_row_same_file_value_witness() {
 }
 
 fn kiss_cov_write_merged_default_malvin_config_helper() {
-    crate::test_support::test_utils::with_isolated_home(|work| {
-        let cfg_path = crate::malvin_config_path(work);
+    crate::test_support::test_utils::with_isolated_home(|_| {
+        let cfg_path = crate::malvin_home_config_path();
         if let Some(parent) = cfg_path.parent() {
             std::fs::create_dir_all(parent).expect("mkdir home config parent");
         }

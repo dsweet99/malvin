@@ -81,5 +81,5 @@ const fn hex_value(byte: u8) -> Option<u8> {
 }
 
 #[cfg(test)]
-#[path = "dm_hook_mark_tests.rs"]
+#[path = "dm_relay_mark_tests.rs"]
 mod tests;

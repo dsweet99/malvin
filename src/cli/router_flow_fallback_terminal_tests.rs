@@ -29,7 +29,10 @@ fn check_terminal_case(models: &str, expected_attempts: &str, expect_success: bo
         assert_eq!(attempts, expected_attempts);
         assert_eq!(result.is_ok(), expect_success, "{result:?}");
         if let Err(error) = &result {
-            assert!(error.contains("Insufficient funds"), "{error}");
+            assert!(
+                error.to_string().contains("Insufficient funds"),
+                "{error}"
+            );
         }
         let timing = std::fs::read_to_string(artifacts.run_dir.join("run_timing.json"));
         assert!(

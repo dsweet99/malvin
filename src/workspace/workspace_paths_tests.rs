@@ -8,7 +8,6 @@ fn path_helpers_and_workspace_marker() {
             crate::user_home_dir().join(".malvin").join("gates")
         );
         assert_eq!(malvin_advice_path(work), work.join(".malvin/advice.md"));
-        assert_eq!(malvin_config_path(work), malvin_home_config_path());
         assert!(!is_malvin_workspace(work));
         std::fs::create_dir_all(work.join(MALVIN_DIR)).unwrap();
         assert!(is_malvin_workspace(work));
@@ -130,10 +129,10 @@ fn remove_legacy_malvin_checks_file_deletes_legacy_not_layout_checks() {
 fn home_malvin_config_write_blocked_without_test_mutation_flag() {
     use crate::config::malvin_config_file::{open_malvin_config, write_config_value};
 
-    crate::test_support::test_utils::with_isolated_home(|work| {
-        let cfg = malvin_config_path(work);
+    crate::test_support::test_utils::with_isolated_home(|_| {
+        let cfg = malvin_home_config_path();
         assert!(!cfg.exists());
-        open_malvin_config(work).expect("ensure default");
+        open_malvin_config().expect("ensure default");
         assert!(cfg.is_file());
         crate::test_support::test_utils::revoke_home_malvin_config_mutation_for_test();
         let value: toml::Value = toml::from_str("mem_limit_gb = 99").expect("toml");

@@ -8,7 +8,7 @@ use crate::test_support::test_utils::with_isolated_home;
 fn workspace_paths(work: &Path) -> (PathBuf, PathBuf, PathBuf) {
     (
         work.join(MALVIN_CHECKS_FILE),
-        crate::malvin_config_path(work),
+        crate::malvin_home_config_path(),
         work.join(".gitignore"),
     )
 }
@@ -19,7 +19,7 @@ fn seed_workspace(work: &Path) {
     let (m, _c, gi) = workspace_paths(work);
     std::fs::write(&m, b"m\n").unwrap();
     std::fs::write(&gi, b"g\n").unwrap();
-    seed_malvin_config(work, "c\n");
+    seed_malvin_config("c\n");
 }
 
 fn assert_workspace_restored(work: &Path) {
@@ -36,7 +36,7 @@ fn session_snapshot_bundle_round_trip() {
         let (m, _cfg, gi) = workspace_paths(work);
         std::fs::write(&m, b"m2\n").unwrap();
         std::fs::write(&gi, b"g2\n").unwrap();
-        seed_malvin_config(work, "c2\n");
+        seed_malvin_config("c2\n");
         bundle.restore(work).unwrap();
         assert_workspace_restored(work);
     });
@@ -49,7 +49,7 @@ fn restore_excluding_malvin_checks_leaves_checks_unchanged() {
         let (m, c, gi) = workspace_paths(work);
         std::fs::write(&m, b"agent-edited\n").unwrap();
         std::fs::write(&gi, b"g-agent\n").unwrap();
-        seed_malvin_config(work, "c-agent\n");
+        seed_malvin_config("c-agent\n");
         bundle.restore_excluding_malvin_checks(work).unwrap();
         assert_eq!(std::fs::read_to_string(&m).unwrap(), "agent-edited\n");
         assert_eq!(std::fs::read_to_string(&gi).unwrap(), "g\n");
@@ -137,7 +137,7 @@ fn gate_restore_restore_excludes_malvin_checks() {
         let (m, c, gi) = workspace_paths(work);
         std::fs::write(&m, b"agent-checks\n").unwrap();
         std::fs::write(&gi, b"g-agent\n").unwrap();
-        seed_malvin_config(work, "c-agent\n");
+        seed_malvin_config("c-agent\n");
         bundle.restore_excluding_malvin_checks(work).unwrap();
         assert_eq!(std::fs::read_to_string(&m).unwrap(), "agent-checks\n");
         assert_eq!(std::fs::read_to_string(&gi).unwrap(), "g\n");
@@ -149,10 +149,10 @@ fn home_config_survives_session_restore() {
     with_isolated_home(|work| {
         seed_workspace(work);
         let bundle = SessionDotfileBackups::snapshot(work).unwrap();
-        seed_malvin_config(work, "user-edited\n");
+        seed_malvin_config("user-edited\n");
         bundle.restore(work).unwrap();
         assert_eq!(
-            std::fs::read_to_string(crate::malvin_config_path(work)).unwrap(),
+            std::fs::read_to_string(crate::malvin_home_config_path()).unwrap(),
             "user-edited\n"
         );
     });

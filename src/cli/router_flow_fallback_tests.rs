@@ -95,6 +95,7 @@ fn run_models_with_gates(
         max_loops: 1,
     }))
     .map(|()| artifacts)
+    .map_err(|error| error.to_string())
 }
 
 #[test]

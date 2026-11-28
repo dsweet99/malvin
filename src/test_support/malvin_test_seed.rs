@@ -12,12 +12,12 @@ pub fn seed_malvin_checks(work: &Path, content: &str) {
 }
 
 #[cfg(test)]
-pub fn seed_malvin_config(work: &Path, content: &str) {
+pub fn seed_malvin_config(content: &str) {
     assert!(
         crate::workspace::workspace_paths::home_malvin_config_disk_io_allowed(),
         "seed_malvin_config requires with_isolated_home or activate_test_home (see plan.md)"
     );
-    let path = crate::malvin_config_path(work);
+    let path = crate::malvin_home_config_path();
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).expect("mkdir ~/.malvinconf");
     }

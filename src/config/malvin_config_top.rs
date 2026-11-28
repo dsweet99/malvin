@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use crate::terminal_palette::TerminalTheme;
 
 pub const DEFAULT_CONTEXT_SIZE: u32 = 8192;
+pub const DEFAULT_TIME_SINCE_LAST_CALL_SECONDS: u64 = 600;
 
 pub const TOKENS_PER_MEGATOKEN: f64 = 1_000_000.0;
 const LEGACY_RATE_PREFIX: &str = "usd_per_microtoken";
@@ -63,6 +64,17 @@ pub(crate) fn parse_theme(text: &str) -> Result<TerminalTheme, String> {
         other => Err(format!(
             "unsupported theme {other:?}; use \"dark\" or \"light\""
         )),
+    }
+}
+
+pub(crate) fn parse_time_since_last_call_seconds(text: &str) -> Result<u64, String> {
+    let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
+    let Some(raw) = value.get("time_since_last_call_seconds") else {
+        return Ok(DEFAULT_TIME_SINCE_LAST_CALL_SECONDS);
+    };
+    match super::read_u64(Some(raw)) {
+        Some(n) if n > 0 => Ok(n),
+        _ => Err("time_since_last_call_seconds must be a positive integer".to_string()),
     }
 }
 

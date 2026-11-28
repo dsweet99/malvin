@@ -75,8 +75,8 @@ pub use workspace::workspace_paths::{
     MALVIN_LOGS_REL, MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, MALVIN_USER_HOME_DIR,
     WORK_DIR_MANIFEST, canonical_work_dir_for_logs, find_malvin_logs_root, git_worktree_toplevel,
     is_malvin_workspace, legacy_malvin_checks_path, malvin_acp_spawn_chamber_dir,
-    malvin_advice_path, malvin_checks_path, malvin_config_path, malvin_data_root,
-    malvin_home_config_path, malvin_home_logs_root, malvin_logs_root, malvin_user_home_root,
+    malvin_advice_path, malvin_checks_path, malvin_data_root, malvin_home_config_path,
+    malvin_home_logs_root, malvin_logs_root, malvin_user_home_root,
     migrate_legacy_malvin_user_home, read_work_dir_manifest, remove_legacy_malvin_checks_file,
     resolve_malvin_checks_path, workspace_logs_hash, write_work_dir_manifest,
 };

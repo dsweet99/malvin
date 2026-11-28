@@ -16,7 +16,7 @@ fn agent_scope_args_env_switch_and_unit_matching() {
     crate::env_flag_tests::flags_are_on_only_for_non_empty_values_other_than_zero();
     assert!(!agent_cgroups_enabled());
     let mut ticket = SandboxSpawnTicket::for_test();
-    let cmd = malvin_agent_tokio_command("node", Path::new("."), &mut ticket);
+    let cmd = malvin_agent_tokio_command("node", &mut ticket);
     assert_eq!(cmd.as_std().get_program(), "node");
     assert!(next_scope_unit().starts_with("malvin-agent-"));
     let _ = probe_systemd_scope;

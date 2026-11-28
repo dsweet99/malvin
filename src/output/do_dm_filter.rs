@@ -1,30 +1,37 @@
-use super::do_dm_mode::{DoDmStdoutOpts, store_do_dm_stdout_opts};
 use std::sync::Mutex;
 
+use super::stdout_mode::{StdoutMode, StdoutModeGuard, enter_stdout_mode};
+#[cfg(test)]
+use super::stdout_mode::set_stdout_mode;
+
+use super::code_fence::CodeFence;
 use super::sentinel::{DM_END, DM_START, is_sentinel_line, may_become_sentinel_line};
 
 #[derive(Default)]
 struct DmFilter {
     inside: bool,
+    fence: CodeFence,
     buf: String,
-    captured: String,
 }
 
 static FILTER: Mutex<DmFilter> = Mutex::new(DmFilter {
     inside: false,
+    fence: CodeFence::new(),
     buf: String::new(),
-    captured: String::new(),
 });
 
-pub fn set_do_dm_stdout_opts(opts: DoDmStdoutOpts) {
-    store_do_dm_stdout_opts(opts);
+pub fn enter_dm_only_stdout_mode(markdown: bool) -> StdoutModeGuard {
     reset_do_dm_filter();
+    enter_stdout_mode(StdoutMode::DmOnly { markdown })
 }
 
+#[cfg(test)]
 pub fn set_do_dm_stdout_mode(enabled: bool) {
-    set_do_dm_stdout_opts(DoDmStdoutOpts {
-        enabled,
-        emit_markdown: false,
+    reset_do_dm_filter();
+    set_stdout_mode(if enabled {
+        StdoutMode::DmOnly { markdown: false }
+    } else {
+        StdoutMode::Normal
     });
 }
 
@@ -82,13 +89,11 @@ fn take_outside_progress(filter: &mut DmFilter) -> bool {
     };
     let line = &filter.buf[..nl];
     let rest = filter.buf[nl + 1..].to_string();
-    if is_sentinel_line(line, DM_START) {
-        filter.buf = rest;
-        filter.inside = true;
-        filter.captured.clear();
-        return true;
-    }
+    let opens_dm = !filter.fence.observe(line)
+        && !filter.fence.is_open()
+        && is_sentinel_line(line, DM_START);
     filter.buf = rest;
+    filter.inside = opens_dm;
     true
 }
 
@@ -98,7 +103,7 @@ fn take_inside_progress(filter: &mut DmFilter) -> bool {
         let nl = line_start + rel;
         let line = &filter.buf[line_start..nl];
         if is_sentinel_line(line, DM_END) {
-            finish_captured_dm(filter, line_start);
+            emit_final_dm_chunk(filter, line_start);
             filter.buf = filter.buf[nl + 1..].to_string();
             filter.inside = false;
             return true;
@@ -121,22 +126,15 @@ fn emit_safe_inside_prefix(filter: &mut DmFilter) {
     };
     let body = filter.buf[..=last_nl].to_string();
     filter.buf = filter.buf[last_nl + 1..].to_string();
-    filter.captured.push_str(&body);
     super::do_dm_emit::emit_do_dm_body(&body);
 }
 
-fn finish_captured_dm(filter: &mut DmFilter, line_start: usize) {
-    filter.captured.push_str(&filter.buf[..line_start]);
-    let mut body = std::mem::take(&mut filter.captured);
+fn emit_final_dm_chunk(filter: &DmFilter, line_start: usize) {
     let mut shown = filter.buf[..line_start].to_string();
-    if body.ends_with('\n') {
-        body.pop();
-    }
     if shown.ends_with('\n') {
         shown.pop();
     }
     super::do_dm_emit::emit_do_dm_body(&shown);
-    super::dm_hook::deliver_finished_dm(&body);
 }
 
 #[cfg(test)]

@@ -12,41 +12,33 @@ pub enum RepoGateFailure {
     Message(String),
 }
 
-pub const GATE_FAILURE_MARKER: &str = "__MALVIN_GATE_FAILURE__:";
+impl std::fmt::Display for RepoGateCommandFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.exit_code {
+            Some(code) => write!(f, "`{}` failed (exit {code})", self.command),
+            None => write!(f, "`{}` failed (exit signal)", self.command),
+        }
+    }
+}
+
+impl std::fmt::Display for RepoGateFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Message(message) => f.write_str(message),
+            Self::Command(failure) => failure.fmt(f),
+        }
+    }
+}
 
 impl RepoGateFailure {
     pub(crate) fn emit_repo_gate_failure_stderr(&self) {
         use malvin::output::{MALVIN_WHO, print_stderr_line};
-        match self {
-            Self::Message(message) => print_stderr_line(MALVIN_WHO, message),
-            Self::Command(failure) => {
-                let exit = failure
-                    .exit_code
-                    .map_or_else(|| "signal".to_string(), |code| code.to_string());
-                print_stderr_line(
-                    MALVIN_WHO,
-                    &format!("`{}` failed (exit {exit})", failure.command),
-                );
-                print_stderr_line(MALVIN_WHO, "stdout:");
-                emit_repo_gate_multiline_stderr(MALVIN_WHO, &failure.stdout);
-                print_stderr_line(MALVIN_WHO, "stderr:");
-                emit_repo_gate_multiline_stderr(MALVIN_WHO, &failure.stderr);
-            }
-        }
-    }
-
-    pub(crate) fn into_error(self) -> String {
-        match self {
-            Self::Message(message) => format!("{GATE_FAILURE_MARKER}{message}"),
-            Self::Command(failure) => {
-                let exit = failure
-                    .exit_code
-                    .map_or_else(|| "signal".to_string(), |code| code.to_string());
-                format!(
-                    "{GATE_FAILURE_MARKER}`{}` failed (exit {exit})",
-                    failure.command
-                )
-            }
+        print_stderr_line(MALVIN_WHO, &self.to_string());
+        if let Self::Command(failure) = self {
+            print_stderr_line(MALVIN_WHO, "stdout:");
+            emit_repo_gate_multiline_stderr(MALVIN_WHO, &failure.stdout);
+            print_stderr_line(MALVIN_WHO, "stderr:");
+            emit_repo_gate_multiline_stderr(MALVIN_WHO, &failure.stderr);
         }
     }
 }
@@ -62,19 +54,32 @@ fn emit_repo_gate_multiline_stderr(who: &str, text: &str) {
     }
 }
 
-#[must_use]
-pub fn is_gate_failure_error(message: &str) -> bool {
-    message.contains(GATE_FAILURE_MARKER)
+#[derive(Debug)]
+pub enum GateRunError {
+    Gate(RepoGateFailure),
+    Setup(String),
 }
 
-#[must_use]
-pub fn is_pure_gate_failure_summary(message: &str) -> bool {
-    message.starts_with(GATE_FAILURE_MARKER)
+impl GateRunError {
+    #[must_use]
+    pub const fn is_command_failure(&self) -> bool {
+        matches!(self, Self::Gate(RepoGateFailure::Command(_)))
+    }
 }
 
-pub(crate) fn repo_gate_failure_to_string(failure: RepoGateFailure) -> String {
-    failure.emit_repo_gate_failure_stderr();
-    failure.into_error()
+impl std::fmt::Display for GateRunError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Gate(failure) => failure.fmt(f),
+            Self::Setup(message) => f.write_str(message),
+        }
+    }
+}
+
+impl From<String> for GateRunError {
+    fn from(message: String) -> Self {
+        Self::Setup(message)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -84,43 +89,6 @@ pub enum RepoGateOutput {
     Stderr,
 }
 
-#[test]
-fn repo_gate_failure_into_error_formats_command_exit() {
-    let failure = RepoGateCommandFailure {
-        command: "make lint".to_string(),
-        exit_code: Some(1),
-        stdout: "out".to_string(),
-        stderr: "err".to_string(),
-    };
-    let msg = RepoGateFailure::Command(failure).into_error();
-    assert!(msg.starts_with(GATE_FAILURE_MARKER));
-    assert!(msg.contains("make lint"));
-    assert!(msg.contains("exit 1"));
-    assert!(!msg.contains("stdout:"));
-    let _: RepoGateOutput = RepoGateOutput::Tagged;
-}
-
 #[cfg(test)]
-mod kiss_cov_auto {
-    use super::*;
-    #[test]
-    fn kiss_cov_emit_repo_gate_multiline_stderr_and_kiss_cov_is_pure_gate_failure_summary() {
-        {
-            let _ = emit_repo_gate_multiline_stderr;
-        }
-        {
-            let _ = is_pure_gate_failure_summary;
-        }
-    }
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs {
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = emit_repo_gate_multiline_stderr;
-        let _ = is_pure_gate_failure_summary;
-    }
-}
+#[path = "types_tests.rs"]
+mod tests;

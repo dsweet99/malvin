@@ -13,10 +13,6 @@ pub(crate) use super::repo_checks_tests_gates_helpers as tests_gates_helpers;
 pub use command_support::{FakeCommandDirGuard, set_fake_command_dir, test_fake_command_path};
 
 pub use gate_run::run_repo_workspace_gates;
-#[cfg(test)]
-pub(crate) use types::repo_gate_failure_to_string;
-pub use types::{
-    GATE_FAILURE_MARKER, RepoGateOutput, is_gate_failure_error, is_pure_gate_failure_summary,
-};
+pub use types::{GateRunError, RepoGateOutput};
 #[cfg(test)]
 pub use types::{RepoGateCommandFailure, RepoGateFailure};

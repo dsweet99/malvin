@@ -225,8 +225,11 @@ fn heartbeat_waits_until_a_wrapped_paragraph_ends() {
     let _guard = HEARTBEAT_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dm = crate::output::DO_DM_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     reset_stdout_heartbeat_for_test();
-    crate::output::set_heartbeat_stdout_suppressed(false);
+    crate::output::set_stdout_mode(crate::output::StdoutMode::Normal);
     let hb_prefix = crate::output::format_who_tag_prefix(crate::output::WHO_H);
     let buf = build(sample_io(), Duration::from_secs(30));
     enable_stdout_capture();

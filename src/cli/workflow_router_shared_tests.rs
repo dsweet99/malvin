@@ -100,10 +100,13 @@ fn run_router_workspace_gates_refreshes_quality_gates_log() {
         std::fs::write(artifacts.quality_gates_log_path(), "stale output").expect("write");
         let err = run_router_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
         assert!(
-            crate::cli::repo_checks::is_gate_failure_error(&err),
+            err.is_command_failure(),
             "gate failure must survive post-gate restore: {err}"
         );
-        assert!(err.contains("false"), "expected false gate failure: {err}");
+        assert!(
+            err.to_string().contains("false"),
+            "expected false gate failure: {err}"
+        );
         let log = std::fs::read_to_string(artifacts.quality_gates_log_path()).expect("read");
         assert!(
             log.contains("Running `false`"),
@@ -171,7 +174,7 @@ fn run_router_workspace_gates_fails_when_checks_missing() {
         let err =
             run_router_workspace_gates(&artifacts, &backups, true).expect_err("missing checks");
         assert!(
-            err.contains(".malvin/gates is missing"),
+            err.to_string().contains(".malvin/gates is missing"),
             "missing gates must fail clearly: {err}"
         );
     });
@@ -207,15 +210,17 @@ fn restore_failure_prevents_gate_run() {
         let (artifacts, backups) = gitignore_restore_failure_fixture(tmp.path());
         let err =
             run_router_workspace_gates(&artifacts, &backups, true).expect_err("restore fails");
-        assert!(err.contains("gitignore restore"));
+        assert!(err.to_string().contains("gitignore restore"));
     });
 }
 fn prefer_gate_outcome_keeps_gate_error_when_restore_also_fails() {
-    let gate = Err("__MALVIN_GATE_FAILURE__:`false` failed (exit 1)".into());
+    let gate = Err(crate::cli::repo_checks::GateRunError::Gate(
+        crate::cli::repo_checks::RepoGateFailure::Message("`false` failed (exit 1)".into()),
+    ));
     let restore = Err("gitignore restore: Is a directory".into());
     let err = prefer_gate_outcome_over_post_gate_cleanup(gate, restore).unwrap_err();
-    assert!(err.contains("false"));
-    assert!(!err.contains("gitignore restore"));
+    assert!(err.to_string().contains("false"));
+    assert!(!err.to_string().contains("gitignore restore"));
 }
 #[path = "workflow_router_shared_tests_tail.rs"]
 mod workflow_router_shared_tests_tail;

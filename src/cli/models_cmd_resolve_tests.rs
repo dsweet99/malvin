@@ -1,7 +1,7 @@
 use super::{resolved_model_json, write_resolved_model};
 use malvin::config::model_id::parse_model_id;
 use malvin::test_support::test_utils::with_isolated_home;
-use malvin::workspace::workspace_paths::malvin_config_path;
+use malvin::workspace::workspace_paths::malvin_home_config_path;
 
 fn json_for(raw: &str) -> serde_json::Value {
     let model = parse_model_id(raw).expect("valid model id");
@@ -47,8 +47,8 @@ fn resolved_json_reports_backend_provider_and_locality() {
 
 #[test]
 fn write_resolved_model_expands_model_aliases_and_rejects_bad_ids() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
+    with_isolated_home(|_| {
+        let path = malvin_home_config_path();
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(
             &path,

@@ -5,7 +5,7 @@ use crate::cli::format_workspace_gate_failure;
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use malvin::nested_budget_scopes::BudgetScopeLayer;
 
-use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
+use crate::cli::repo_checks::{GateRunError, RepoGateOutput, run_repo_workspace_gates};
 
 #[must_use]
 pub(crate) fn effective_max_loops(max_loops: usize) -> usize {
@@ -46,23 +46,21 @@ pub(crate) fn run_router_workspace_gates(
     artifacts: &RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
     restore_malvin_checks: bool,
-) -> Result<(), String> {
+) -> Result<(), GateRunError> {
     let work_dir = artifacts.work_dir.as_path();
     restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks)?;
-    malvin::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)?;
+    malvin::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk()?;
     clear_quality_gates_log_for_next_agent(artifacts)?;
     let gate_result = run_repo_workspace_gates(
         work_dir,
         RepoGateOutput::Tagged,
         Some(artifacts.run_dir.as_path()),
     );
-    malvin::gate_loop_session::set_quality_gates_just_ran(match &gate_result {
-        Ok(()) => true,
-        Err(detail) => {
-            crate::cli::repo_checks::is_gate_failure_error(detail)
-                && detail.contains("failed (exit")
-        }
-    });
+    malvin::gate_loop_session::set_quality_gates_just_ran(
+        gate_result
+            .as_ref()
+            .map_or_else(GateRunError::is_command_failure, |()| true),
+    );
     let restore_result = restore_session_dotfiles_for_gates(
         work_dir,
         session_dotfile_backups,
@@ -72,11 +70,11 @@ pub(crate) fn run_router_workspace_gates(
 }
 
 pub(crate) fn prefer_gate_outcome_over_post_gate_cleanup(
-    gate_result: Result<(), String>,
+    gate_result: Result<(), GateRunError>,
     restore_result: Result<(), String>,
-) -> Result<(), String> {
+) -> Result<(), GateRunError> {
     gate_result?;
-    restore_result
+    Ok(restore_result?)
 }
 
 #[cfg(test)]

@@ -159,8 +159,8 @@ impl RouterOpts {
     }
 
     #[must_use]
-    pub(crate) fn tee_startup_stdout(&self) -> bool {
-        !self.dm_stdout_only() && !self.prints_nothing() && !malvin::output::stdout_suppressed()
+    pub(crate) const fn tee_startup_stdout(&self) -> bool {
+        !self.dm_stdout_only() && !self.prints_nothing()
     }
 }
 

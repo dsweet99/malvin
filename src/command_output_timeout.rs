@@ -96,7 +96,7 @@ pub(crate) fn join_pipe_reader(
         .map_err(|e| format!("{label}: failed reading {stream}: {e}"))
 }
 
-fn wait_child_with_timeout(
+pub(crate) fn wait_child_with_timeout(
     child: &mut Child,
     timeout: Duration,
     label: &str,

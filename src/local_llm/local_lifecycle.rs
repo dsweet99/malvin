@@ -1,28 +1,26 @@
-use std::path::Path;
-
 pub(crate) fn ensure_local_llm(provider: &str, model: &str) -> Result<(), String> {
     super::local_llm_client::ensure_via_manager(provider, model)
 }
 
-fn local_context_size(cwd: &Path, provider: &str, model: &str) -> u32 {
+fn local_context_size(provider: &str, model: &str) -> u32 {
     super::local_llms_config::context_size_override(provider, model)
-        .unwrap_or_else(|| super::local_context::context_size_for_workdir(cwd))
+        .unwrap_or_else(super::local_context::configured_context_size)
 }
 
 #[must_use]
-pub(crate) fn local_output_cap(cwd: &Path, provider: &str, model: &str) -> Option<u64> {
+pub(crate) fn local_output_cap(provider: &str, model: &str) -> Option<u64> {
     super::provider_metadata::provider_is_keyless_local(provider).then(|| {
         u64::from(super::local_context::max_tokens_for_context(
-            local_context_size(cwd, provider, model),
+            local_context_size(provider, model),
         ))
     })
 }
 
-pub(crate) fn prepare_local_llm(cwd: &Path, provider: &str, model: &str) -> Result<(), String> {
+pub(crate) fn prepare_local_llm(provider: &str, model: &str) -> Result<(), String> {
     if !super::provider_metadata::provider_is_keyless_local(provider) {
         return Ok(());
     }
-    let context_size = local_context_size(cwd, provider, model);
+    let context_size = local_context_size(provider, model);
     super::local_context::ensure_capped_local_model_catalog(provider, model, context_size)?;
     ensure_local_llm(provider, model)
 }
@@ -60,8 +58,8 @@ mod tests {
             assert!(!model_needs_local_llm(&cursor));
         }
         {
-            crate::test_support::test_utils::with_isolated_home(|home| {
-                prepare_local_llm(home, "openai", "gpt-4o").expect("noop");
+            crate::test_support::test_utils::with_isolated_home(|_| {
+                prepare_local_llm("openai", "gpt-4o").expect("noop");
                 assert!(!super::super::provider_metadata::pi_models_json_path().exists());
             });
         }
@@ -69,9 +67,9 @@ mod tests {
     #[test]
     fn local_output_cap_only_applies_to_keyless_local_providers_and_local_alias_needs_local_llm() {
         {
-            crate::test_support::test_utils::with_isolated_home(|home| {
-                assert!(local_output_cap(home, "openai", "gpt-4o").is_none());
-                let cap = local_output_cap(home, "ollama", "tiny").expect("local cap");
+            crate::test_support::test_utils::with_isolated_home(|_| {
+                assert!(local_output_cap("openai", "gpt-4o").is_none());
+                let cap = local_output_cap("ollama", "tiny").expect("local cap");
                 assert!(cap > 0);
             });
         }
