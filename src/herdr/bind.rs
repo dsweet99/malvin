@@ -63,7 +63,7 @@ fn explain_missing_agent(env: &HerdrEnv, run_dir: Option<&Path>) {
     if let Some(owner) = conflicting_session(&result["pane"]) {
         EXPLAINED.store(true, std::sync::atomic::Ordering::Relaxed);
         let detail = format!(
-            "Herdr pane {pane} still holds a saved {owner} session from an earlier run, so Herdr leaves malvin out of its agents list for this pane. Malvin cannot clear that session itself. To free the pane, start `{owner}` in it from the shell and quit it, then run malvin there again; or run malvin in another tab."
+            "Herdr pane {pane} still holds a saved {owner} session from an earlier run, so Herdr leaves malvin out of its agents list for this pane. Malvin cannot clear that session itself. Herdr drops it only when it sees `{owner}` exit back to the pane's top-level shell. A `pixi shell` or other nested shell hides that exit. To free the pane, leave any nested shell (type `exit` until the pixi prompt is gone), start `{owner}` and quit it, then run malvin there again; or run malvin in another tab."
         );
         log_herdr_failure(run_dir, "registration", &detail);
         crate::output::print_log_warning(&detail);
@@ -131,7 +131,8 @@ mod tests {
         let log = std::fs::read_to_string(dir.path().join("herdr.log")).unwrap();
         assert!(log.contains("herdr rename failed: agent_not_found"));
         assert!(log.contains("herdr registration failed: Herdr pane p1 still holds a saved codex"));
-        assert!(log.contains("start `codex` in it from the shell and quit it"));
+        assert!(log.contains("exit back to the pane's top-level shell"));
+        assert!(log.contains("leave any nested shell"));
         emit_bind_reports(&env, Some("20261121_143419_sgj5tg58"), Some(dir.path()));
         let log = std::fs::read_to_string(dir.path().join("herdr.log")).unwrap();
         assert_eq!(log.matches("herdr registration failed").count(), 1);
