@@ -92,6 +92,7 @@ pub mod slow_task_watch;
 pub mod task_summary;
 pub(crate) mod time_format;
 mod tracing_init;
+pub mod worker_dispatch;
 pub use agent_process::active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use workspace::user_home::user_home_dir;
 #[cfg(test)]
@@ -141,8 +142,9 @@ pub use test_support::test_poll::{
     test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
 };
 pub mod config;
+pub use tracing_init::init_from_env;
 pub use workspace::support_paths::{
-    agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
+    agent_or_cursor_agent_bin, command_line, format_logs_dir, lookup_bin_on_path,
 };
 pub mod command_output_timeout;
 pub mod orchestrator;
@@ -156,6 +158,7 @@ pub use workflow_context::{
 };
 pub mod acp_trace_impersonation;
 pub mod coder_prompt_phase;
+pub mod heartbeat;
 pub mod nested_budget_scopes;
 pub mod observability;
 pub mod output;

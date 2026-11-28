@@ -1,8 +1,11 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::PoisonError;
+use std::sync::{LazyLock, Mutex};
 use std::thread::ThreadId;
 
-use super::acp_spawn_lock::IN_PROCESS_ACP_LOCK_SLOTS;
+pub(crate) static IN_PROCESS_ACP_LOCK_SLOTS: LazyLock<Mutex<HashMap<String, ThreadId>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub(super) enum LockProbe {
     Missing,

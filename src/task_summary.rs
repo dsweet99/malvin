@@ -150,7 +150,7 @@ mod tests {
         assert_eq!(current(), "");
         assert_eq!(current_status(), None);
         assert!(metadata_tokens().is_none());
-        assert!(crate::time_format::heartbeat_payload_now().ends_with(" · hash/run"));
+        assert!(crate::heartbeat::heartbeat_payload_now().ends_with(" · hash/run"));
         crate::workspace::run_id::set_active_run_dir(None);
     }
 
@@ -201,7 +201,7 @@ mod tests {
         assert!(metadata_tokens().is_none());
         std::fs::write(text::task_path(&run), "Add cheap summaries").unwrap();
         assert!(
-            crate::time_format::heartbeat_payload_now().ends_with("hash/run · Add cheap summaries")
+            crate::heartbeat::heartbeat_payload_now().ends_with("hash/run · Add cheap summaries")
         );
         for status in ["Reading the plan", "Running checks"] {
             std::fs::write(text::status_path(&run), status).unwrap();
@@ -209,7 +209,7 @@ mod tests {
             assert_eq!(tokens["task"], "Add cheap summaries");
             assert_eq!(tokens["status"], status);
             assert!(
-                crate::time_format::heartbeat_payload_now()
+                crate::heartbeat::heartbeat_payload_now()
                     .ends_with(&format!("hash/run · Add cheap summaries · {status}"))
             );
         }

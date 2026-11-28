@@ -30,7 +30,7 @@ impl AgentCgroup {
 
     #[must_use]
     pub fn with_leaf(leader_pid: u32, dir: PathBuf, owned: bool) -> Self {
-        let leaf = Some(dir.join(super::agent_cgroup_nest::LEAF_NAME));
+        let leaf = Some(dir.join(super::agent_cgroup_tree::LEAF_NAME));
         Self {
             leader_pid,
             dir,
@@ -103,7 +103,7 @@ pub(crate) fn collect_member_pids(dir: &Path, pids: &mut HashSet<u32>) {
     if let Ok(text) = std::fs::read_to_string(dir.join("cgroup.procs")) {
         pids.extend(parse_cgroup_procs(&text));
     }
-    for child in super::agent_cgroup_nest::child_cgroup_dirs(dir) {
+    for child in super::agent_cgroup_tree::child_cgroup_dirs(dir) {
         collect_member_pids(&child, pids);
     }
 }
@@ -189,7 +189,7 @@ pub fn release_active_agent_cgroup() {
         warn!(dir = %cgroup.dir.display(), "agent cgroup still populated after kill");
     }
     if cgroup.owned {
-        super::agent_cgroup_nest::remove_cgroup_tree(&cgroup.dir);
+        super::agent_cgroup_tree::remove_cgroup_tree(&cgroup.dir);
     }
 }
 

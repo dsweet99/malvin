@@ -1,39 +1,20 @@
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::{Value, json};
 
 use super::ModalInvocation;
 use super::bridge::ModalBridge;
-use super::config::{ModalConfig, remote_config_text};
-use super::image::ImageSpec;
+use super::config::remote_config_text;
 use super::remote::RemotePaths;
+pub(super) use super::session_state::note;
+pub use super::session_state::{Plan, Prepared};
 use super::workspace::{RECENT_RUN_DIRS, pack_logs, pack_workspace, recent_run_dirs};
 
 #[path = "session_drive.rs"]
 mod drive;
 
 const TIMEOUT_HINT_MARGIN_S: u64 = 5;
-
-pub struct Plan {
-    pub cfg: ModalConfig,
-    pub cfg_root: toml::Value,
-    pub spec: ImageSpec,
-}
-
-pub struct Prepared {
-    pub staging: tempfile::TempDir,
-    pub cwd: PathBuf,
-    pub home: PathBuf,
-    pub logs_root: PathBuf,
-    pub paths: RemotePaths,
-    pub has_logs: bool,
-    pub plan: Plan,
-}
-
-pub(super) fn note(text: &str) {
-    super::remote_output::print_status(&format!("modal: {text}"));
-}
 
 pub fn prepare(cwd: &Path, home: &Path, plan: Plan) -> Result<Prepared, String> {
     let staging = tempfile::tempdir().map_err(|e| format!("create staging dir: {e}"))?;

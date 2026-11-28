@@ -1,8 +1,21 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use super::codex_sdk::session::CodexSession;
+use super::codex_sdk::session::{CodexSession, set_codex_turn_id};
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::JsonLineSession;
+
+impl CodexSession {
+    pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
+        codex_send_prompt(self, prompt).await
+    }
+
+    pub async fn shutdown(self) -> Result<(), AgentError> {
+        let _ = codex_write_abort(&self).await;
+        let _ = codex_delete_thread(&self).await;
+        self.stdio.shutdown_kill_and_clear().await;
+        Ok(())
+    }
+}
 
 static SEQ: AtomicU64 = AtomicU64::new(1);
 pub(crate) fn next_id() -> u64 {
@@ -13,16 +26,6 @@ fn session_string(lock: &std::sync::Mutex<Option<String>>) -> Option<String> {
     lock.lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .clone()
-}
-
-fn set_session_string(lock: &std::sync::Mutex<Option<String>>, value: Option<String>) {
-    *lock
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = value;
-}
-
-pub(crate) fn set_codex_turn_id(session: &CodexSession, turn_id: Option<String>) {
-    set_session_string(&session.turn_id, turn_id);
 }
 
 pub(crate) fn turn_interrupt_params(
@@ -124,7 +127,6 @@ mod tests {
         let _ = set_codex_turn_id;
         let _ = next_id;
         let _ = session_string;
-        let _ = set_session_string;
         let _ = codex_delete_thread;
         let _ = turn_start_params;
     }

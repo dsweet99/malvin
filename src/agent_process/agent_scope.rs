@@ -18,11 +18,7 @@ const SYSTEMD_RUN: &str = "systemd-run";
 static SCOPE_PROBE: OnceLock<ScopeSupport> = OnceLock::new();
 static NEXT_SCOPE_SERIAL: AtomicU64 = AtomicU64::new(0);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ScopeTarget {
-    Unit(String),
-    Nested(PathBuf),
-}
+pub use super::scope_target::ScopeTarget;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ScopeSupport {

@@ -1,9 +1,20 @@
 use serde_json::Value;
 
-use super::pi_backend::session_turn::TurnState;
+use crate::agent_process::AgentError;
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
 pub(super) use super::pi_backend::extension_ui::auto_reply_extension_ui;
+
+#[derive(Default)]
+pub(crate) struct TurnState {
+    pub(super) prompt_id: String,
+    pub(super) response_text: String,
+    pub(super) usage: Option<serde_json::Value>,
+    pub(super) prompt_accepted: bool,
+    pub(super) settled: bool,
+    pub(super) output_cap: Option<u64>,
+    pub(super) end_error: Option<AgentError>,
+}
 
 pub(super) fn map_npm_pi_event(value: &Value, state: &mut TurnState) -> Vec<BridgeEvent> {
     let ty = value.get("type").and_then(Value::as_str).unwrap_or("");

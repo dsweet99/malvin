@@ -11,11 +11,16 @@ mod do_dm_emit;
 mod do_dm_filter;
 mod do_dm_mode;
 mod do_dm_on_emit;
+pub mod heartbeat_hooks;
+mod line_format;
 mod md_table;
+mod prompt_log;
 mod sentinel;
 pub(crate) mod stderr_log;
 mod stdout_display;
 mod stdout_display_md;
+mod stdout_emit;
+mod stdout_format;
 pub(crate) mod stdout_heartbeat;
 pub(crate) mod stdout_log_pair;
 mod stdout_open_line;
@@ -23,15 +28,15 @@ pub(crate) use stdout_open_line::set_agent_text_line_open;
 mod stdout_render;
 pub(crate) mod stdout_tee_env;
 mod stdout_terminal;
+mod style;
 pub(crate) mod terminal_wrap;
 mod test_modules;
 mod who_tag;
 
 #[cfg(test)]
 pub(crate) use stdout_render::emit_stdout_rendered_immediate;
-pub(crate) use stdout_render::write_heartbeat_log_line;
 
-pub(crate) use stdout_display::{
+pub(crate) use stdout_format::{
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
 };
 
@@ -41,12 +46,10 @@ pub(crate) use dm_hook::{deliver_finished_dm, parse_dm_emit_mark};
 #[cfg(test)]
 pub(crate) use dm_hook::{reset_dm_hook_state, set_test_dm_hook};
 pub(crate) use do_dm_emit::emit_wrapped_do_dm_line;
-pub use do_dm_filter::feed_do_dm_stdout_text;
+pub use do_dm_filter::{feed_do_dm_stdout_text, set_do_dm_stdout_mode, set_do_dm_stdout_opts};
 #[cfg(test)]
 pub(crate) use do_dm_mode::DO_DM_TEST_LOCK;
-pub use do_dm_mode::{
-    DoDmStdoutOpts, do_dm_stdout_mode, set_do_dm_stdout_mode, set_do_dm_stdout_opts,
-};
+pub use do_dm_mode::{DoDmStdoutOpts, do_dm_stdout_mode};
 pub(crate) use do_dm_on_emit::notify_completed_direct_messages;
 pub use do_dm_on_emit::set_dm_on_emit_command;
 pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
@@ -87,66 +90,13 @@ mod output_kiss_cov_tests;
 #[cfg(test)]
 mod stdout_log_tests;
 
-#[cfg(test)]
-use std::cell::RefCell;
-use std::io::{IsTerminal, Write, stdout};
-#[cfg(test)]
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
-
 pub(crate) use self::terminal_wrap::{
     stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded,
 };
 
-pub const MALVIN_WHO: &str = who_tag::WHO_O;
-pub const WARNING_WHO: &str = "w";
-pub const ERROR_WHO: &str = "e";
-
 pub(crate) use stdout_terminal::print_stdout_display_line;
 #[cfg(test)]
 pub(crate) use stdout_terminal::{enable_stdout_capture, take_captured_stdout};
-
-#[cfg(test)]
-thread_local! {
-    static CAPTURED_STDERR_LINES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
-}
-
-#[cfg(test)]
-pub(crate) fn push_captured_stderr_line(line: String) {
-    CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().push(line));
-}
-
-#[cfg(test)]
-pub fn take_captured_stderr_lines() -> Vec<String> {
-    CAPTURED_STDERR_LINES.with(|lines| std::mem::take(&mut *lines.borrow_mut()))
-}
-
-#[cfg(test)]
-pub fn clear_captured_stderr_lines() {
-    CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().clear());
-}
-
-pub fn print_outgoing_prompt_log(_trace_who: &str, bracket_label: &str) {
-    for name in prompt_file_stems(bracket_label) {
-        print_stdout_line(who_tag::WHO_P, name);
-    }
-}
-
-fn prompt_file_stems(label: &str) -> impl Iterator<Item = &str> {
-    label.split('+').filter_map(prompt_file_stem)
-}
-
-fn prompt_file_stem(part: &str) -> Option<&str> {
-    let stem = part.strip_suffix(".md").unwrap_or(part);
-    (!stem.is_empty()).then_some(stem)
-}
-
-pub fn append_outgoing_prompt_log_lines(body: &str) {
-    let ts = timestamp_now_string();
-    for line in stdout_display::logical_lines(body) {
-        append_stdout_log_line(&stdout_log_pair::tagged_log_line(&ts, who_tag::WHO_U, line));
-    }
-}
 
 pub use who_tag::{
     LOG_TAG_INNER_WIDTH, WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_P, WHO_R, WHO_T, WHO_U,
@@ -160,80 +110,32 @@ pub(crate) use who_tag::{
     payload_after_fixed_width_who_tag,
 };
 
-static LOG_USE_COLOR: AtomicBool = AtomicBool::new(false);
-#[cfg(test)]
-pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
-
-pub(crate) use crate::terminal_palette::{
-    ANSI_DIM, ANSI_RESET, ansi_error, ansi_warning, ansi_who_tag,
-};
-
-#[must_use]
-pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
-    stdout_log_pair::tagged_log_line(ts, who, line)
-}
+pub(crate) use crate::terminal_palette::{ANSI_DIM, ANSI_RESET};
 
 pub(crate) use crate::time_format::timestamp_now_string;
-
-#[must_use]
-pub fn format_line(who: &str, line: &str) -> String {
-    stdout_log_pair::stdout_tagged_display_and_log_line(who, line, None).1
-}
-
-pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
-    match who {
-        WARNING_WHO => ansi_warning(),
-        ERROR_WHO => ansi_error(),
-        who_tag::WHO_B => ANSI_DIM,
-        _ => ansi_who_tag(),
-    }
-}
-
-pub fn init_stdout_style() {
-    apply_stdout_style(std::env::var_os("NO_COLOR").is_none());
-}
-
-fn apply_stdout_style(use_color: bool) {
-    LOG_USE_COLOR.store(use_color, Ordering::Relaxed);
-    crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed();
-}
-
-#[cfg(test)]
-pub(crate) fn init_stdout_style_for_test(use_color: bool) {
-    apply_stdout_style(use_color);
-}
-
-pub(crate) fn log_use_color() -> bool {
-    LOG_USE_COLOR.load(Ordering::Relaxed)
-}
-
-pub(crate) fn stdout_use_color() -> bool {
-    log_use_color() && stdout().is_terminal()
-}
 
 pub use stdout_tee_env::{
     agent_stdout_tee_enabled, force_stdout_tee_from_env, stdout_is_interactive,
 };
-
-pub(crate) fn stderr_use_color() -> bool {
-    log_use_color() && std::io::stderr().is_terminal()
-}
 
 pub use crate::workspace::stdout_log_path::set_stdout_log_path;
 pub(crate) use stdout_log_pair::{
     stdout_heartbeat_display_and_log_line, stdout_tagged_display_and_log_line,
 };
 
-pub(crate) fn append_stdout_log_line(line: &str) {
-    let Some(path) = crate::workspace::stdout_log_path::clone_stdout_log_path() else {
-        return;
-    };
-    let line = crate::ansi_strip::strip_ansi_escapes(line);
-    let _ = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .and_then(|mut f| writeln!(f, "{line}"));
-}
-
 pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};
+
+pub use line_format::{format_line, format_line_with_timestamp};
+#[cfg(test)]
+pub(crate) use prompt_log::init_stdout_style_for_test;
+pub use prompt_log::{
+    append_outgoing_prompt_log_lines, init_stdout_style, print_outgoing_prompt_log,
+};
+pub use style::{ERROR_WHO, MALVIN_WHO, WARNING_WHO};
+#[cfg(test)]
+pub(crate) use style::{STDOUT_LOG_TEST_LOCK, push_captured_stderr_line};
+pub(crate) use style::{
+    append_stdout_log_line, log_use_color, stderr_use_color, stdout_use_color, who_tag_ansi,
+};
+#[cfg(test)]
+pub use style::{clear_captured_stderr_lines, take_captured_stderr_lines};

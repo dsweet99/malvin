@@ -3,13 +3,14 @@ pub(crate) use super::router_flow_loop;
 pub(crate) use super::router_flow_no_work;
 pub(crate) use super::router_flow_prompt;
 use crate::artifacts::AgentDirs;
+use crate::cli::AgentRouteOpts;
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
-use crate::cli::{AgentRouteOpts, SharedOpts};
 use malvin::artifacts::{RunArtifacts, resolve_user_md_request};
-use malvin::backends::agent_backend::{SdkClient, build_agent_backend};
+use malvin::backends::agent_backend::SdkClient;
 use malvin::prompts::PromptStore;
 
+pub(super) use super::router_flow_fallback::new_router_client;
 pub use router_flow_prompt::prepare_router_prompt_store;
 
 #[derive(Debug)]
@@ -22,14 +23,6 @@ struct RouterRunPrep {
     client: SdkClient,
     artifacts: RunArtifacts,
     prompt_store: PromptStore,
-}
-
-pub(super) fn new_router_client(shared: &SharedOpts) -> SdkClient {
-    build_agent_backend(
-        shared.model.first().clone(),
-        shared.max_acp_retries,
-        shared.acp_stdout_markdown_enabled(),
-    )
 }
 
 fn finish_router_run_artifacts(

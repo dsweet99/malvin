@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use super::super::model_cost::ModelCost;
 use super::super::pricing_cache_file::PricingCacheFile;
-use super::{model_cost_from_body, urlencoding};
+use super::body::{model_cost_from_body, pricing_model_path, urlencoding};
 use crate::http_fetch::{HttpRequest, fetch_text};
 
 const PRICING_URL: &str = "https://api.portkey.ai/model-configs/pricing";
@@ -17,7 +17,7 @@ fn pricing_url(provider: &str, model: &str) -> String {
     format!(
         "{PRICING_URL}/{}/{}",
         urlencoding(provider),
-        super::pricing_model_path(model)
+        pricing_model_path(model)
     )
 }
 

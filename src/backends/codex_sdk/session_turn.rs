@@ -5,15 +5,10 @@ use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::TurnProtocol;
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
-#[derive(Default)]
-pub(crate) struct TurnState {
-    pub(super) response_text: String,
-    pub(super) turn_id: Option<String>,
-    pub(super) usage: Option<serde_json::Value>,
-    pub(super) usage_is_cumulative: bool,
-    pub(super) started: Option<Instant>,
-    pub(super) counted_step: bool,
-}
+pub(crate) use super::codex_sdk_session_turn_done::TurnState;
+#[cfg(test)]
+pub(super) use super::codex_sdk_session_turn_done::agent_message_from_turn;
+use super::codex_sdk_session_turn_done::item_agent_text;
 
 impl TurnProtocol for CodexSession {
     type State = TurnState;
@@ -87,7 +82,7 @@ fn remember_turn_id(session: &CodexSession, state: &mut TurnState, id: &str) {
     if state.started.is_none() {
         state.started = Some(Instant::now());
     }
-    super::codex_sdk::session_io::set_codex_turn_id(session, Some(id.to_owned()));
+    super::codex_sdk::session::set_codex_turn_id(session, Some(id.to_owned()));
 }
 
 pub(super) fn turn_is_complete(method: &str, state: &TurnState, value: &serde_json::Value) -> bool {
@@ -160,27 +155,6 @@ fn completed_agent_text<'a>(method: &str, params: &'a serde_json::Value) -> Opti
 
 fn turn_matches(turn_id: Option<&String>, event_turn: Option<&str>) -> bool {
     turn_id.is_none_or(|id| event_turn.is_none_or(|event| event == id))
-}
-
-pub(super) fn agent_message_from_turn(
-    value: &serde_json::Value,
-    response_text: String,
-) -> Option<String> {
-    turn_item_agent_text(value).or_else(|| (!response_text.is_empty()).then_some(response_text))
-}
-
-fn turn_item_agent_text(value: &serde_json::Value) -> Option<String> {
-    let items = value.pointer("/params/turn/items")?.as_array()?;
-    let texts: Vec<&str> = items.iter().filter_map(item_agent_text).collect();
-    (!texts.is_empty()).then(|| texts.join(""))
-}
-
-fn item_agent_text(item: &serde_json::Value) -> Option<&str> {
-    let ty = item.get("type").and_then(serde_json::Value::as_str)?;
-    (ty == "agentMessage")
-        .then(|| item.get("text").and_then(serde_json::Value::as_str))
-        .flatten()
-        .filter(|text| !text.is_empty())
 }
 
 #[cfg(test)]

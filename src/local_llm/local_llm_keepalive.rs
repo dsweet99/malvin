@@ -3,8 +3,19 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use super::local_llm_client::touch_via_manager;
+use super::local_llm_client::{hold_request, release_request, touch_via_manager};
 use super::local_llm_paths::idle_duration;
+
+pub(crate) fn hold_via_manager() -> Result<(), String> {
+    hold_request()?;
+    start_keepalive();
+    Ok(())
+}
+
+pub(crate) fn release_via_manager() -> Result<(), String> {
+    stop_keepalive();
+    release_request()
+}
 
 const SLEEP_SLICE: Duration = Duration::from_millis(50);
 

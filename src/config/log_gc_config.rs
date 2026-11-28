@@ -1,4 +1,4 @@
-use std::path::Path;
+pub use crate::config::malvin_config_file::load_logs_gc_config;
 
 use crate::config::malvin_config_file::read_u64;
 
@@ -22,10 +22,6 @@ impl Default for LogsGcConfig {
             max_bytes: parse_byte_size(DEFAULT_MAX_BYTES),
         }
     }
-}
-
-pub fn load_logs_gc_config(work_dir: &Path) -> LogsGcConfig {
-    crate::config::malvin_config_file::load_malvin_config(work_dir).logs
 }
 
 pub(crate) fn parse_logs_gc_config(text: &str) -> Result<LogsGcConfig, String> {

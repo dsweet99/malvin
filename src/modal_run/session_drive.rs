@@ -6,7 +6,7 @@ use super::super::ModalInvocation;
 use super::super::bridge::ModalBridge;
 use super::super::remote;
 use super::super::results::{apply_patch, describe_outcome, import_logs};
-use super::{Prepared, note};
+use super::super::session_state::{Prepared, note};
 
 fn upload(bridge: &mut ModalBridge, local: &Path, remote: &str) -> Result<(), String> {
     bridge

@@ -1,3 +1,4 @@
+pub(crate) mod active_run;
 pub(crate) mod log_gc;
 pub mod run_id;
 pub mod stdout_log_path;

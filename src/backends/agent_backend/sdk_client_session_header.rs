@@ -3,7 +3,7 @@ use crate::nested_budget_scopes::BudgetScopeLayer;
 
 use super::agent_backend::acp_attempt_loop::{BackoffChoice, RetrySpec, retry_until_ok};
 use super::agent_backend::sdk_client::{CoderSessionHeader, SdkClient, begun_cwd, live_session};
-use super::agent_backend::sdk_client_prompt::{
+use super::agent_backend::sdk_client_prompt_io::{
     append_prompt_files, emit_prompt_stdout, force_fresh_agent_for_retry,
     teardown_sdk_session_after_transport_error,
 };

@@ -6,3 +6,4 @@ pub const MAIN_DIR: &str = "main";
 pub const LITE_DIR: &str = "lite";
 pub const FACT_DIR: &str = "fact";
 pub const SANDBOX_OOM_JSON: &str = "sandbox_oom.json";
+pub const MODAL_REMOTE: &str = "modal";

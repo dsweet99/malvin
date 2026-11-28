@@ -28,11 +28,11 @@ pub(crate) fn prepare_local_llm(cwd: &Path, provider: &str, model: &str) -> Resu
 }
 
 pub(crate) fn hold_local_llm() -> Result<(), String> {
-    super::local_llm_client::hold_via_manager()
+    super::local_llm_keepalive::hold_via_manager()
 }
 
 pub(crate) fn release_local_llm() -> Result<(), String> {
-    super::local_llm_client::release_via_manager()
+    super::local_llm_keepalive::release_via_manager()
 }
 
 pub fn housekeep_local_llms() {

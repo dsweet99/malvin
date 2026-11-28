@@ -5,6 +5,7 @@ pub mod acp_spawn_sweep;
 pub(crate) mod active_agent_heartbeat;
 pub mod agent_cgroup;
 pub mod agent_cgroup_nest;
+pub mod agent_cgroup_tree;
 pub mod agent_scope;
 pub mod agent_scope_attach;
 pub(crate) mod child_health;
@@ -14,7 +15,10 @@ pub mod malvin_sandbox;
 pub(crate) mod malvin_sandbox_tests;
 pub(crate) mod parent_death_signal;
 pub mod process_group_rss;
+pub mod sandbox_command;
 pub(crate) mod sandbox_oom;
+pub(crate) mod sandbox_probe;
+pub mod scope_target;
 
 mod billing;
 pub use billing::agent_string_is_insufficient_funds;

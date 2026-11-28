@@ -1,35 +1,17 @@
-use std::path::PathBuf;
-
 pub(crate) use super::codex_sdk_catalog as catalog;
 pub(crate) use super::codex_sdk_family_alias as family_alias;
+#[cfg(test)]
 pub(crate) use super::codex_sdk_model_list as model_list;
 
-use crate::workspace::support_paths::{OverrideKind, env_path_override};
+pub use super::codex_sdk_codex_bin::resolve_codex_bin;
+#[cfg(test)]
+pub(crate) use super::codex_sdk_codex_bin::{CODEX_MISSING_HINT, codex_missing_binary_message};
+#[cfg(test)]
+pub(crate) use catalog::model_list_params;
+#[cfg(test)]
+pub(crate) use model_list::ModelListPage;
+
 use catalog::{CatalogChild, list_models_from_child, spawn_codex_model_server};
-
-#[derive(Debug)]
-pub(crate) struct ModelListPage {
-    pub(crate) models: Vec<(String, String)>,
-    pub(crate) next_cursor: Option<String>,
-}
-
-pub const CODEX_MISSING_HINT: &str = "codex backend requires the codex binary on PATH (or MALVIN_CODEX); install Codex CLI separately.";
-pub const DEFAULT_CODEX_LIST_MODELS_TIMEOUT_MS: u64 = 30_000;
-
-#[must_use]
-pub fn codex_missing_binary_message() -> String {
-    CODEX_MISSING_HINT.to_string()
-}
-
-pub fn resolve_codex_bin() -> Result<PathBuf, String> {
-    if let Some(result) =
-        env_path_override("MALVIN_CODEX", OverrideKind::Executable, CODEX_MISSING_HINT)
-    {
-        return result;
-    }
-    crate::workspace::support_paths::lookup_bin_on_path("codex")
-        .ok_or_else(codex_missing_binary_message)
-}
 
 pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
     let mut catalog = CatalogChild::wrap(spawn_codex_model_server()?);
@@ -67,20 +49,6 @@ pub(crate) fn models_from_list_response(
     value: &serde_json::Value,
 ) -> Result<Vec<(String, String)>, String> {
     model_list::parse_model_list_page(value).map(|page| page.models)
-}
-
-pub(crate) fn model_list_params(cursor: Option<&str>) -> serde_json::Value {
-    serde_json::json!({"limit": 100, "includeHidden": true, "cursor": cursor})
-}
-
-#[cfg(test)]
-impl ModelListPage {
-    pub(crate) const fn empty() -> Self {
-        Self {
-            models: Vec::new(),
-            next_cursor: None,
-        }
-    }
 }
 
 #[cfg(test)]

@@ -68,8 +68,7 @@ pub fn lookup_bin_on_path(bin: &str) -> Option<PathBuf> {
 #[must_use]
 pub fn agent_or_cursor_agent_bin() -> Option<PathBuf> {
     for name in ["agent", "cursor-agent"] {
-        #[cfg(test)]
-        if let Some(fake) = crate::cli::repo_checks::test_fake_command_path(name) {
+        if let Some(fake) = test_fake_command_path(name) {
             return Some(fake);
         }
         if let Some(path) = lookup_bin_on_path(name) {
@@ -79,10 +78,18 @@ pub fn agent_or_cursor_agent_bin() -> Option<PathBuf> {
     None
 }
 
-pub fn init_from_env() {
+#[cfg(test)]
+fn test_fake_command_path(name: &str) -> Option<PathBuf> {
+    crate::cli::repo_checks::test_fake_command_path(name)
+}
+
+#[cfg(not(test))]
+const fn test_fake_command_path(_name: &str) -> Option<PathBuf> {
+    None
+}
+
+pub(crate) fn init_command_line() {
     let _ = COMMAND_LINE.get_or_init(|| std::env::args().collect::<Vec<_>>().join(" "));
-    crate::agent_process::malvin_sandbox::init_malvin_spawn_baseline();
-    crate::tracing_init::init_tracing();
 }
 
 #[must_use]
@@ -177,7 +184,7 @@ mod invocation_tests {
     #[test]
     fn init_records_argv_and_agent_bin_and_rpc_timeout_from_env() {
         {
-            init_from_env();
+            crate::tracing_init::init_from_env();
             let line = command_line().expect("command line after init");
             assert!(!line.is_empty());
         }

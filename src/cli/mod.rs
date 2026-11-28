@@ -1,4 +1,5 @@
 mod add_fact;
+pub(crate) mod admin_args;
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
 pub(crate) mod args;
@@ -78,8 +79,9 @@ pub(crate) mod workflow_router_shared_tests;
 
 pub use crate::cli::router_flow::run_router;
 #[cfg(test)]
-pub use admin_cmd::AdminArgs;
-pub use admin_cmd::{AdminCommand, run_admin};
+pub use admin_args::AdminArgs;
+pub use admin_args::AdminCommand;
+pub use admin_cmd::run_admin;
 pub use args::{Cli, Commands};
 #[cfg(test)]
 pub use config_defaults::parse_cli_with_config_defaults;
@@ -98,6 +100,8 @@ pub(super) mod entrypoint_gates_only;
 pub(super) mod entrypoint_info_flags;
 #[path = "entrypoint_modal.rs"]
 pub(super) mod entrypoint_modal;
+#[path = "entrypoint_support.rs"]
+pub(super) mod entrypoint_support;
 #[path = "fact_agent_throttle.rs"]
 pub(crate) mod fact_agent_throttle;
 #[path = "models_cmd_catalog.rs"]
@@ -108,6 +112,8 @@ pub(super) mod models_cmd_claude_catalog;
 pub(super) mod models_cmd_cursor;
 #[path = "models_cmd_filter.rs"]
 pub(super) mod models_cmd_filter;
+#[path = "models_cmd_listing.rs"]
+pub(super) mod models_cmd_listing;
 #[path = "models_cmd_parse.rs"]
 pub(super) mod models_cmd_parse;
 #[path = "models_cmd_refresh.rs"]

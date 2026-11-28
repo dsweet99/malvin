@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 
-use super::RunTiming;
+use super::state::RunTiming;
 
 fn live_slot() -> &'static Mutex<Option<Weak<Mutex<RunTiming>>>> {
     static LIVE: OnceLock<Mutex<Option<Weak<Mutex<RunTiming>>>>> = OnceLock::new();

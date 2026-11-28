@@ -1,8 +1,6 @@
-use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::{LazyLock, Mutex};
-use std::thread::ThreadId;
+use std::sync::Mutex;
 
 use crate::agent_process::acp_spawn_sweep::{
     acp_spawn_chamber_dir, ensure_acp_spawn_chamber_gitignore,
@@ -14,12 +12,9 @@ pub(crate) use super::acp_spawn_lock_probe;
 pub use acp_spawn_lock_peer::{
     assert_no_peer_acp_spawn_lock, assert_no_peer_acp_spawn_lock_for_slot,
 };
-use acp_spawn_lock_probe::{LockProbe, probe_existing_acp_spawn_lock};
+use acp_spawn_lock_probe::{IN_PROCESS_ACP_LOCK_SLOTS, LockProbe, probe_existing_acp_spawn_lock};
 
 const ACQUIRE_MAX_ATTEMPTS: usize = 4;
-
-pub(crate) static IN_PROCESS_ACP_LOCK_SLOTS: LazyLock<Mutex<HashMap<String, ThreadId>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static ACTIVE_ACP_LOCK_SLOT: Mutex<Option<String>> = Mutex::new(None);
 

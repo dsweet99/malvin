@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use super::admin_cmd::AdminArgs;
+use super::admin_args::AdminArgs;
 use super::request_argv::TaggedRequest;
 use super::shared_opts::{RouterOpts, SharedOpts};
 

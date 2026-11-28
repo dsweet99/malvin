@@ -3,7 +3,33 @@ use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use super::next_dm_index;
+#[cfg(not(test))]
+static DM_INDEX: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+#[cfg(test)]
+thread_local! {
+    static TEST_INDEX: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+pub(crate) fn next_dm_index() -> u64 {
+    #[cfg(test)]
+    {
+        TEST_INDEX.with(|index| {
+            let next = index.get() + 1;
+            index.set(next);
+            next
+        })
+    }
+    #[cfg(not(test))]
+    {
+        DM_INDEX.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn reset_dm_index_for_test() {
+    TEST_INDEX.with(|index| index.set(0));
+}
 
 pub(crate) fn exec_hook(argv: &[String], stdin_body: Option<&str>, timeout: Duration) {
     let Some(name) = argv.first().cloned() else {

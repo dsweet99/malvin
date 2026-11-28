@@ -152,7 +152,7 @@ fn notify_run_end_inner() {
     };
     let idle = report_agent(
         &snap.pane_id,
-        super::run_done::terminal_agent_state(),
+        "idle",
         snap.agent_session_id.as_deref(),
         next_seq(),
     );

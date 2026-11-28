@@ -1,20 +1,8 @@
-use std::path::Path;
-
 use crate::config::malvin_config_file::read_u64;
+pub use crate::config::malvin_config_file::{load_mem_limit_bytes, load_mem_limit_gb};
 
 const GIB: u64 = 1024 * 1024 * 1024;
 const DEFAULT_CAP_GB: u64 = 4;
-
-#[must_use]
-pub fn load_mem_limit_bytes(work_dir: &Path) -> u64 {
-    let gb = load_mem_limit_gb(work_dir);
-    gb.saturating_mul(GIB)
-}
-
-#[must_use]
-pub fn load_mem_limit_gb(work_dir: &Path) -> u64 {
-    crate::config::malvin_config_file::load_malvin_config(work_dir).mem_limit_gb
-}
 
 pub(crate) fn parse_mem_limit_gb(text: &str) -> Result<u64, String> {
     let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;

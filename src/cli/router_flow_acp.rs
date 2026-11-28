@@ -1,9 +1,7 @@
 use crate::cli::router_flow::router_flow_prompt;
 use crate::cli::router_machine::Completion;
-use crate::cli::{RouterOpts, SharedOpts};
-use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::artifacts::SessionDotfileBackups;
 use malvin::backends::agent_backend::{SdkClient, set_implement_display_name};
-use malvin::prompts::PromptStore;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -14,7 +12,9 @@ pub(crate) use super::router_flow_coder_prompts;
 
 pub(crate) use super::router_flow_summary_line;
 
-pub(crate) use router_flow_acp_support::{RouterExitSummarize, router_iteration_log_path};
+pub(crate) use router_flow_acp_support::{
+    RouterAcpIterationInput, RouterExitSummarize, router_iteration_log_path,
+};
 
 use router_flow_acp_support::{run_router_turns, snapshot_iteration_backups};
 use router_flow_coder_prompts::run_router_summarize_coder_prompt;
@@ -33,32 +33,12 @@ pub(crate) enum RouterAcpIterationOutcome {
     },
 }
 
-pub(crate) struct RouterAcpIterationInput<'a> {
-    pub client: &'a mut SdkClient,
-    pub artifacts: &'a RunArtifacts,
-    pub prompt_store: &'a PromptStore,
-    pub shared: &'a SharedOpts,
-    pub router: &'a RouterOpts,
-    pub agent_loop: usize,
-    pub session_end: RunTimingSessionEnd,
-}
-
 pub(crate) type SessionEndParts<'a> = (
     &'a mut SdkClient,
     &'a Path,
     &'a Arc<Mutex<malvin::run_timing::RunTiming>>,
     RunTimingSessionEnd,
 );
-
-pub(crate) async fn begin_coder_session_if_needed(
-    client: &mut SdkClient,
-    work_dir: &Path,
-) -> Result<malvin::backends::agent_backend::CoderSessionEnsure, String> {
-    client
-        .start_coder_session(work_dir)
-        .await
-        .map_err(|e| e.to_string())
-}
 
 pub(crate) async fn run_router_acp_open_iteration(
     mut input: RouterAcpIterationInput<'_>,

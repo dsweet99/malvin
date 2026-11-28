@@ -4,8 +4,8 @@ use crate::config::log_gc_config::LogsGcConfig;
 use crate::output::print_log_warning;
 use crate::workspace::workspace_paths::read_work_dir_manifest;
 
+use super::log_gc_fs::{list_run_dirs, remove_tree_or_report, report_undeletable};
 use super::log_gc_prune::{PruneTally, prune_run_dirs};
-use super::{list_run_dirs, remove_tree_or_report, report_undeletable};
 
 pub(crate) fn list_log_buckets(home_logs: &Path) -> Vec<PathBuf> {
     let mut buckets = Vec::new();
@@ -60,7 +60,7 @@ pub(crate) fn bucket_is_ephemeral_orphan(runs: &[PathBuf]) -> bool {
 }
 
 fn remove_orphan_bucket(bucket: &Path, runs: &[PathBuf]) -> PruneTally {
-    let freed = crate::workspace::log_gc::dir_size(bucket);
+    let freed = super::log_gc_fs::dir_size(bucket);
     if remove_tree_or_report(bucket) {
         PruneTally {
             removed: runs.len(),

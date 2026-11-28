@@ -1,6 +1,6 @@
 use super::super::Exit;
-use super::super::entrypoint::entrypoint_info_flags::entrypoint_advice_or_doc_exit;
-use super::super::entrypoint::print_command_error;
+use super::super::entrypoint_info_flags::entrypoint_advice_or_doc_exit;
+use super::super::entrypoint_support::print_command_error;
 use crate::cli::args::Cli;
 use crate::cli::config_defaults::is_gates_only_route;
 use crate::cli::entrypoint_checks::{

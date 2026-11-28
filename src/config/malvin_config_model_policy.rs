@@ -4,7 +4,7 @@ use crate::config::model_id::{ParsedModel, parse_model_id};
 
 use super::MalvinConfig;
 
-const BUILTIN_REMOTES: &[&str] = &[crate::modal_run::MODAL_REMOTE];
+const BUILTIN_REMOTES: &[&str] = &[crate::malvin_constants::MODAL_REMOTE];
 
 type AliasEntries = Vec<Result<(String, String), String>>;
 
@@ -130,37 +130,4 @@ impl MalvinConfig {
         let expanded = self.expand_model_alias(raw);
         parse_model_id(expanded)
     }
-}
-
-pub fn parse_model_cli_arg(raw: &str) -> Result<ParsedModel, String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    super::load_malvin_config(&cwd).resolve_model(raw)
-}
-
-fn home_aliases() -> (BTreeMap<String, String>, BTreeMap<String, String>) {
-    let Ok(cwd) = std::env::current_dir() else {
-        return (BTreeMap::new(), BTreeMap::new());
-    };
-    let cfg = super::load_malvin_config(&cwd);
-    (cfg.model_aliases, cfg.remote_aliases)
-}
-
-#[must_use]
-pub(crate) fn load_model_aliases() -> BTreeMap<String, String> {
-    home_aliases().0
-}
-
-#[must_use]
-pub fn load_remote_aliases() -> BTreeMap<String, String> {
-    home_aliases().1
-}
-
-pub fn parse_model_list_cli_arg(raw: &str) -> Result<crate::config::model_list::ModelList, String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let config = super::load_malvin_config(&cwd);
-    let models = crate::config::model_list::split_model_list(raw)?
-        .into_iter()
-        .map(|model| config.resolve_model(model))
-        .collect::<Result<Vec<_>, _>>()?;
-    crate::config::model_list::ModelList::new(models)
 }

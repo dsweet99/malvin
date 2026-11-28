@@ -1,34 +1,24 @@
 mod acp_usage;
 mod cost;
 mod lifecycle;
+mod policy;
 mod process_ledger;
 mod process_ledger_live;
 mod report;
 #[path = "report_cost_line.rs"]
 mod report_cost_line;
+mod state;
 mod tokens;
 
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 
-pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
-
-pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
-
-static SUPPRESS_STDOUT_FOOTNOTES: AtomicBool = AtomicBool::new(false);
-
-pub fn set_suppress_stdout_footnotes(suppress: bool) {
-    SUPPRESS_STDOUT_FOOTNOTES.store(suppress, Ordering::Relaxed);
-}
-
-pub(crate) fn stdout_footnotes_suppressed() -> bool {
-    SUPPRESS_STDOUT_FOOTNOTES.load(Ordering::Relaxed)
-}
-
+pub use policy::{
+    CostPolicy, RUN_TIMING_JSON_FILE, RUN_TIMING_SUMMARY_PREFIX, TOOL_CALL_TYPE_MS_KEYS,
+    TimingPhase, cost_policy_for_model, set_suppress_stdout_footnotes,
+};
 pub use process_ledger::{arm_process_footnotes, note_process_start};
 pub(crate) use process_ledger_live::replace_tracked_timing;
+pub use state::RunTiming;
 
 pub fn emit_process_footnotes_if_armed() {
     process_ledger_live::flush_open_timing();
@@ -37,172 +27,7 @@ pub fn emit_process_footnotes_if_armed() {
 pub use report_cost_line::RUN_COST_SUMMARY_PREFIX;
 pub use tokens::ResponseUsage;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TimingPhase {
-    Implement,
-}
-
-pub const TOOL_CALL_TYPE_MS_KEYS: [&str; 5] = ["read", "search", "edit", "execute", "other"];
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(crate) enum AcpStepProxy {
-    #[default]
-    Idle,
-    OpenBatch,
-    TrailingAssistant,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum CostPolicy {
-    #[default]
-    EstimateFromRates,
-    Zero,
-}
-
-#[must_use]
-pub const fn cost_policy_for_model(_model: &str) -> CostPolicy {
-    CostPolicy::EstimateFromRates
-}
-
-#[derive(Debug, Clone)]
-pub struct RunTiming {
-    wall_start: Option<Instant>,
-    wall_end: Option<Instant>,
-    pub(crate) llm_wait: Duration,
-    agent_retry_backoff: Duration,
-    implement: Duration,
-    implement_display_name: &'static str,
-    pub(crate) tool_calls: Duration,
-    pub(crate) tool_calls_read: Duration,
-    pub(crate) tool_calls_search: Duration,
-    pub(crate) tool_calls_edit: Duration,
-    pub(crate) tool_calls_execute: Duration,
-    pub(crate) tool_calls_other: Duration,
-    pub(crate) ledger_cursor: process_ledger::Ledger,
-    pub(crate) tx_costs: Vec<f64>,
-    pub(crate) unknown_tx_count: u32,
-    pub(crate) token_cost_rates: crate::config::malvin_config_file::TokenCostRates,
-    pub(crate) cost_policy: CostPolicy,
-    pub(crate) steps: u64,
-    pub(crate) tokens_in: Option<u64>,
-    pub(crate) tokens_out: Option<u64>,
-    pub(crate) cache_read: Option<u64>,
-    pub(crate) cache_write: Option<u64>,
-    pub(crate) reasoning_tokens: Option<u64>,
-    pub(crate) reported_cost_in: Option<f64>,
-    pub(crate) reported_cost_out: Option<f64>,
-    pub(crate) reported_cost_read: Option<f64>,
-    pub(crate) reported_cost_write: Option<f64>,
-    pub(crate) reported_cost_total: Option<f64>,
-    pub(crate) estimated_cost_in: Option<f64>,
-    pub(crate) estimated_cost_out: Option<f64>,
-    pub(crate) estimated_cost_read: Option<f64>,
-    pub(crate) estimated_cost_write: Option<f64>,
-    pub(crate) tool_call_starts: u64,
-    pub(crate) usage_tx_count: u32,
-    pub(crate) unknown_usage_tx_count: u32,
-    pub(crate) acp_step_proxy: AcpStepProxy,
-}
-
-impl Default for RunTiming {
-    fn default() -> Self {
-        Self {
-            wall_start: None,
-            wall_end: None,
-            llm_wait: Duration::ZERO,
-            agent_retry_backoff: Duration::ZERO,
-            implement: Duration::ZERO,
-            implement_display_name: "implement",
-            tool_calls: Duration::ZERO,
-            tool_calls_read: Duration::ZERO,
-            tool_calls_search: Duration::ZERO,
-            tool_calls_edit: Duration::ZERO,
-            tool_calls_execute: Duration::ZERO,
-            tool_calls_other: Duration::ZERO,
-            ledger_cursor: process_ledger::Ledger::default(),
-            tx_costs: Vec::new(),
-            unknown_tx_count: 0,
-            token_cost_rates: crate::config::malvin_config_file::TokenCostRates::default(),
-            cost_policy: CostPolicy::EstimateFromRates,
-            steps: 0,
-            tokens_in: None,
-            tokens_out: None,
-            cache_read: None,
-            cache_write: None,
-            reasoning_tokens: None,
-            reported_cost_in: None,
-            reported_cost_out: None,
-            reported_cost_read: None,
-            reported_cost_write: None,
-            reported_cost_total: None,
-            estimated_cost_in: None,
-            estimated_cost_out: None,
-            estimated_cost_read: None,
-            estimated_cost_write: None,
-            tool_call_starts: 0,
-            usage_tx_count: 0,
-            unknown_usage_tx_count: 0,
-            acp_step_proxy: AcpStepProxy::Idle,
-        }
-    }
-}
-
 impl RunTiming {
-    pub fn add_tool_call_wall(&mut self, kind: &str, d: Duration) {
-        self.tool_calls = self.tool_calls.saturating_add(d);
-        let bucket = match kind {
-            "read" => &mut self.tool_calls_read,
-            "search" => &mut self.tool_calls_search,
-            "edit" => &mut self.tool_calls_edit,
-            "execute" => &mut self.tool_calls_execute,
-            _ => &mut self.tool_calls_other,
-        };
-        *bucket = bucket.saturating_add(d);
-    }
-}
-
-impl RunTiming {
-    #[must_use]
-    pub fn new_arc() -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(Self::default()))
-    }
-
-    pub const fn mark_wall_start(&mut self, at: Instant) {
-        self.wall_start = Some(at);
-    }
-
-    pub const fn mark_wall_end(&mut self, at: Instant) {
-        self.wall_end = Some(at);
-    }
-
-    pub const fn add_llm_phase(&mut self, phase: TimingPhase, d: Duration) {
-        let TimingPhase::Implement = phase;
-        self.llm_wait = self.llm_wait.saturating_add(d);
-        self.implement = self.implement.saturating_add(d);
-    }
-
-    pub const fn add_agent_retry_backoff(&mut self, d: Duration) {
-        self.agent_retry_backoff = self.agent_retry_backoff.saturating_add(d);
-    }
-
-    pub const fn set_implement_display_name(&mut self, label: &'static str) {
-        self.implement_display_name = label;
-    }
-
-    pub(crate) fn wall_duration(&self) -> Option<Duration> {
-        match (self.wall_start, self.wall_end) {
-            (Some(a), Some(b)) => Some(b.saturating_duration_since(a)),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn elapsed_so_far(&self) -> Duration {
-        self.wall_start.map_or(Duration::ZERO, |start| {
-            Instant::now().saturating_duration_since(start)
-        })
-    }
-
     pub fn write_json_and_print_summary(&self, run_dir: &Path) -> std::io::Result<()> {
         report::write_json_and_print_summary(self, run_dir)
     }

@@ -8,7 +8,6 @@ pub(crate) use super::pi_backend_models_list as models_list;
 pub(crate) use super::pi_backend_models_rpc as models_rpc;
 pub(crate) use super::pi_backend_provider_auth as provider_auth;
 pub(crate) use super::pi_backend_session as session;
-pub(crate) use super::pi_backend_session_io as session_io;
 pub(crate) use super::pi_backend_session_process as session_process;
 pub(crate) use super::pi_backend_session_spawn as session_spawn;
 pub(crate) use super::pi_backend_session_turn as session_turn;

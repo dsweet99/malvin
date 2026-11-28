@@ -1,3 +1,4 @@
+use super::do_dm_mode::{DoDmStdoutOpts, store_do_dm_stdout_opts};
 use std::sync::Mutex;
 
 use super::sentinel::{DM_END, DM_START, is_sentinel_line, may_become_sentinel_line};
@@ -14,6 +15,18 @@ static FILTER: Mutex<DmFilter> = Mutex::new(DmFilter {
     buf: String::new(),
     captured: String::new(),
 });
+
+pub fn set_do_dm_stdout_opts(opts: DoDmStdoutOpts) {
+    store_do_dm_stdout_opts(opts);
+    reset_do_dm_filter();
+}
+
+pub fn set_do_dm_stdout_mode(enabled: bool) {
+    set_do_dm_stdout_opts(DoDmStdoutOpts {
+        enabled,
+        emit_markdown: false,
+    });
+}
 
 pub(crate) fn reset_do_dm_filter() {
     let mut guard = FILTER

@@ -1,10 +1,9 @@
-use super::model_cost::ModelCost;
+use serde_json::{Map, Value};
+
+use super::model_cost::{ModelCost, TokenUsage};
 use super::openrouter_pricing::OpenRouterCatalog;
 use super::portkey_pricing::PortkeyLive;
-
-pub(super) trait PricingSource: Sync {
-    fn lookup(&self, provider: &str, model: &str) -> Option<ModelCost>;
-}
+use super::pricing_lookup::PricingSource;
 
 const PRICING_SOURCES: [&dyn PricingSource; 2] = [&PortkeyLive, &OpenRouterCatalog];
 
@@ -16,6 +15,43 @@ fn first_priced(sources: &[&dyn PricingSource], provider: &str, model: &str) -> 
     sources
         .iter()
         .find_map(|source| source.lookup(provider, model))
+}
+
+fn token_count(obj: &Map<String, Value>, keys: &[&str]) -> u64 {
+    keys.iter()
+        .find_map(|key| obj.get(*key).and_then(Value::as_u64))
+        .unwrap_or(0)
+}
+
+pub(crate) fn apply_portkey_cost_usd(provider: &str, model: &str, usage: &mut Value) {
+    super::sdk_usage_fields::normalize_pi_usage(usage);
+    if super::sdk_usage_fields::cost_usd_is_positive(usage) {
+        return;
+    }
+    let Some(rates) = lookup_rates(provider, model) else {
+        return;
+    };
+    let Some(obj) = usage.as_object() else {
+        return;
+    };
+    let cost = rates.cost_for(TokenUsage {
+        input: token_count(obj, &["inputTokens", "input"]),
+        output: token_count(obj, &["outputTokens", "output"]),
+        cache_read: token_count(obj, &["cacheReadTokens", "cacheRead", "cache_read"]),
+        cache_write: token_count(obj, &["cacheWriteTokens", "cacheWrite", "cache_write"]),
+    });
+    if let Some(map) = usage.as_object_mut() {
+        map.insert(
+            "costUsd".into(),
+            serde_json::json!({
+                "input": cost.input,
+                "output": cost.output,
+                "cacheRead": cost.cache_read,
+                "cacheWrite": cost.cache_write,
+                "total": cost.total,
+            }),
+        );
+    }
 }
 
 #[cfg(test)]

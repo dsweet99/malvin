@@ -38,10 +38,6 @@ impl JsonLineSession for NpmPiSession {
 }
 
 impl NpmPiSession {
-    pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
-        super::pi_backend::session_io::npm_pi_send_prompt(self, prompt).await
-    }
-
     fn release_local_hold(&mut self) {
         if !std::mem::take(&mut self.local_hold) {
             return;

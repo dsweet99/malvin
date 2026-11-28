@@ -2,17 +2,12 @@
 mod default_files;
 
 pub use default_files::{
-    ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD,
-    ROUTER_B_SATISFY_MD, ROUTER_C_MD, default_file, header_prompt_file, router_a_2_prompt_file,
+    HEADER_MD, NEW_FACT_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD,
+    ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_C_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
+    TIDY_FACTS_MD, default_file, header_prompt_file, router_a_2_prompt_file,
     router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
     router_b_satisfy_prompt_file,
 };
-
-pub const HEADER_MD: &str = "header.md";
-pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
-pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
-pub const NEW_FACT_MD: &str = "new_fact.md";
-pub const TIDY_FACTS_MD: &str = "tidy_facts.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 

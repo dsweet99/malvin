@@ -3,16 +3,7 @@ use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::TurnProtocol;
 use crate::backends::cursor_sdk::protocol::{BridgeEvent, RunDoneStatus};
 
-#[derive(Default)]
-pub(crate) struct TurnState {
-    pub(super) prompt_id: String,
-    pub(super) response_text: String,
-    pub(super) usage: Option<serde_json::Value>,
-    pub(super) prompt_accepted: bool,
-    pub(super) settled: bool,
-    pub(super) output_cap: Option<u64>,
-    pub(super) end_error: Option<AgentError>,
-}
+pub(crate) use super::pi_backend::map_event::TurnState;
 
 impl TurnProtocol for NpmPiSession {
     type State = TurnState;

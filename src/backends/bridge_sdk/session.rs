@@ -1,10 +1,6 @@
 use std::sync::Mutex;
 
-use crate::agent_process::AgentError;
-use crate::backends::cursor_sdk::protocol::BridgeRequest;
-
 use super::bridge_sdk::child_process_session::ChildProcessSession;
-use super::bridge_sdk::session_io::{drain_until_run_done, write_request};
 use super::bridge_sdk::stdio_child::StdioChild;
 use super::bridge_sdk::stream_log::StreamLog;
 
@@ -34,22 +30,5 @@ impl ChildProcessSession for BridgeSession {
 
     fn stdio_mut(&mut self) -> &mut StdioChild {
         &mut self.stdio
-    }
-}
-
-impl BridgeSession {
-    pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
-        let req = BridgeRequest::Send {
-            prompt: prompt.to_string(),
-        };
-        write_request(self, &req).await?;
-        drain_until_run_done(self).await
-    }
-
-    pub async fn shutdown(self) -> Result<(), AgentError> {
-        let _ = write_request(&self, &BridgeRequest::Cancel {}).await;
-        let _ = write_request(&self, &BridgeRequest::Close {}).await;
-        self.stdio.shutdown_kill_and_clear().await;
-        Ok(())
     }
 }

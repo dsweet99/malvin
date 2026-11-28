@@ -6,7 +6,7 @@ mod error;
 mod protocol;
 #[path = "router_machine/transition.rs"]
 mod transition;
-pub(crate) use domain::{Completion, Iteration, RunOutcome};
+pub(crate) use domain::{Completion, InvalidIteration, Iteration, RunOutcome};
 pub(crate) use error::ProtocolError;
 pub(crate) use protocol::{Effect, RouterEvent, RouterState, Transition};
 pub(crate) use transition::transition;

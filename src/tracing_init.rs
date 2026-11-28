@@ -6,6 +6,12 @@ pub fn init_tracing() {
     INIT.call_once(install_malvin_tracing);
 }
 
+pub fn init_from_env() {
+    crate::workspace::support_paths::init_command_line();
+    crate::agent_process::malvin_sandbox::init_malvin_spawn_baseline();
+    init_tracing();
+}
+
 fn install_malvin_tracing() {
     if tracing::subscriber::set_global_default(MalvinTracingSubscriber).is_ok() {
         return;

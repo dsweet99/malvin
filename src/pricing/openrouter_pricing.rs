@@ -122,7 +122,7 @@ pub(super) fn lookup_model_cost(model_id: &str) -> Option<ModelCost> {
 
 pub(super) struct OpenRouterCatalog;
 
-impl super::pricing_source::PricingSource for OpenRouterCatalog {
+impl super::pricing_lookup::PricingSource for OpenRouterCatalog {
     fn lookup(&self, provider: &str, model_id: &str) -> Option<ModelCost> {
         if provider.eq_ignore_ascii_case("openrouter") {
             return lookup_model_cost(model_id);

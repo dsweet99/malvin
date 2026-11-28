@@ -1,5 +1,10 @@
-use super::{HEADER_MD, NEW_FACT_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, TIDY_FACTS_MD};
 use std::sync::OnceLock;
+
+pub const HEADER_MD: &str = "header.md";
+pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
+pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
+pub const NEW_FACT_MD: &str = "new_fact.md";
+pub const TIDY_FACTS_MD: &str = "tidy_facts.md";
 
 pub const ROUTER_A_MD: &str = "router_a.md";
 pub const ROUTER_A_2_MD: &str = "router_a_2.md";

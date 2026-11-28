@@ -9,11 +9,7 @@ use super::types::{
     TOOL_PHASE_START,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct LineRange {
-    pub(crate) start: u64,
-    pub(crate) end: Option<u64>,
-}
+pub(crate) use super::line_range::{LineRange, json_number};
 
 pub(crate) struct ParsedToolUpdate {
     pub(crate) phase: u8,
@@ -137,19 +133,6 @@ pub(crate) fn parse_tool_update(v: &Value) -> Option<ParsedToolUpdate> {
         search_query,
         raw_output,
     })
-}
-
-pub(crate) fn json_number(v: &Value) -> Option<u64> {
-    if let Some(n) = v.as_u64() {
-        return Some(n);
-    }
-    if let Some(n) = v.as_i64() {
-        return u64::try_from(n).ok();
-    }
-    if let Some(s) = v.as_str() {
-        return s.parse().ok();
-    }
-    None
 }
 
 #[cfg(test)]

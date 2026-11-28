@@ -10,11 +10,7 @@ pub(crate) use super::unix_process_group_ps_proc;
 pub(crate) const INIT_PID: u32 = 1;
 
 #[cfg(unix)]
-pub(crate) struct ProcRow {
-    pub pid: u32,
-    pub pgid: u32,
-    pub ppid: u32,
-}
+pub(crate) use super::unix_process_group_ps_proc::ProcRow;
 
 #[cfg(unix)]
 pub fn snapshot_pids() -> HashSet<u32> {

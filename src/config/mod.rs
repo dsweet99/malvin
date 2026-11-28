@@ -1,7 +1,12 @@
 pub(crate) mod log_gc_config;
 pub mod malvin_config_file;
+pub(crate) mod malvin_config_io;
+pub(crate) mod malvin_config_loaders;
+pub(crate) mod malvin_config_types;
+pub(crate) mod malvin_config_values;
 pub mod mem_limit_config;
 pub mod model_id;
+pub(crate) mod model_id_types;
 pub mod model_list;
 pub(crate) mod workflow_name_aliases;
 

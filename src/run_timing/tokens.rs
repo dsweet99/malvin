@@ -1,7 +1,8 @@
 use super::acp_usage::{
     AcpUsageFields, add_optional_sum, reported_cost_usd, u64_field, usage_payload_is_observable,
 };
-use super::{AcpStepProxy, RunTiming};
+use super::policy::{AcpStepProxy, CostPolicy};
+use super::state::RunTiming;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResponseUsage {
@@ -23,7 +24,7 @@ impl RunTiming {
                 self.unknown_usage_tx_count = self.unknown_usage_tx_count.saturating_add(1);
             }
         }
-        if matches!(self.cost_policy, super::CostPolicy::Zero) {
+        if matches!(self.cost_policy, CostPolicy::Zero) {
             self.tx_costs.push(0.0);
         }
     }

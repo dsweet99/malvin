@@ -8,6 +8,7 @@ mod human_a_done;
 mod human_b;
 #[cfg(test)]
 mod kiss_coverage;
+mod line_range;
 mod parse;
 mod parse_acp;
 #[cfg(test)]
@@ -25,7 +26,7 @@ pub use classify_bash::{
     format_classified_tool_line, tool_comment_log_prefix,
 };
 #[allow(unused_imports)]
-pub(crate) use human_a::{execute_effective_exit, execute_stdout_failed};
+pub(crate) use human_a_done::{execute_effective_exit, execute_stdout_failed};
 #[allow(unused_imports)]
 pub(crate) use human_a_done::{human_done_line, human_read_done};
 pub(crate) use human_b::escape_tool_subject_fragment;

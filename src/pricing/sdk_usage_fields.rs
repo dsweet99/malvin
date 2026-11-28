@@ -53,7 +53,7 @@ pub(super) fn normalize_pi_usage(usage: &mut Value) {
 
 #[cfg(test)]
 mod tests {
-    use super::super::portkey_pricing::apply_portkey_cost_usd;
+    use super::super::pricing_source::apply_portkey_cost_usd;
 
     fn write_openrouter_rate_cache(model_id: &str, input: f64, output: f64) {
         crate::pricing::openrouter_pricing::write_rate_cache_for_test(

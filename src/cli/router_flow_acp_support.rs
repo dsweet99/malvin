@@ -1,16 +1,39 @@
 use crate::cli::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::cli::router_flow::router_flow_prompt;
 use crate::cli::router_machine::Completion;
+use crate::cli::{RouterOpts, SharedOpts};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file};
+use malvin::backends::agent_backend::SdkClient;
+use malvin::prompts::PromptStore;
+use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use malvin::slow_task_watch::WatchedPromptFlag;
 use std::path::Path;
 
-use super::router_flow::router_flow_acp::RouterAcpIterationInput;
-use super::router_flow::router_flow_acp::router_flow_coder_prompts::{
+use super::router_flow_coder_prompts::{
     RouterInitialCoderPrompt, run_router_b_coder_prompt, run_router_followup_coder_prompt,
     run_router_initial_coder_prompt,
 };
 use super::router_flow_fact_agent::{FactAgentSpec, start_fact_agent_watch};
+
+pub(crate) struct RouterAcpIterationInput<'a> {
+    pub client: &'a mut SdkClient,
+    pub artifacts: &'a RunArtifacts,
+    pub prompt_store: &'a PromptStore,
+    pub shared: &'a SharedOpts,
+    pub router: &'a RouterOpts,
+    pub agent_loop: usize,
+    pub session_end: RunTimingSessionEnd,
+}
+
+pub(crate) async fn begin_coder_session_if_needed(
+    client: &mut SdkClient,
+    work_dir: &Path,
+) -> Result<malvin::backends::agent_backend::CoderSessionEnsure, String> {
+    client
+        .start_coder_session(work_dir)
+        .await
+        .map_err(|e| e.to_string())
+}
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
@@ -108,8 +131,7 @@ async fn deliver_router_initial_turn(
     } else {
         let iteration_backups =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
-        super::router_flow::router_flow_acp::begin_coder_session_if_needed(input.client, work_dir)
-            .await?;
+        begin_coder_session_if_needed(input.client, work_dir).await?;
         run_router_initial_coder_prompt(RouterInitialCoderPrompt {
             client: input.client,
             prompt: &initial.body,

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::agent_process::AgentError;
 
-use super::bridge_sdk::drain_idle::{DrainHealthVerdict, DrainIdleClock, DrainIdleLabels};
+use super::bridge_sdk_drain_idle_types::{DrainHealthVerdict, DrainIdleClock, DrainIdleLabels};
 
 pub(crate) struct DrainIdleWaitOpts<'a> {
     pub labels: DrainIdleLabels<'a>,

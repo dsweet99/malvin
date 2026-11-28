@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::run_timing::{RUN_TIMING_SUMMARY_PREFIX, TOOL_CALL_TYPE_MS_KEYS};
+use super::super::policy::{RUN_TIMING_SUMMARY_PREFIX, TOOL_CALL_TYPE_MS_KEYS};
 
 fn format_ms_one_decimal_s(ms: u64) -> String {
     if (1..50).contains(&ms) {

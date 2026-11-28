@@ -85,7 +85,7 @@ impl RunArtifacts {
 
     #[must_use]
     pub fn stdout_log_path(&self) -> PathBuf {
-        AgentDirs(self).main().join(STDOUT_LOG)
+        self.run_dir.join(MAIN_DIR).join(STDOUT_LOG)
     }
 
     #[must_use]

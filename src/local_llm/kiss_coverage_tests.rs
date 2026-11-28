@@ -11,8 +11,8 @@ fn kiss_cov_local_llm() {
     let _ = super::local_llm_daemon::run_local_llm_manager;
     let _ = super::local_llm_daemon::reclaim_stale_manager_files;
     let _ = super::local_llm_client::ensure_via_manager;
-    let _ = super::local_llm_client::hold_via_manager;
-    let _ = super::local_llm_client::release_via_manager;
+    let _ = super::local_llm_keepalive::hold_via_manager;
+    let _ = super::local_llm_keepalive::release_via_manager;
     let _ = super::local_llm_client::touch_via_manager;
     let _ = super::local_llm_keepalive::start_keepalive;
     let _ = super::local_llm_keepalive::stop_keepalive;

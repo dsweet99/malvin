@@ -7,9 +7,16 @@ use tokio::io::BufReader;
 use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::Mutex as AsyncMutex;
 
-use super::bridge_sdk::session_io::MemWatchArgs;
 use super::bridge_sdk::stdio_teardown::StdioTeardown;
 use super::bridge_sdk::stream_log::StreamLog;
+
+pub(crate) struct MemWatchArgs<'a> {
+    pub process_group_id: Option<u32>,
+    pub reader_dead: &'a std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub work_dir: &'a std::path::Path,
+    pub spawn_pid_baseline: &'a std::collections::HashSet<u32>,
+    pub run_dir: Option<&'a std::path::Path>,
+}
 
 pub(crate) struct SpawnedStdio {
     pub child: Child,

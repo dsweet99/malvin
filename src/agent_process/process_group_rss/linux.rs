@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::fs;
 
-use super::process_group_rss::{MemoryMetric, MemorySample};
+use super::process_group_rss::memory_sample::{MemoryMetric, MemorySample};
 
 #[cfg(test)]
 pub(crate) fn linux_pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {

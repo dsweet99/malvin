@@ -11,33 +11,8 @@ pub fn timestamp_now_string() -> String {
 }
 
 #[must_use]
-pub fn heartbeat_payload_now() -> String {
-    let now = chrono::Local::now();
-    let ts = now.format("%Y%m%d.%H%M%S");
-    let mut payload = ts.to_string();
-    if let Some(stats) =
-        crate::agent_process::active_agent_heartbeat::active_agent_heartbeat_stats()
-    {
-        payload.push_str(", ");
-        payload.push_str(&stats);
-    }
-    if let Some(id) = crate::workspace::run_id::active_run_dir()
-        .as_deref()
-        .and_then(crate::workspace::run_id::short_malvin_log_id)
-    {
-        payload.push_str(HEARTBEAT_FIELD_SEPARATOR);
-        payload.push_str(&id);
-        let summary = crate::task_summary::current();
-        if !summary.is_empty() {
-            payload.push_str(HEARTBEAT_FIELD_SEPARATOR);
-            payload.push_str(&summary);
-        }
-        if let Some(status) = crate::task_summary::current_status() {
-            payload.push_str(HEARTBEAT_FIELD_SEPARATOR);
-            payload.push_str(&status);
-        }
-    }
-    payload
+pub(crate) fn heartbeat_timestamp() -> String {
+    chrono::Local::now().format("%Y%m%d.%H%M%S").to_string()
 }
 
 #[must_use]
@@ -58,10 +33,10 @@ mod tests {
     fn kiss_cov_timestamp_now_string_and_heartbeat_payload_now_starts_with_wall_clock_timestamp() {
         {
             let _ = super::timestamp_now_string;
-            let _ = super::heartbeat_payload_now;
+            let _ = crate::heartbeat::heartbeat_payload_now;
         }
         {
-            let payload = super::heartbeat_payload_now();
+            let payload = crate::heartbeat::heartbeat_payload_now();
             assert!(super::heartbeat_payload_has_wall_clock_prefix(&payload));
         }
     }
@@ -78,7 +53,7 @@ mod tests {
             Some(pgid),
             baseline,
         );
-        let payload = super::heartbeat_payload_now();
+        let payload = crate::heartbeat::heartbeat_payload_now();
         assert!(payload.contains("sandbox: "));
         assert!(payload.contains("USS") || payload.contains("RSS"));
         assert!(payload.contains("procs"));
@@ -90,7 +65,7 @@ mod tests {
 
     #[test]
     fn heartbeat_payload_has_no_fixed_activity_word() {
-        let payload = super::heartbeat_payload_now();
+        let payload = crate::heartbeat::heartbeat_payload_now();
         let rest = payload.get(15..).unwrap_or("");
         for word in [
             "Starting", "Reading", "Editing", "Running", "Checking", "Fixing", "Thinking",
@@ -138,7 +113,7 @@ mod tests {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         crate::workspace::run_id::set_active_run_dir(None);
-        let bare = super::heartbeat_payload_now();
+        let bare = crate::heartbeat::heartbeat_payload_now();
         assert!(
             !bare.contains('·'),
             "no run dir ⇒ no center-dot suffix: {bare}"
@@ -148,7 +123,7 @@ mod tests {
             "/home/dsweet/.malvinconf/logs/eb7ef333a92a6d41/20260830_024330_estp91hf",
         );
         crate::workspace::run_id::set_active_run_dir(Some(run));
-        let payload = super::heartbeat_payload_now();
+        let payload = crate::heartbeat::heartbeat_payload_now();
         crate::workspace::run_id::set_active_run_dir(None);
         assert!(
             payload.ends_with(" · eb7ef333a92a6d41/20260830_024330_estp91hf"),

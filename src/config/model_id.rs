@@ -9,32 +9,11 @@ mod model_id_legacy;
 mod model_id_spec;
 pub use model_id_spec::BackendSpec;
 
-pub const CURSOR_PREFIX: &str = "cursor:";
-pub const PI_PREFIX: &str = "pi:";
-pub const CODEX_PREFIX: &str = "codex:";
-pub const CLAUDE_PREFIX: &str = "claude:";
-
-pub const MINI_PREFIX: &str = "mini:";
-pub const RPI_PREFIX: &str = "rpi:";
-pub const OPENROUTER_PREFIX: &str = "openrouter:";
-pub const LOCAL_PREFIX: &str = "local:";
-pub const PRIME_PREFIX: &str = "prime:";
-
-pub const UNPREFIXED_MODEL_MESSAGE: &str = "model id must use a `cursor:`, `pi:`, `codex:`, or `claude:` prefix (for example `cursor:auto`, `pi:openai/gpt-4o`, `codex:gpt-5.6`, or `claude:sonnet`)";
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ModelParam {
-    pub id: String,
-    pub value: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ModelBackend {
-    Cursor,
-    Pi,
-    Codex,
-    Claude,
-}
+pub use super::model_id_types::{
+    CLAUDE_PREFIX, CODEX_PREFIX, CURSOR_PREFIX, LOCAL_PREFIX, MINI_PREFIX, ModelBackend,
+    ModelParam, OPENROUTER_PREFIX, PI_PREFIX, PRIME_PREFIX, ParsedModel, RPI_PREFIX,
+    UNPREFIXED_MODEL_MESSAGE,
+};
 
 impl ModelBackend {
     pub const ALL: [Self; 4] = [Self::Cursor, Self::Pi, Self::Codex, Self::Claude];
@@ -69,13 +48,6 @@ impl ModelBackend {
         debug_assert_eq!(self, model.backend);
         self.spec().wire_model(model)
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParsedModel {
-    pub backend: ModelBackend,
-    pub slug: String,
-    pub params: Vec<ModelParam>,
 }
 
 impl std::fmt::Display for ParsedModel {

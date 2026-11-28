@@ -1,8 +1,9 @@
-use crate::agent_process::AcpJsonlTrace;
 use crate::agent_process::SessionUpdateChunkKind;
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
-use super::bridge_sdk::log_adapter_tool::{ToolCallFields, clear_tool_starts, emit_tool};
+use super::bridge_sdk::log_adapter_tool::{
+    ToolCallFields, append_trace_line, clear_tool_starts, emit_tool,
+};
 use super::bridge_sdk::stream_log::StreamLog;
 
 fn notify_herdr_on_sdk_tool_activity(ev: &BridgeEvent) {
@@ -110,14 +111,6 @@ fn append_trace_value(session: &StreamLog, ev: &BridgeEvent) {
 fn append_trace_raw(session: &StreamLog, kind: &str, text: &str) {
     let raw = serde_json::json!({ "event": kind, "text": text }).to_string();
     append_trace_line(session, &raw);
-}
-
-pub(crate) fn append_trace_line(session: &StreamLog, line: &str) {
-    let Some(path) = session.trace_path.as_ref() else {
-        return;
-    };
-    let trace = AcpJsonlTrace::new(path.clone(), "sdk".into());
-    trace.append_line("in", line);
 }
 
 #[cfg(test)]

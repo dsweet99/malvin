@@ -1,4 +1,5 @@
-use super::RunTiming;
+use super::policy::CostPolicy;
+use super::state::RunTiming;
 
 pub(super) struct AcpUsageFields {
     pub input: Option<u64>,
@@ -207,7 +208,7 @@ impl RunTiming {
         cache_n: (u64, u64),
     ) {
         let (cache_read_n, cache_write_n) = cache_n;
-        if !skip_rate_estimate && matches!(self.cost_policy, super::CostPolicy::EstimateFromRates) {
+        if !skip_rate_estimate && matches!(self.cost_policy, CostPolicy::EstimateFromRates) {
             let (cost_in, cost_out, cost_read, cost_write) = self
                 .token_cost_rates
                 .estimate_components(input_n, output_n, cache_read_n, cache_write_n);
@@ -219,7 +220,7 @@ impl RunTiming {
                 self.token_cost_rates
                     .estimate_usd(input_n, output_n, cache_read_n, cache_write_n);
             self.tx_costs.push(estimated);
-        } else if matches!(self.cost_policy, super::CostPolicy::Zero) {
+        } else if matches!(self.cost_policy, CostPolicy::Zero) {
             self.tx_costs.push(0.0);
         }
     }

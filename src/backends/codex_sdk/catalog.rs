@@ -6,10 +6,12 @@ use std::time::Duration;
 
 use crate::command_output_timeout::timeout_ms_from_env;
 
-use super::codex_sdk::discover::model_list::parse_model_list_page;
-use super::codex_sdk::discover::{
-    DEFAULT_CODEX_LIST_MODELS_TIMEOUT_MS, ModelListPage, model_list_params,
-};
+use super::codex_sdk_codex_bin::{DEFAULT_CODEX_LIST_MODELS_TIMEOUT_MS, resolve_codex_bin};
+use super::codex_sdk_model_list::{ModelListPage, parse_model_list_page};
+
+pub(crate) fn model_list_params(cursor: Option<&str>) -> serde_json::Value {
+    serde_json::json!({"limit": 100, "includeHidden": true, "cursor": cursor})
+}
 
 pub(crate) struct CatalogChild {
     pub(crate) child: Child,
@@ -43,7 +45,7 @@ pub(crate) fn list_models_from_child(child: &mut Child) -> Result<Vec<(String, S
 }
 
 pub(crate) fn spawn_codex_model_server() -> Result<Child, String> {
-    let bin = super::codex_sdk::discover::resolve_codex_bin()?;
+    let bin = resolve_codex_bin()?;
     let mut cmd = crate::agent_process::malvin_sandbox::malvin_std_command(&bin);
     cmd.arg("app-server")
         .arg("--stdio")

@@ -4,6 +4,12 @@ use super::pi_backend::session::NpmPiSession;
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::JsonLineSession;
 
+impl NpmPiSession {
+    pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
+        npm_pi_send_prompt(self, prompt).await
+    }
+}
+
 static SEQ: AtomicU64 = AtomicU64::new(1);
 
 pub(crate) fn next_id() -> String {

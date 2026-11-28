@@ -2,7 +2,7 @@ use crate::agent_process::AgentError;
 
 use super::bridge_sdk::TurnWait;
 use super::bridge_sdk::session::BridgeSession;
-use super::bridge_sdk::session_handshake::wait_for_ok;
+use super::bridge_sdk::stdio_child::MemWatchArgs;
 use super::bridge_sdk::timing::{note_sdk_step, record_sdk_usage};
 use crate::backends::cursor_sdk::protocol::{
     BridgeEvent, BridgeRequest, decode_event, encode_request,
@@ -12,46 +12,21 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
 const BRIDGE: ModelBackend = ModelBackend::Cursor;
 
-pub(crate) struct CreateArgs<'a> {
-    pub cwd: &'a std::path::Path,
-    pub model: &'a str,
-    pub api_key: Option<String>,
-    pub models_json_path: Option<&'a str>,
-}
+impl BridgeSession {
+    pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
+        let req = BridgeRequest::Send {
+            prompt: prompt.to_string(),
+        };
+        write_request(self, &req).await?;
+        drain_until_run_done(self).await
+    }
 
-pub(crate) struct ResumeArgs<'a> {
-    pub agent_id: &'a str,
-    pub cwd: &'a std::path::Path,
-    pub model: &'a str,
-    pub api_key: Option<String>,
-}
-
-pub(crate) async fn send_create(
-    session: &BridgeSession,
-    args: CreateArgs<'_>,
-) -> Result<(), AgentError> {
-    let req = BridgeRequest::Create {
-        cwd: args.cwd.display().to_string(),
-        model: args.model.to_string(),
-        api_key: args.api_key,
-        models_json_path: args.models_json_path.map(str::to_string),
-    };
-    write_request(session, &req).await?;
-    wait_for_ok(session).await
-}
-
-pub(crate) async fn send_resume(
-    session: &BridgeSession,
-    args: ResumeArgs<'_>,
-) -> Result<(), AgentError> {
-    let req = BridgeRequest::Resume {
-        agent_id: args.agent_id.to_string(),
-        cwd: args.cwd.display().to_string(),
-        model: args.model.to_string(),
-        api_key: args.api_key,
-    };
-    write_request(session, &req).await?;
-    wait_for_ok(session).await
+    pub async fn shutdown(self) -> Result<(), AgentError> {
+        let _ = write_request(&self, &BridgeRequest::Cancel {}).await;
+        let _ = write_request(&self, &BridgeRequest::Close {}).await;
+        self.stdio.shutdown_kill_and_clear().await;
+        Ok(())
+    }
 }
 
 pub async fn write_request(session: &BridgeSession, req: &BridgeRequest) -> Result<(), AgentError> {
@@ -199,14 +174,6 @@ fn finish_run_done(
         })));
     }
     Ok(())
-}
-
-pub(crate) struct MemWatchArgs<'a> {
-    pub process_group_id: Option<u32>,
-    pub reader_dead: &'a std::sync::Arc<std::sync::atomic::AtomicBool>,
-    pub work_dir: &'a std::path::Path,
-    pub spawn_pid_baseline: &'a std::collections::HashSet<u32>,
-    pub run_dir: Option<&'a std::path::Path>,
 }
 
 pub(crate) fn start_mem_watch(args: MemWatchArgs<'_>) {

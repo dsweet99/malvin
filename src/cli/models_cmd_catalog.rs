@@ -3,34 +3,7 @@ use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
 use super::models_cmd::models_cmd_cursor::cursor_model_listing;
 use super::models_cmd::{line_matches_prefix, section_may_match};
-
-#[derive(Debug, Default, PartialEq, Eq)]
-pub(super) struct ModelListing {
-    pub(super) rows: Vec<String>,
-    pub(super) unparsed: Option<String>,
-    pub(super) unavailable: Option<String>,
-}
-
-impl ModelListing {
-    pub(super) fn rows(rows: Vec<String>) -> Self {
-        Self {
-            rows,
-            ..Self::default()
-        }
-    }
-
-    fn unavailable(error: String) -> Self {
-        Self {
-            unavailable: Some(error),
-            ..Self::default()
-        }
-    }
-}
-
-pub(super) trait ModelCatalog {
-    fn prefix(&self) -> &'static str;
-    fn list_display_models(&self) -> ModelListing;
-}
+use super::models_cmd_listing::{ModelCatalog, ModelListing};
 
 struct CursorCatalog;
 struct PiCatalog;

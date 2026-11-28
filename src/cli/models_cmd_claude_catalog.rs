@@ -1,6 +1,6 @@
 use malvin::config::model_id::ModelBackend;
 
-use super::models_cmd_catalog::{ModelCatalog, ModelListing};
+use super::models_cmd_listing::{ModelCatalog, ModelListing};
 
 pub(super) struct ClaudeCatalog;
 

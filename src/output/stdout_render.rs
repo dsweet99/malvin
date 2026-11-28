@@ -6,14 +6,9 @@ pub(crate) enum StdoutRenderPrelude {
     FlushOnly,
 }
 
-pub(crate) fn emit_stdout_rendered_immediate(display: &str, log: &str) {
-    if !display.is_empty() {
-        super::print_stdout_display_line(display);
-    }
-    if !log.is_empty() {
-        super::append_stdout_log_line(log);
-    }
-}
+pub(crate) use super::stdout_emit::emit_stdout_rendered_immediate;
+#[cfg(test)]
+pub(crate) use super::stdout_heartbeat::write_heartbeat_log_line;
 
 pub(crate) fn route_stdout_rendered_line(display: &str, log: &str, prelude: StdoutRenderPrelude) {
     if prelude == StdoutRenderPrelude::TaggedWithHeartbeat {
@@ -27,8 +22,4 @@ pub(crate) fn route_stdout_rendered_line(display: &str, log: &str, prelude: Stdo
 
 pub(crate) fn print_stdout_rendered_line(display: &str, log: &str) {
     route_stdout_rendered_line(display, log, StdoutRenderPrelude::TaggedWithHeartbeat);
-}
-
-pub(crate) fn write_heartbeat_log_line(display: &str, log: &str) {
-    route_stdout_rendered_line(display, log, StdoutRenderPrelude::HeartbeatOnly);
 }

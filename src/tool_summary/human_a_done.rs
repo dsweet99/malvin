@@ -110,8 +110,8 @@ pub(crate) fn human_execute_done(
     let cmd = human_execute_command(parsed, tracker);
     let dur = humanize_duration(elapsed);
     let raw = parsed.raw_output.as_ref();
-    let exit = super::human_a::execute_effective_exit(parsed, raw);
-    if super::human_a::execute_stdout_failed(parsed, exit, raw) {
+    let exit = execute_effective_exit(parsed, raw);
+    if execute_stdout_failed(parsed, exit, raw) {
         let mut line = format!("Run {cmd} · exit {exit} · {dur} · ✗");
         if let Some(r) = raw
             && let Some(err) = stderr_headline(r).or_else(|| stdout_headline(r))
@@ -123,6 +123,26 @@ pub(crate) fn human_execute_done(
         return line;
     }
     format!("Run {cmd} · {dur} · ✓")
+}
+
+pub(crate) fn execute_effective_exit(parsed: &ParsedToolUpdate, raw: Option<&Value>) -> i64 {
+    if let Some(code) = raw.and_then(|r| r.get("exitCode")).and_then(Value::as_i64) {
+        return code;
+    }
+    match parsed.status.as_deref() {
+        Some("failed" | "cancelled") => 1,
+        _ => 0,
+    }
+}
+
+pub(crate) fn execute_stdout_failed(
+    parsed: &ParsedToolUpdate,
+    exit: i64,
+    raw: Option<&Value>,
+) -> bool {
+    exit != 0
+        || matches!(parsed.status.as_deref(), Some("failed" | "cancelled"))
+        || raw.and_then(stderr_headline).is_some()
 }
 
 pub(crate) fn human_edit_done(

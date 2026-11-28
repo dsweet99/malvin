@@ -1,8 +1,18 @@
+use std::time::Instant;
+
 use super::codex_sdk::session::CodexSession;
 use crate::agent_process::AgentError;
 use crate::backends::cursor_sdk::protocol::{BridgeEvent, RunDoneStatus};
 
-use super::codex_sdk::session_turn::{TurnState, agent_message_from_turn};
+#[derive(Default)]
+pub(crate) struct TurnState {
+    pub(super) response_text: String,
+    pub(super) turn_id: Option<String>,
+    pub(super) usage: Option<serde_json::Value>,
+    pub(super) usage_is_cumulative: bool,
+    pub(super) started: Option<Instant>,
+    pub(super) counted_step: bool,
+}
 
 pub(super) fn finish_codex_turn(
     session: &CodexSession,
@@ -31,7 +41,7 @@ pub(super) fn finish_codex_turn(
         record_codex_result(session, text);
     }
     crate::backends::bridge_sdk::handle_stream_event(session, &ev);
-    super::codex_sdk::session_io::set_codex_turn_id(session, None);
+    super::codex_sdk::session::set_codex_turn_id(session, None);
     let status = match &ev {
         BridgeEvent::RunDone { status, .. } => *status,
         _ => RunDoneStatus::Finished,
@@ -127,4 +137,25 @@ fn json_i64(value: Option<&serde_json::Value>) -> Option<i64> {
         return Some(n);
     }
     i64::try_from(v.as_u64()?).ok()
+}
+
+pub(super) fn agent_message_from_turn(
+    value: &serde_json::Value,
+    response_text: String,
+) -> Option<String> {
+    turn_item_agent_text(value).or_else(|| (!response_text.is_empty()).then_some(response_text))
+}
+
+fn turn_item_agent_text(value: &serde_json::Value) -> Option<String> {
+    let items = value.pointer("/params/turn/items")?.as_array()?;
+    let texts: Vec<&str> = items.iter().filter_map(item_agent_text).collect();
+    (!texts.is_empty()).then(|| texts.join(""))
+}
+
+pub(super) fn item_agent_text(item: &serde_json::Value) -> Option<&str> {
+    let ty = item.get("type").and_then(serde_json::Value::as_str)?;
+    (ty == "agentMessage")
+        .then(|| item.get("text").and_then(serde_json::Value::as_str))
+        .flatten()
+        .filter(|text| !text.is_empty())
 }

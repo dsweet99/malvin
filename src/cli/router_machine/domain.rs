@@ -1,5 +1,9 @@
-use super::ProtocolError;
 use std::num::NonZeroUsize;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct InvalidIteration {
+    pub(crate) current: usize,
+    pub(crate) max: usize,
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Completion {
     Impasse,
@@ -12,18 +16,14 @@ pub(crate) struct Iteration {
     max: NonZeroUsize,
 }
 impl Iteration {
-    pub(crate) fn new(current: usize, max: usize) -> Result<Self, ProtocolError> {
-        let current =
-            NonZeroUsize::new(current).ok_or(ProtocolError::InvalidIteration { current, max })?;
-        let max = NonZeroUsize::new(max).ok_or_else(|| ProtocolError::InvalidIteration {
-            current: current.get(),
-            max,
-        })?;
+    pub(crate) fn new(current: usize, max: usize) -> Result<Self, InvalidIteration> {
+        let invalid = InvalidIteration { current, max };
+        let (Some(current), Some(max)) = (NonZeroUsize::new(current), NonZeroUsize::new(max))
+        else {
+            return Err(invalid);
+        };
         if current > max {
-            return Err(ProtocolError::InvalidIteration {
-                current: current.get(),
-                max: max.get(),
-            });
+            return Err(invalid);
         }
         Ok(Self { current, max })
     }

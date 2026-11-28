@@ -12,17 +12,9 @@ pub struct DoDmStdoutOpts {
     pub emit_markdown: bool,
 }
 
-pub fn set_do_dm_stdout_opts(opts: DoDmStdoutOpts) {
+pub(crate) fn store_do_dm_stdout_opts(opts: DoDmStdoutOpts) {
     DO_DM_STDOUT.store(opts.enabled, Ordering::Relaxed);
     DO_DM_MARKDOWN.store(opts.enabled && opts.emit_markdown, Ordering::Relaxed);
-    super::do_dm_filter::reset_do_dm_filter();
-}
-
-pub fn set_do_dm_stdout_mode(enabled: bool) {
-    set_do_dm_stdout_opts(DoDmStdoutOpts {
-        enabled,
-        emit_markdown: false,
-    });
 }
 
 #[must_use]

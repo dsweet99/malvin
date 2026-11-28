@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
+use super::line_range::LineRange;
+
 pub const TOOL_DISPLAY_MAX_WIDTH: usize = 60;
 pub const TOOL_ELLIPSIS: &str = "...";
 
@@ -70,7 +72,7 @@ pub(crate) struct ToolCallRecord {
     pub(crate) command: Option<String>,
     pub(crate) input_path: Option<String>,
     pub(crate) search_query: Option<String>,
-    pub(crate) input_line_range: Option<super::parse::LineRange>,
+    pub(crate) input_line_range: Option<LineRange>,
     pub(crate) started: Instant,
     pub(crate) stdout_start_emitted: bool,
 }

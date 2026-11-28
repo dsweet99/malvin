@@ -28,14 +28,11 @@ pub(crate) fn ensure_via_manager(provider: &str, model: &str) -> Result<(), Stri
     }
 }
 
-pub(crate) fn hold_via_manager() -> Result<(), String> {
-    quick_ok(ManagerRequest::Hold)?;
-    super::local_llm_keepalive::start_keepalive();
-    Ok(())
+pub(crate) fn hold_request() -> Result<(), String> {
+    quick_ok(ManagerRequest::Hold)
 }
 
-pub(crate) fn release_via_manager() -> Result<(), String> {
-    super::local_llm_keepalive::stop_keepalive();
+pub(crate) fn release_request() -> Result<(), String> {
     quick_ok(ManagerRequest::Release)
 }
 

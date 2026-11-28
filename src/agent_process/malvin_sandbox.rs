@@ -1,19 +1,20 @@
 use std::collections::HashSet;
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 pub use crate::agent_process::acp_spawn_lock::assert_no_peer_acp_spawn_lock;
 use crate::agent_process::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
 
-#[cfg(unix)]
-use crate::agent_process::process_group_rss::{MemorySample, pids_sandbox_sample};
-#[cfg(unix)]
-use crate::agent_process::sandbox_monitor_pids;
-
 pub use crate::agent_process::parent_death_signal::{
     install_parent_death_signal, install_tokio_parent_death_signal,
 };
+
+pub use super::sandbox_command::{
+    isolate_child_process_group, malvin_std_command, malvin_tokio_command,
+};
+pub(crate) use super::sandbox_probe::sandbox_still_alive;
+pub use super::sandbox_probe::{malvin_session_memory_sample, malvin_session_rss_bytes};
+pub use super::scope_target::SandboxSpawnTicket;
 
 static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
 
@@ -25,25 +26,6 @@ struct ActiveSandboxSession {
 }
 
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
-
-#[derive(Debug)]
-pub struct SandboxSpawnTicket {
-    scope_unit: Option<crate::agent_process::agent_scope::ScopeTarget>,
-}
-
-impl SandboxSpawnTicket {
-    pub(crate) fn set_scope_unit(
-        &mut self,
-        unit: Option<crate::agent_process::agent_scope::ScopeTarget>,
-    ) {
-        self.scope_unit = unit;
-    }
-
-    #[cfg(test)]
-    pub(crate) const fn for_test() -> Self {
-        Self { scope_unit: None }
-    }
-}
 
 pub fn init_malvin_spawn_baseline() {
     #[cfg(unix)]
@@ -59,34 +41,6 @@ pub fn init_malvin_spawn_baseline() {
 #[must_use]
 pub fn malvin_spawn_baseline() -> HashSet<u32> {
     MALVIN_SPAWN_BASELINE.get_or_init(HashSet::new).clone()
-}
-
-#[cfg(unix)]
-pub fn isolate_child_process_group(cmd: &mut std::process::Command) {
-    use std::os::unix::process::CommandExt;
-    cmd.process_group(0);
-}
-
-#[cfg(not(unix))]
-pub fn isolate_child_process_group(_: &mut std::process::Command) {}
-
-fn apply_sandbox_resource_limits(cmd: &mut std::process::Command) {
-    cmd.env("MALLOC_ARENA_MAX", "2");
-}
-
-#[must_use]
-pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
-    let mut cmd = std::process::Command::new(program);
-    isolate_child_process_group(&mut cmd);
-    install_parent_death_signal(&mut cmd);
-    apply_sandbox_resource_limits(&mut cmd);
-    crate::herdr::strip_herdr_env(&mut cmd);
-    cmd
-}
-
-#[must_use]
-pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Command {
-    tokio::process::Command::from(malvin_std_command(program))
 }
 
 #[must_use = "pass the ticket to note_active_sandbox_session after spawn"]
@@ -174,53 +128,6 @@ pub fn teardown_active_sandbox_for_interrupt() {
 #[cfg(test)]
 pub(crate) fn clear_active_sandbox_session_for_test() {
     clear_active_sandbox_session();
-}
-
-#[cfg(unix)]
-#[must_use]
-pub fn malvin_session_rss_bytes(
-    agent_pgid: Option<u32>,
-    session_baseline: &HashSet<u32>,
-) -> Option<u64> {
-    malvin_session_memory_sample(agent_pgid, session_baseline).map(|sample| sample.bytes)
-}
-
-#[cfg(unix)]
-#[must_use]
-pub fn malvin_session_memory_sample(
-    agent_pgid: Option<u32>,
-    session_baseline: &HashSet<u32>,
-) -> Option<MemorySample> {
-    let pids = sandbox_monitor_pids(agent_pgid, session_baseline);
-    pids_sandbox_sample(&pids)
-}
-
-#[cfg(not(unix))]
-#[must_use]
-pub fn malvin_session_rss_bytes(_: Option<u32>, _: &HashSet<u32>) -> Option<u64> {
-    None
-}
-
-#[cfg(not(unix))]
-#[must_use]
-pub fn malvin_session_memory_sample(_: Option<u32>, _: &HashSet<u32>) -> Option<MemorySample> {
-    None
-}
-
-#[cfg(unix)]
-pub(crate) fn sandbox_still_alive(
-    agent_pgid: Option<u32>,
-    session_baseline: &HashSet<u32>,
-) -> bool {
-    crate::agent_process::refresh_session_spawn_affiliation(agent_pgid, session_baseline);
-    sandbox_monitor_pids(agent_pgid, session_baseline)
-        .into_iter()
-        .any(crate::agent_process::pid_alive)
-}
-
-#[cfg(not(unix))]
-pub(crate) fn sandbox_still_alive(_: Option<u32>, _: &HashSet<u32>) -> bool {
-    false
 }
 
 #[cfg(test)]

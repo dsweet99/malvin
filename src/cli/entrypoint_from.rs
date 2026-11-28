@@ -1,8 +1,7 @@
 use super::Exit;
-use super::entrypoint::{
-    DefaultRouteDispatch, GatesOnlyDispatch, dispatch_command, dispatch_default_route,
-    dispatch_gates_only_route, finish_entrypoint, prepare_cli_output,
-};
+use super::entrypoint_dispatch::{DefaultRouteDispatch, dispatch_default_route};
+use super::entrypoint_gates_only::{GatesOnlyDispatch, dispatch_gates_only_route};
+use super::entrypoint_support::{dispatch_command, finish_entrypoint, prepare_cli_output};
 use crate::cli::args::Cli;
 use malvin::modal_run::options::ModalOptions;
 
@@ -28,7 +27,7 @@ fn run_entrypoint(
         crate::cli::router_flow::engage_prints_nothing();
     }
     if cli.shared.remote.is_some() {
-        return super::entrypoint::entrypoint_modal::run_modal_route(&cli, raw, modal);
+        return super::entrypoint_modal::run_modal_route(&cli, raw, modal);
     }
     malvin::local_llm::housekeep_local_llms();
     entrypoint_sweep_stale_acp_spawn_locks();
@@ -90,7 +89,7 @@ pub fn entrypoint_from(
     let (raw, modal) = match malvin::modal_run::options::extract_modal_options(raw, remote_alias) {
         Ok(split) => split,
         Err(e) => {
-            super::entrypoint::print_command_error(&e);
+            super::entrypoint_support::print_command_error(&e);
             return Exit::Failure;
         }
     };

@@ -59,8 +59,8 @@ fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     assert_eq!(phase, super::types::TOOL_PHASE_START);
     assert_eq!(id, "id");
     let _ = super::human_a::format_tool_stdout;
-    let _ = super::human_a::execute_effective_exit;
-    let _ = super::human_a::execute_stdout_failed;
+    let _ = super::human_a_done::execute_effective_exit;
+    let _ = super::human_a_done::execute_stdout_failed;
     let _ = super::ansi::tool_summary_stdout_display;
     let _: Option<super::ToolSummaryLines> = None;
     let _ = super::format::format_tool_line;

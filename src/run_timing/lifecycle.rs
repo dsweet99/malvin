@@ -2,7 +2,9 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use super::{CostPolicy, RunTiming, TimingPhase, report};
+use super::policy::{AcpStepProxy, CostPolicy, TimingPhase, cost_policy_for_model};
+use super::report;
+use super::state::RunTiming;
 
 fn token_cost_rates_from_home_config(
     model: &str,
@@ -16,7 +18,7 @@ pub fn attach_new_run_timing(
     timing_slot: &mut Option<Arc<Mutex<RunTiming>>>,
     model: &str,
 ) -> Arc<Mutex<RunTiming>> {
-    attach_new_run_timing_with_cost_policy(timing_slot, super::cost_policy_for_model(model), model)
+    attach_new_run_timing_with_cost_policy(timing_slot, cost_policy_for_model(model), model)
 }
 
 #[must_use]
@@ -29,7 +31,7 @@ pub fn attach_new_run_timing_with_cost_policy(
     let timing = Arc::new(Mutex::new(RunTiming {
         wall_start: Some(prior.wall_start.unwrap_or_else(Instant::now)),
         wall_end: None,
-        acp_step_proxy: super::AcpStepProxy::Idle,
+        acp_step_proxy: AcpStepProxy::Idle,
         ..prior
     }));
     {

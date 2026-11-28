@@ -2,10 +2,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use super::{
-    WHO_H, stdout_heartbeat_display_and_log_line, timestamp_now_string, write_heartbeat_log_line,
-};
-use crate::time_format::heartbeat_payload_now;
+use super::heartbeat_hooks::{heartbeat_payload, notify_working};
+use super::stdout_emit::emit_stdout_rendered_immediate;
+use super::{WHO_H, stdout_heartbeat_display_and_log_line, timestamp_now_string};
 
 static HEARTBEAT_STDOUT_SUPPRESSED: AtomicBool = AtomicBool::new(false);
 
@@ -39,6 +38,11 @@ pub(crate) fn mark_heartbeat_emitted(now: Instant) {
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(now);
 }
 
+pub(crate) fn write_heartbeat_log_line(display: &str, log: &str) {
+    emit_stdout_rendered_immediate(display, log);
+    mark_heartbeat_emitted(Instant::now());
+}
+
 pub(crate) fn heartbeat_rendered_if_due(
     now: Instant,
     arm_if_unarmed: bool,
@@ -61,9 +65,9 @@ pub(crate) fn heartbeat_rendered_if_due(
 }
 
 fn render_heartbeat_line() -> (String, String) {
-    crate::herdr::notify_working();
+    notify_working();
     let ts = timestamp_now_string();
-    let payload = heartbeat_payload_now();
+    let payload = heartbeat_payload();
     stdout_heartbeat_display_and_log_line(WHO_H, &payload, Some(ts.as_str()))
 }
 
@@ -88,7 +92,7 @@ pub(crate) fn maybe_emit_stdout_heartbeat() {
 
 pub(crate) fn emit_stdout_heartbeat_now() {
     if heartbeat_stdout_suppressed() {
-        crate::herdr::notify_working();
+        notify_working();
         return;
     }
     let (display, log) = render_heartbeat_line();
@@ -107,7 +111,7 @@ fn maybe_pulse_herdr_working(now: Instant) {
     }
     *guard = Some(now);
     drop(guard);
-    crate::herdr::notify_working();
+    notify_working();
 }
 
 pub(crate) fn poll_wall_clock_heartbeat_if_due() {

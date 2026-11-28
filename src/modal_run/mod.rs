@@ -5,32 +5,26 @@ pub mod config;
 mod credentials;
 pub mod gpu_types;
 mod image;
+mod invocation;
 pub mod options;
 mod remote;
 mod remote_output;
 mod results;
 mod session;
+mod session_state;
 mod sweep;
 mod workspace;
 
 use std::ffi::OsString;
-use std::path::PathBuf;
 
 pub const REMOTE_FLAG: &str = "--remote";
-pub const MODAL_REMOTE: &str = "modal";
+pub use crate::malvin_constants::MODAL_REMOTE;
+pub use invocation::ModalInvocation;
 pub const MODAL_SERVICE: &str = "sandbox";
 pub const MODAL_REMOTE_ID: &str = "modal:sandbox";
 pub const REMOTE_MODAL_ARG: &str = "--remote=modal:sandbox";
 pub const MODAL_ABOUT: &str =
     "Run in a Modal Sandbox, then apply its file changes and copy its run logs here";
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ModalInvocation {
-    pub remote_args: Vec<OsString>,
-    pub model: String,
-    pub request_files: Vec<PathBuf>,
-    pub options: options::ModalOptions,
-}
 
 #[must_use]
 pub fn remote_args(raw: &[OsString]) -> Vec<OsString> {

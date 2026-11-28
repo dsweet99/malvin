@@ -1,9 +1,18 @@
-use super::router_flow::new_router_client;
 use super::router_flow_loop::{RouterAgentLoopInput, run_router_agent_loops};
 use crate::artifacts::AgentDirs;
+use crate::cli::SharedOpts;
 use malvin::agent_process::{AccountDenial, account_denial};
+use malvin::backends::agent_backend::{SdkClient, build_agent_backend};
 use malvin::run_timing::RunTiming;
 use std::sync::{Arc, Mutex};
+
+pub(super) fn new_router_client(shared: &SharedOpts) -> SdkClient {
+    build_agent_backend(
+        shared.model.first().clone(),
+        shared.max_acp_retries,
+        shared.acp_stdout_markdown_enabled(),
+    )
+}
 
 enum RouterModelError {
     Model(String),

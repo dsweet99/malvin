@@ -5,8 +5,9 @@ use std::time::Duration;
 use serde_json::{Value, json};
 
 use super::cost::cost_stats;
+use super::policy::RUN_TIMING_JSON_FILE;
+use super::state::RunTiming;
 use super::tokens::tokens_stats;
-use super::{RUN_TIMING_JSON_FILE, RunTiming};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 
 #[path = "report_timing_line.rs"]

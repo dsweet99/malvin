@@ -23,6 +23,8 @@ pub(super) mod agent_backend_sdk_client_active;
 pub(super) mod agent_backend_sdk_client_header_lifecycle;
 #[path = "agent_backend/sdk_client_prompt.rs"]
 pub(super) mod agent_backend_sdk_client_prompt;
+#[path = "agent_backend/sdk_client_prompt_io.rs"]
+pub(super) mod agent_backend_sdk_client_prompt_io;
 #[path = "agent_backend/sdk_client_session.rs"]
 pub(super) mod agent_backend_sdk_client_session;
 #[path = "agent_backend/sdk_client_session_header.rs"]
@@ -41,6 +43,8 @@ pub(super) mod bridge_sdk_drain_idle;
 pub(crate) mod bridge_sdk_drain_idle_health;
 #[path = "bridge_sdk/drain_idle_turn.rs"]
 pub(super) mod bridge_sdk_drain_idle_turn;
+#[path = "bridge_sdk/drain_idle_types.rs"]
+pub(super) mod bridge_sdk_drain_idle_types;
 #[path = "bridge_sdk/drain_idle_wait.rs"]
 pub(super) mod bridge_sdk_drain_idle_wait;
 #[path = "bridge_sdk/json_line_session.rs"]
@@ -65,6 +69,8 @@ pub(super) mod bridge_sdk_stdio_child;
 pub(super) mod bridge_sdk_stdio_teardown;
 #[path = "bridge_sdk/stdout_coalesce_buf.rs"]
 pub(super) mod bridge_sdk_stdout_coalesce_buf;
+#[path = "bridge_sdk/stdout_coalesce_buf/state.rs"]
+pub(super) mod bridge_sdk_stdout_coalesce_buf_state;
 #[path = "bridge_sdk/stdout_coalesce_buf/worker.rs"]
 pub(super) mod bridge_sdk_stdout_coalesce_buf_worker;
 #[path = "bridge_sdk/stream_log.rs"]
@@ -89,6 +95,8 @@ pub(super) mod claude_sdk_session_spawn;
 pub(super) mod codex_sdk_auth;
 #[path = "codex_sdk/catalog.rs"]
 pub(crate) mod codex_sdk_catalog;
+#[path = "codex_sdk/codex_bin.rs"]
+pub(super) mod codex_sdk_codex_bin;
 #[path = "codex_sdk/discover.rs"]
 pub(super) mod codex_sdk_discover;
 #[path = "codex_sdk/family_alias.rs"]

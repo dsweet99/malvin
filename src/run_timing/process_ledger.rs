@@ -2,32 +2,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use super::RunTiming;
+pub(crate) use super::state::Ledger;
+use super::state::RunTiming;
 
 static START: OnceLock<Instant> = OnceLock::new();
 static ARMED: AtomicBool = AtomicBool::new(false);
-
-#[derive(Clone, Debug, Default)]
-pub(crate) struct Ledger {
-    pub(crate) llm_wait: Duration,
-    pub(crate) tool_calls: Duration,
-    pub(crate) read: Duration,
-    pub(crate) search: Duration,
-    pub(crate) edit: Duration,
-    pub(crate) execute: Duration,
-    pub(crate) other: Duration,
-    pub(crate) steps: u64,
-    pub(crate) tokens_in: Option<u64>,
-    pub(crate) tokens_out: Option<u64>,
-    pub(crate) cache_read: Option<u64>,
-    pub(crate) cache_write: Option<u64>,
-    pub(crate) reasoning: Option<u64>,
-    pub(crate) cost_in: Option<f64>,
-    pub(crate) cost_out: Option<f64>,
-    pub(crate) cost_read: Option<f64>,
-    pub(crate) cost_write: Option<f64>,
-    pub(crate) cost_tot: Option<f64>,
-}
 
 pub fn note_process_start() {
     let _ = START.get_or_init(Instant::now);
@@ -42,7 +21,7 @@ pub fn emit_process_footnotes_if_armed() {
     if !ARMED.swap(false, Ordering::Relaxed) {
         return;
     }
-    if super::stdout_footnotes_suppressed() {
+    if super::policy::stdout_footnotes_suppressed() {
         return;
     }
     note_process_start();

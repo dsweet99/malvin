@@ -6,7 +6,7 @@ pub(crate) use super::agent_backend_factory as factory;
 pub(crate) use super::agent_backend_sdk_client as sdk_client;
 pub(crate) use super::agent_backend_sdk_client_active as sdk_client_active;
 pub(crate) use super::agent_backend_sdk_client_header_lifecycle as sdk_client_header_lifecycle;
-pub(crate) use super::agent_backend_sdk_client_prompt as sdk_client_prompt;
+pub(crate) use super::agent_backend_sdk_client_prompt_io as sdk_client_prompt_io;
 pub(crate) use super::agent_backend_sdk_client_session as sdk_client_session;
 pub(crate) use super::agent_backend_sdk_client_session_header as sdk_client_session_header;
 pub(crate) use super::agent_backend_sdk_session as sdk_session;

@@ -1,10 +1,11 @@
-use crate::run_timing::ResponseUsage;
+use super::tokens::ResponseUsage;
 
-use super::RunTiming;
+use super::policy::CostPolicy;
+use super::state::RunTiming;
 
 impl RunTiming {
     pub fn record_completion_cost(&mut self, usage: &ResponseUsage) {
-        if matches!(self.cost_policy, super::CostPolicy::Zero) {
+        if matches!(self.cost_policy, CostPolicy::Zero) {
             return;
         }
         match usage.cost {

@@ -1,12 +1,6 @@
-use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::config::log_gc_config::LogsGcConfig;
-use crate::config::model_id::parse_model_id;
-use crate::config::model_list::ModelList;
 use crate::output::print_log_warning;
-use crate::terminal_palette::TerminalTheme;
-use crate::workspace::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::workspace::workspace_paths::malvin_config_path;
 
 #[path = "malvin_config_agent.rs"]
@@ -19,74 +13,32 @@ mod malvin_config_open;
 mod malvin_config_parse;
 #[path = "malvin_config_top.rs"]
 mod malvin_config_top;
+pub(crate) use super::malvin_config_io::{
+    DEFAULT_MALVIN_CONFIG_TEMPLATE, ensure_config_parent_dir, merge_missing_keys,
+    parse_template_value, read_on_disk_config_value, write_config_value,
+};
+pub(crate) use super::malvin_config_loaders::load_model_aliases;
+pub use super::malvin_config_loaders::{
+    load_logs_gc_config, load_mem_limit_bytes, load_mem_limit_gb, load_remote_aliases,
+    parse_model_cli_arg, parse_model_list_cli_arg,
+};
+pub use super::malvin_config_types::{AgentConfig, MalvinConfig};
+pub(crate) use super::malvin_config_values::{
+    read_f64, read_string, read_u32, read_u64, warn_config_once,
+};
 pub(crate) use malvin_config_agent::parse_agent_config;
 #[cfg(test)]
 pub(crate) use malvin_config_model_policy::parse_remote_aliases;
-pub(crate) use malvin_config_model_policy::{
-    load_model_aliases, parse_aliases_lenient, parse_model_aliases,
-};
-pub use malvin_config_model_policy::{
-    load_remote_aliases, parse_model_cli_arg, parse_model_list_cli_arg,
-};
+pub(crate) use malvin_config_model_policy::{parse_aliases_lenient, parse_model_aliases};
 use malvin_config_open::create_malvin_config_from_template;
 pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
 };
-pub(crate) use malvin_config_parse::{
-    parse_malvin_config, read_f64, read_string, read_u32, read_u64, warn_config_once,
-};
+pub(crate) use malvin_config_parse::parse_malvin_config;
 pub use malvin_config_top::{DEFAULT_CONTEXT_SIZE, TokenCostRates};
 pub(crate) use malvin_config_top::{parse_context_size, parse_model_token_cost_rates, parse_theme};
 
 pub const DEFAULT_MAX_LOOPS: usize = 999;
-
-const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/assets/default_malvin_home_config.toml"
-));
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AgentConfig {
-    pub model: ModelList,
-    pub model_lite: Option<ModelList>,
-    pub max_acp_retries: u32,
-}
-
-impl Default for AgentConfig {
-    fn default() -> Self {
-        Self {
-            model: parse_model_id(DEFAULT_CLI_MODEL)
-                .expect("DEFAULT_CLI_MODEL must parse")
-                .into(),
-            model_lite: None,
-            max_acp_retries: DEFAULT_MAX_ACP_RETRIES,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct MalvinConfig {
-    pub mem_limit_gb: u64,
-    pub context_size: u32,
-    pub theme: TerminalTheme,
-    pub auto_setup_costs: bool,
-    pub model_aliases: BTreeMap<String, String>,
-    pub remote_aliases: BTreeMap<String, String>,
-    pub token_cost_rates: BTreeMap<String, TokenCostRates>,
-    pub logs: LogsGcConfig,
-    pub agent: AgentConfig,
-    pub dm_on_emit: Option<String>,
-}
-
-impl MalvinConfig {
-    #[must_use]
-    pub fn token_cost_rates_for(&self, model: &str) -> TokenCostRates {
-        self.token_cost_rates
-            .get(model)
-            .copied()
-            .unwrap_or_default()
-    }
-}
 
 pub fn ensure_malvin_config_file(work_dir: &Path) -> Result<(), String> {
     let _ = open_malvin_config(work_dir)?;
@@ -131,67 +83,6 @@ pub fn open_malvin_config(work_dir: &Path) -> Result<MalvinConfig, String> {
     Ok(parse_malvin_config(
         &toml::to_string(&on_disk).map_err(|e| e.to_string())?,
     ))
-}
-
-pub(crate) fn ensure_config_parent_dir(path: &Path) -> Result<(), String> {
-    if path == crate::workspace::workspace_paths::malvin_home_config_path() {
-        crate::workspace::workspace_paths::assert_home_malvin_config_disk_io_allowed("create")?;
-    }
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
-    }
-    Ok(())
-}
-
-pub(crate) fn read_on_disk_config_value(path: &Path) -> Result<toml::Value, String> {
-    if !path.is_file() {
-        return Ok(toml::Value::Table(toml::map::Map::new()));
-    }
-    let text =
-        std::fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))?;
-    text.parse::<toml::Value>()
-        .map_err(|e| format!("invalid TOML in {}: {e}", path.display()))
-}
-
-pub(crate) fn write_config_value(path: &Path, value: &toml::Value) -> Result<(), String> {
-    if path == crate::workspace::workspace_paths::malvin_home_config_path() {
-        crate::workspace::workspace_paths::assert_home_malvin_config_disk_io_allowed("write")?;
-    }
-    let serialized =
-        toml::to_string_pretty(value).map_err(|e| format!("serialize {}: {e}", path.display()))?;
-    let mut content = serialized;
-    if !content.ends_with('\n') {
-        content.push('\n');
-    }
-    std::fs::write(path, &content).map_err(|e| format!("write {}: {e}", path.display()))
-}
-
-pub(crate) fn parse_template_value() -> Result<toml::Value, String> {
-    DEFAULT_MALVIN_CONFIG_TEMPLATE
-        .parse()
-        .map_err(|e| format!("invalid bundled config template: {e}"))
-}
-
-pub(crate) fn merge_missing_keys(into: &mut toml::Value, template: &toml::Value) -> bool {
-    match (into, template) {
-        (toml::Value::Table(into_table), toml::Value::Table(template_table)) => {
-            let mut changed = false;
-            for (key, template_value) in template_table {
-                if !into_table.contains_key(key) {
-                    into_table.insert(key.clone(), template_value.clone());
-                    changed = true;
-                    continue;
-                }
-                if let Some(existing) = into_table.get_mut(key)
-                    && merge_missing_keys(existing, template_value)
-                {
-                    changed = true;
-                }
-            }
-            changed
-        }
-        _ => false,
-    }
 }
 
 #[cfg(test)]

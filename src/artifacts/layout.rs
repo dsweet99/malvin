@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use super::{FACT_DIR, LITE_DIR, MAIN_DIR, RunArtifacts, TRACE_JSONL};
+use super::RunArtifacts;
+use crate::malvin_constants::{FACT_DIR, LITE_DIR, MAIN_DIR, TRACE_JSONL};
 
 pub struct AgentDirs<'a>(pub &'a RunArtifacts);
 

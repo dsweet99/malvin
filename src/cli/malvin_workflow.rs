@@ -1,4 +1,4 @@
-use crate::cli::admin_cmd::AdminArgs;
+use crate::cli::admin_args::AdminArgs;
 use crate::cli::args::{Cli, Commands};
 use crate::cli::request_argv::{TaggedRequest, tag_requests};
 use crate::cli::shared_opts::{RouterOpts, SharedOpts};

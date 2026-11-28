@@ -1,6 +1,3 @@
-use serde_json::Value;
-
-use super::format::stderr_headline;
 use super::human_a_done::{human_done_line, search_query_from};
 use super::human_b::{
     human_edit_subject, human_execute_command, human_read_subject, humanize_duration,
@@ -118,24 +115,4 @@ pub(crate) fn human_running_line(
             .map(|subject| format!("Editing {subject} · {dur}")),
         _ => None,
     }
-}
-
-pub(crate) fn execute_effective_exit(parsed: &ParsedToolUpdate, raw: Option<&Value>) -> i64 {
-    if let Some(code) = raw.and_then(|r| r.get("exitCode")).and_then(Value::as_i64) {
-        return code;
-    }
-    match parsed.status.as_deref() {
-        Some("failed" | "cancelled") => 1,
-        _ => 0,
-    }
-}
-
-pub(crate) fn execute_stdout_failed(
-    parsed: &ParsedToolUpdate,
-    exit: i64,
-    raw: Option<&Value>,
-) -> bool {
-    exit != 0
-        || matches!(parsed.status.as_deref(), Some("failed" | "cancelled"))
-        || raw.and_then(stderr_headline).is_some()
 }

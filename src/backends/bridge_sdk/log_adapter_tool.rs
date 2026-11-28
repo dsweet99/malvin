@@ -1,11 +1,19 @@
 use std::time::{Duration, Instant};
 
+use crate::agent_process::AcpJsonlTrace;
 use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_T};
 use crate::tool_summary::{humanize_duration, tool_summary_stdout_display};
 
-use super::bridge_sdk::log_adapter::append_trace_line;
 use super::bridge_sdk::spawn_args::ToolCallStart;
 use super::bridge_sdk::stream_log::StreamLog;
+
+pub(crate) fn append_trace_line(session: &StreamLog, line: &str) {
+    let Some(path) = session.trace_path.as_ref() else {
+        return;
+    };
+    let trace = AcpJsonlTrace::new(path.clone(), "sdk".into());
+    trace.append_line("in", line);
+}
 
 pub(crate) struct ToolCallFields<'a> {
     pub phase: &'a str,

@@ -48,8 +48,9 @@ pub(crate) use json_line_session::JsonLineSession;
 pub(crate) use json_line_session::json_parse_error;
 pub(crate) use log_adapter::{feed_do_dm_run_result, handle_stream_event};
 pub use session::BridgeSession;
+pub(crate) use session_handshake::{CreateArgs, ResumeArgs, send_create, send_resume};
+pub(crate) use session_io::start_mem_watch;
 pub use session_io::write_request;
-pub(crate) use session_io::{CreateArgs, ResumeArgs, send_create, send_resume, start_mem_watch};
 #[cfg(test)]
 pub(crate) use session_io_productive::tools_in_flight;
 pub use spawn_args::{BridgeSpawnArgs, SDK_BRIDGE_MAX_AGE, ToolCallStart};

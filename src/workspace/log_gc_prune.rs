@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Duration, Utc};
 
-use super::{dir_size, remove_tree_or_report, run_dir_timestamp};
+use super::log_gc_fs::{dir_size, remove_tree_or_report, run_dir_timestamp};
 use crate::config::log_gc_config::LogsGcConfig;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

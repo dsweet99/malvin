@@ -5,7 +5,7 @@ use malvin::modal_run::options::ModalOptions;
 use malvin::modal_run::{ModalInvocation, reject_unsupported, remote_args, run_modal};
 
 use super::Exit;
-use super::entrypoint::print_command_error;
+use super::entrypoint_support::print_command_error;
 use crate::cli::args::Cli;
 
 pub(crate) fn modal_invocation(

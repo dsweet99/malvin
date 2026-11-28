@@ -31,7 +31,7 @@ fn smoke_emit_without_log_path_skips_disk_append() {
 
 fn smoke_time_format_and_stdout_log_path() {
     assert!(!crate::time_format::timestamp_now_string().is_empty());
-    let payload = crate::time_format::heartbeat_payload_now();
+    let payload = crate::heartbeat::heartbeat_payload_now();
     assert!(crate::time_format::heartbeat_payload_has_wall_clock_prefix(
         &payload
     ));

@@ -1,4 +1,18 @@
-use super::codex_sdk::discover::ModelListPage;
+#[derive(Debug)]
+pub(crate) struct ModelListPage {
+    pub(crate) models: Vec<(String, String)>,
+    pub(crate) next_cursor: Option<String>,
+}
+
+#[cfg(test)]
+impl ModelListPage {
+    pub(crate) const fn empty() -> Self {
+        Self {
+            models: Vec::new(),
+            next_cursor: None,
+        }
+    }
+}
 
 pub(super) fn parse_model_list_page(value: &serde_json::Value) -> Result<ModelListPage, String> {
     reject_model_list_error(value)?;

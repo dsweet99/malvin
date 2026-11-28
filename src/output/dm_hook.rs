@@ -27,14 +27,10 @@ pub(crate) use dm_hook_mark::parse_dm_emit_mark;
 
 const DM_HOOK_TIMEOUT: Duration = Duration::from_secs(10);
 
-#[cfg(not(test))]
-static DM_INDEX: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-
 thread_local! {
     static TEST_HOOK: std::cell::RefCell<Option<Vec<String>>> =
         const { std::cell::RefCell::new(None) };
     static FORCE_MODAL: Cell<bool> = const { Cell::new(false) };
-    static TEST_INDEX: Cell<u64> = const { Cell::new(0) };
 }
 
 pub(crate) fn deliver_finished_dm(body: &str) {
@@ -54,21 +50,6 @@ pub(crate) fn deliver_finished_dm(body: &str) {
     }
     let stdin = (!via_arg).then_some(body);
     dm_hook_exec::exec_hook(&argv, stdin, DM_HOOK_TIMEOUT);
-}
-
-pub(crate) fn next_dm_index() -> u64 {
-    #[cfg(test)]
-    {
-        TEST_INDEX.with(|index| {
-            let next = index.get() + 1;
-            index.set(next);
-            next
-        })
-    }
-    #[cfg(not(test))]
-    {
-        DM_INDEX.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1
-    }
 }
 
 fn configured_tokens() -> Option<Vec<String>> {
@@ -101,7 +82,7 @@ pub(crate) fn force_modal_mark(on: bool) {
 
 #[cfg(test)]
 pub(crate) fn reset_dm_hook_state() {
-    TEST_INDEX.with(|index| index.set(0));
+    dm_hook_exec::reset_dm_index_for_test();
     force_modal_mark(false);
     set_test_dm_hook(None);
     dm_hook_mark::clear_test_marks();

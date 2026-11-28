@@ -1,6 +1,5 @@
 use std::sync::Mutex;
 
-use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::{ChildProcessSession, JsonLineSession, StdioChild, StreamLog};
 use crate::config::model_id::ModelBackend;
 
@@ -40,15 +39,9 @@ impl JsonLineSession for CodexSession {
     const BACKEND: ModelBackend = ModelBackend::Codex;
 }
 
-impl CodexSession {
-    pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
-        super::codex_sdk::session_io::codex_send_prompt(self, prompt).await
-    }
-
-    pub async fn shutdown(self) -> Result<(), AgentError> {
-        let _ = super::codex_sdk::session_io::codex_write_abort(&self).await;
-        let _ = super::codex_sdk::session_io::codex_delete_thread(&self).await;
-        self.stdio.shutdown_kill_and_clear().await;
-        Ok(())
-    }
+pub(crate) fn set_codex_turn_id(session: &CodexSession, turn_id: Option<String>) {
+    *session
+        .turn_id
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = turn_id;
 }

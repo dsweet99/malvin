@@ -1,4 +1,4 @@
-use super::entrypoint::run_async_cli;
+use super::entrypoint_support::run_async_cli;
 use super::{RouterOpts, SharedOpts, ml_loop, run_router};
 use crate::cli::request_argv::TaggedRequest;
 

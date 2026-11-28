@@ -8,7 +8,3 @@ fn notify_run_done_inner() {
     }
     super::lifecycle::report_active_state("idle");
 }
-
-pub(super) const fn terminal_agent_state() -> &'static str {
-    "idle"
-}
